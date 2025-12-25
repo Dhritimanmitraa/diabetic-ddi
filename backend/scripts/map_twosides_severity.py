@@ -87,7 +87,7 @@ async def map_severity(session: AsyncSession, batch: int = 5000):
                     effect = data.get("EVENT", data.get("effect", None))
                 except Exception:
                     effect = None
-            severity = classify_effect(effect)
+            severity = classify_effect(effect if effect else "")
             updates.append((severity, row_id))
             last_id = row_id  # Track last processed ID
         
