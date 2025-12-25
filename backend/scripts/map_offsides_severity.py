@@ -58,13 +58,14 @@ async def map_severity(session: AsyncSession, batch: int = 5000):
             break
         for r in rows:
             eff = r.effect
-            if not eff and r.raw_row:
+            raw_row_val = r.raw_row
+            if not eff and raw_row_val:  # type: ignore[truthy-bool]
                 try:
-                    data = json.loads(r.raw_row)
+                    data = json.loads(raw_row_val)  # type: ignore[arg-type]
                     eff = data.get("condition_concept_name") or data.get("effect")
                 except Exception:
                     eff = None
-            r.severity = classify_effect(eff)
+            r.severity = classify_effect(eff) if eff else "minor"  # type: ignore[assignment]
         await session.commit()
         updated += len(rows)
         offset += batch
