@@ -95,7 +95,7 @@ class DiabeticMLPredictor:
             self.is_loaded = True
 
     def predict(self, drug_name: str, patient: Dict) -> Optional[DiabeticMLResult]:
-        if not self.is_loaded:
+        if not self.is_loaded or self.model is None or self.scaler is None:
             return None
         vec = build_vector(patient, drug_name, self.scaler, self.hash_size)
         proba = self.model.predict_proba(vec)[0]
