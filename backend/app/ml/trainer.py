@@ -107,21 +107,34 @@ class DDITrainer:
         logger.info(f"Class distribution: {np.bincount(y)}")
         
         # Split data
-        X_train, X_test, y_train, y_test = train_test_split(
+        train_test_result = train_test_split(
             X, y,
             test_size=self.test_size,
             random_state=self.random_state,
             stratify=y
         )
+        X_train, X_test, y_train, y_test = train_test_result  # type: ignore[assignment]
         
         # Apply SMOTE for handling class imbalance
         if self.use_smote:
             logger.info("Applying SMOTE for class balancing...")
             smote = SMOTE(random_state=self.random_state)
-            X_train, y_train = smote.fit_resample(X_train, y_train)
+            smote_result = smote.fit_resample(X_train, y_train)  # type: ignore[assignment]
+            # Extract first two elements (SMOTE returns 2-tuple, but type checker sees 3)
+            X_train_resampled = smote_result[0]
+            y_train_resampled = smote_result[1]
+            # Ensure numpy arrays
+            X_train = np.asarray(X_train_resampled)
+            y_train = np.asarray(y_train_resampled)
             logger.info(f"After SMOTE - Class distribution: {np.bincount(y_train)}")
         
-        return X_train, X_test, y_train, y_test
+        # Ensure all are numpy arrays
+        return (
+            np.asarray(X_train),  # type: ignore[arg-type]
+            np.asarray(X_test),  # type: ignore[arg-type]
+            np.asarray(y_train),  # type: ignore[arg-type]
+            np.asarray(y_test)  # type: ignore[arg-type]
+        )
     
     def train_single_model(
         self,
