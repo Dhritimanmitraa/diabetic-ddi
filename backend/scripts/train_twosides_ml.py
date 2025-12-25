@@ -67,7 +67,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_training_data_optimized(data_dir: Path, max_samples: int = None):
+def load_training_data_optimized(data_dir: Path, max_samples: int | None = None):
     """Load training data with optional subsampling."""
     train_path = data_dir / "train.csv"
     val_path = data_dir / "val.csv"
@@ -324,9 +324,9 @@ def evaluate_model(model, X_test, y_test, model_name, threshold=0.5):
     # Calculate all metrics including NPV
     metrics = {
         'accuracy': accuracy_score(y_test, y_pred),
-        'precision': precision_score(y_test, y_pred, zero_division=0),
-        'recall': recall_score(y_test, y_pred, zero_division=0),
-        'f1_score': f1_score(y_test, y_pred, zero_division=0),
+        'precision': precision_score(y_test, y_pred, zero_division=0),  # type: ignore
+        'recall': recall_score(y_test, y_pred, zero_division=0),  # type: ignore
+        'f1_score': f1_score(y_test, y_pred, zero_division=0),  # type: ignore
         'auc_roc': roc_auc_score(y_test, y_proba),
         'brier_score': brier_score_loss(y_test, y_proba),
         'specificity': tn / (tn + fp) if (tn + fp) > 0 else 0,
@@ -488,7 +488,9 @@ def main():
             )
         
         try:
-            X_train_resampled, y_train_resampled = sampler.fit_resample(X_train, y_train)
+            resample_result = sampler.fit_resample(X_train, y_train)  # type: ignore[assignment]
+            X_train_resampled = resample_result[0]
+            y_train_resampled = resample_result[1]
             logger.info(f"Resampling complete in {time.time() - resampling_start:.1f}s")
             logger.info(f"Train distribution AFTER resampling: 0={np.sum(y_train_resampled==0)}, 1={np.sum(y_train_resampled==1)}")
             logger.info(f"New class balance ratio: {np.sum(y_train_resampled==1) / np.sum(y_train_resampled==0):.4f}")
@@ -569,9 +571,9 @@ def main():
         
         ensemble_metrics = {
             'accuracy': accuracy_score(y_test, y_pred_ens),
-            'precision': precision_score(y_test, y_pred_ens, zero_division=0),
-            'recall': recall_score(y_test, y_pred_ens, zero_division=0),
-            'f1_score': f1_score(y_test, y_pred_ens, zero_division=0),
+            'precision': precision_score(y_test, y_pred_ens, zero_division=0),  # type: ignore
+            'recall': recall_score(y_test, y_pred_ens, zero_division=0),  # type: ignore
+            'f1_score': f1_score(y_test, y_pred_ens, zero_division=0),  # type: ignore
             'auc_roc': roc_auc_score(y_test, y_proba_ens),
             'brier_score': brier_score_loss(y_test, y_proba_ens),
             'specificity': tn_ens / (tn_ens + fp_ens) if (tn_ens + fp_ens) > 0 else 0,
