@@ -97,7 +97,7 @@ def load_models(model_dir: Path):
             else:
                 models[model_name] = model
             
-            logger.info(f"✓ Loaded {model_name}")
+            logger.info(f"Loaded {model_name}")
             
         except Exception as e:
             logger.error(f"Error loading {model_name}: {e}")
@@ -480,7 +480,7 @@ def main():
             y_test, analysis_proba, method=args.threshold_method
         )
         
-        print(f"\n✓ Optimal Threshold: {opt_thresh:.4f} (score: {opt_score:.4f})")
+        print(f"\nOptimal Threshold: {opt_thresh:.4f} (score: {opt_score:.4f})")
         
         # Show comparison at different thresholds
         print(f"\n{'Threshold':>10} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} "
@@ -581,17 +581,17 @@ def main():
         threshold_path = model_dir / "optimal_threshold.json"
         with open(threshold_path, 'w') as f:
             json.dump(optimal_thresholds, f, indent=2)
-        logger.info(f"✓ Optimal threshold saved to {threshold_path}")
+        logger.info(f"Optimal threshold saved to {threshold_path}")
     
-    logger.info(f"\n✓ Evaluation complete in {time.time() - start_time:.1f}s")
-    logger.info(f"✓ Results saved to {eval_path}")
+    logger.info(f"\nEvaluation complete in {time.time() - start_time:.1f}s")
+    logger.info(f"Results saved to {eval_path}")
     
     print("\n" + "="*80)
-    print("  ✅ EVALUATION COMPLETE")
+    print("  EVALUATION COMPLETE")
     print("="*80)
     
     if optimal_thresholds:
-        print(f"\n  🎯 USE THIS THRESHOLD IN YOUR ML PREDICTOR: {optimal_thresholds['threshold']:.4f}")
+        print(f"\n  USE THIS THRESHOLD IN YOUR ML PREDICTOR: {optimal_thresholds['threshold']:.4f}")
         print(f"     Method: {args.threshold_method}")
         print("="*80)
 

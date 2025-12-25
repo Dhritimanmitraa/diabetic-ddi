@@ -158,7 +158,7 @@ async def main():
     print("Starting optimized severity mapping (cursor-based pagination)...")
     async with async_session() as session:
         updated = await map_severity(session)
-        print(f"\n✅ Updated severity for {updated} TWOSIDES rows.")
+        print(f"\nUpdated severity for {updated} TWOSIDES rows.")
 
 
 if __name__ == "__main__":

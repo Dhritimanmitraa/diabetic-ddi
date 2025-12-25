@@ -344,7 +344,7 @@ class DiabeticDDIService:
         for a in assessments:
             counts[a.risk_level] = counts.get(a.risk_level, 0) + 1
             if a.risk_level in ["fatal", "contraindicated"]:
-                critical_alerts.append(f"⚠️ {a.drug_name}: {a.recommendation}")
+                critical_alerts.append(f"WARNING: {a.drug_name}: {a.recommendation}")
         
         # Determine overall risk
         if counts["fatal"] > 0:
@@ -579,14 +579,14 @@ class DiabeticDDIService:
         
         contraindicated = [a for a in assessments if a.risk_level == "contraindicated"]
         if contraindicated:
-            recommendations.append(f"⚠️ Review and replace: {', '.join(a.drug_name for a in contraindicated)}")
+            recommendations.append(f"WARNING: Review and replace: {', '.join(a.drug_name for a in contraindicated)}")
         
         high_risk = [a for a in assessments if a.risk_level == "high_risk"]
         if high_risk:
-            recommendations.append(f"📋 Increase monitoring for: {', '.join(a.drug_name for a in high_risk)}")
+            recommendations.append(f"Increase monitoring for: {', '.join(a.drug_name for a in high_risk)}")
         
         if not recommendations:
-            recommendations.append("✅ Current medication regimen appears safe for this patient")
+            recommendations.append("Current medication regimen appears safe for this patient")
         
         return recommendations
     

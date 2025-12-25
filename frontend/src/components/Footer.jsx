@@ -51,7 +51,7 @@ function Footer() {
 
         {/* Disclaimer */}
         <div className="p-4 bg-slate-800/30 rounded-xl mb-8">
-          <h5 className="text-white font-medium mb-2">⚠️ Medical Disclaimer</h5>
+          <h5 className="text-white font-medium mb-2">Medical Disclaimer</h5>
           <p className="text-slate-400 text-sm">
             This tool is intended for informational purposes only and should not be used as a 
             substitute for professional medical advice, diagnosis, or treatment. Always seek 

@@ -7,11 +7,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 // Risk level badge component
 const RiskBadge = ({ level }) => {
   const config = {
-    safe: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', label: '✓ Safe' },
-    caution: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', label: '⚠ Caution' },
-    high_risk: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', label: '⚠ High Risk' },
-    contraindicated: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', label: '✕ Contraindicated' },
-    fatal: { bg: 'bg-red-900/40', text: 'text-red-300', border: 'border-red-700', label: '☠ Fatal Risk' },
+    safe: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'Safe' },
+    caution: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', label: 'Caution' },
+    high_risk: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', label: 'High Risk' },
+    contraindicated: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', label: 'Contraindicated' },
+    fatal: { bg: 'bg-red-900/40', text: 'text-red-300', border: 'border-red-700', label: 'Fatal Risk' },
   }
   const { bg, text, border, label } = config[level] || config.caution
   return (
@@ -874,7 +874,7 @@ export default function DiabetesManager() {
                       {/* Critical Alerts */}
                       {checkResult.critical_alerts?.length > 0 && (
                         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
-                          <h4 className="text-sm font-bold text-red-400 mb-2">⚠️ Critical Alerts</h4>
+                          <h4 className="text-sm font-bold text-red-400 mb-2">Critical Alerts</h4>
                           {checkResult.critical_alerts.map((alert, i) => (
                             <p key={i} className="text-sm text-red-300">{alert}</p>
                           ))}
@@ -935,7 +935,7 @@ export default function DiabetesManager() {
                       {/* Fatal Risks */}
                       {report.fatal_risks?.length > 0 && (
                         <div className="mb-4">
-                          <h4 className="text-sm font-bold text-red-400 mb-2">☠️ Fatal Risks</h4>
+                          <h4 className="text-sm font-bold text-red-400 mb-2">Fatal Risks</h4>
                           <div className="space-y-2">
                             {report.fatal_risks.map((risk, i) => (
                               <div key={i} className="p-3 bg-red-900/30 border border-red-700 rounded-lg">

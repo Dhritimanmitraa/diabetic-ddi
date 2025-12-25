@@ -131,10 +131,10 @@ class InteractionService:
             is_safe = severity == "minor"
             
             safety_messages = {
-                "contraindicated": "⛔ CONTRAINDICATED: These drugs should NOT be used together under any circumstances.",
-                "major": "⚠️ MAJOR INTERACTION: These drugs have a significant interaction. Consult your healthcare provider immediately.",
-                "moderate": "⚡ MODERATE INTERACTION: Use caution. Monitor for side effects and consult your pharmacist.",
-                "minor": "ℹ️ MINOR INTERACTION: Generally safe but be aware of potential mild effects."
+                "contraindicated": "CONTRAINDICATED: These drugs should NOT be used together under any circumstances.",
+                "major": "MAJOR INTERACTION: These drugs have a significant interaction. Consult your healthcare provider immediately.",
+                "moderate": "MODERATE INTERACTION: Use caution. Monitor for side effects and consult your pharmacist.",
+                "minor": "MINOR INTERACTION: Generally safe but be aware of potential mild effects."
             }
             
             recommendations = self._get_recommendations(interaction)
@@ -170,7 +170,7 @@ class InteractionService:
                 has_interaction=False,
                 is_safe=True,
                 interaction=None,
-                safety_message="✅ NO KNOWN INTERACTION: These drugs appear to be safe to use together based on available data.",
+                safety_message="NO KNOWN INTERACTION: These drugs appear to be safe to use together based on available data.",
                 recommendations=[
                     "Always inform your healthcare provider of all medications you take.",
                     "Monitor for any unexpected side effects.",
@@ -261,7 +261,7 @@ class InteractionService:
             has_interaction=False,
             is_safe=False,
             interaction=None,
-            safety_message=f"⚠️ DRUG NOT FOUND: '{drug_name}' was not found in our database. Please verify the spelling or try an alternative name.",
+            safety_message=f"DRUG NOT FOUND: '{drug_name}' was not found in our database. Please verify the spelling or try an alternative name.",
             recommendations=[
                 "Check the spelling of the drug name.",
                 "Try using the generic name instead of brand name.",

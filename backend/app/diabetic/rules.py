@@ -438,7 +438,7 @@ class DiabeticDrugRules:
         # 1d. General severe kidney function warning (eGFR < 30) for unmatched drugs
         if egfr and egfr < 30 and not pattern_matched and drug_lower not in self.EGFR_CONTRAINDICATIONS:
             # Unknown drug in severe CKD - flag for review with higher score
-            risk_factors.append(f"⚠️ Severe CKD (eGFR {egfr}): Drug not in renal database - REVIEW REQUIRED")
+            risk_factors.append(f"WARNING: Severe CKD (eGFR {egfr}): Drug not in renal database - REVIEW REQUIRED")
             rule_refs.append("Severe CKD - unknown renal handling")
             evidence_sources.append(self.EVIDENCE_TAGS["renal"])
             patient_factors.append(f"eGFR={egfr} (Stage 4/5 CKD)")

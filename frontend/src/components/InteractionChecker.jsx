@@ -128,9 +128,9 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
       if (!interactionResult.has_interaction) {
         toast.success('No known interaction found!')
       } else if (interactionResult.interaction?.severity === 'minor') {
-        toast('Minor interaction detected', { icon: 'ℹ️' })
+        toast('Minor interaction detected')
       } else if (interactionResult.interaction?.severity === 'moderate') {
-        toast('Moderate interaction detected', { icon: '⚡' })
+        toast('Moderate interaction detected')
       } else if (interactionResult.interaction?.severity === 'major') {
         toast.error('Major interaction detected!')
       } else if (interactionResult.interaction?.severity === 'contraindicated') {
