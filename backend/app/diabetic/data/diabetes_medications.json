@@ -1,0 +1,177 @@
+{
+  "diabetes_medications": {
+    "biguanides": {
+      "drugs": ["metformin"],
+      "mechanism": "Decreases hepatic glucose production",
+      "hypoglycemia_risk": "low",
+      "weight_effect": "neutral_to_loss",
+      "cv_benefit": true,
+      "renal_considerations": "Contraindicated if eGFR < 30, caution if < 45"
+    },
+    "sulfonylureas": {
+      "drugs": ["glimepiride", "glipizide", "glyburide", "glibenclamide"],
+      "mechanism": "Stimulates insulin secretion",
+      "hypoglycemia_risk": "high",
+      "weight_effect": "gain",
+      "cv_benefit": false,
+      "renal_considerations": "Avoid glyburide if eGFR < 60; prefer glipizide"
+    },
+    "meglitinides": {
+      "drugs": ["repaglinide", "nateglinide"],
+      "mechanism": "Stimulates insulin secretion (short-acting)",
+      "hypoglycemia_risk": "moderate",
+      "weight_effect": "gain",
+      "cv_benefit": false,
+      "renal_considerations": "Nateglinide not recommended if eGFR < 30"
+    },
+    "thiazolidinediones": {
+      "drugs": ["pioglitazone", "rosiglitazone"],
+      "mechanism": "Insulin sensitizer",
+      "hypoglycemia_risk": "low",
+      "weight_effect": "gain",
+      "cv_benefit": "pioglitazone may have benefit; rosiglitazone neutral",
+      "renal_considerations": "No adjustment needed",
+      "warnings": ["Contraindicated in heart failure (NYHA III-IV)", "Bladder cancer risk with pioglitazone", "Fracture risk"]
+    },
+    "dpp4_inhibitors": {
+      "drugs": ["sitagliptin", "saxagliptin", "linagliptin", "alogliptin"],
+      "mechanism": "Enhances incretin effect",
+      "hypoglycemia_risk": "low",
+      "weight_effect": "neutral",
+      "cv_benefit": "neutral",
+      "renal_considerations": "Linagliptin no adjustment; others need dose reduction if eGFR < 45"
+    },
+    "sglt2_inhibitors": {
+      "drugs": ["empagliflozin", "canagliflozin", "dapagliflozin", "ertugliflozin"],
+      "mechanism": "Blocks glucose reabsorption in kidney",
+      "hypoglycemia_risk": "low",
+      "weight_effect": "loss",
+      "cv_benefit": true,
+      "renal_benefit": true,
+      "renal_considerations": "Reduced efficacy at low eGFR; empagliflozin can be used for heart failure down to eGFR 20",
+      "warnings": ["Genital mycotic infections", "DKA risk", "Fournier gangrene (rare)"]
+    },
+    "glp1_agonists": {
+      "drugs": ["liraglutide", "semaglutide", "dulaglutide", "exenatide", "tirzepatide"],
+      "mechanism": "Incretin mimetic",
+      "hypoglycemia_risk": "low",
+      "weight_effect": "loss",
+      "cv_benefit": true,
+      "renal_considerations": "Caution with exenatide if eGFR < 30; others generally safe",
+      "warnings": ["GI side effects", "Pancreatitis risk", "Contraindicated in MEN2 or medullary thyroid cancer history"]
+    },
+    "insulins": {
+      "drugs": ["insulin glargine", "insulin detemir", "insulin degludec", "insulin lispro", "insulin aspart", "insulin regular", "NPH insulin"],
+      "mechanism": "Exogenous insulin",
+      "hypoglycemia_risk": "high",
+      "weight_effect": "gain",
+      "cv_benefit": "neutral",
+      "renal_considerations": "May need dose reduction as eGFR declines due to reduced insulin clearance"
+    }
+  },
+  "common_comorbidity_medications": {
+    "ace_inhibitors": {
+      "drugs": ["lisinopril", "enalapril", "ramipril", "captopril", "benazepril"],
+      "indication": "Hypertension, diabetic nephropathy",
+      "diabetes_benefit": "Nephroprotective",
+      "warnings": ["Hyperkalemia risk", "Monitor potassium and creatinine", "Contraindicated in pregnancy"]
+    },
+    "arbs": {
+      "drugs": ["losartan", "valsartan", "irbesartan", "candesartan", "telmisartan"],
+      "indication": "Hypertension, diabetic nephropathy",
+      "diabetes_benefit": "Nephroprotective",
+      "warnings": ["Hyperkalemia risk", "Monitor potassium", "Contraindicated in pregnancy"]
+    },
+    "statins": {
+      "drugs": ["atorvastatin", "rosuvastatin", "simvastatin", "pravastatin", "pitavastatin"],
+      "indication": "Hyperlipidemia, CV risk reduction",
+      "diabetes_benefit": "CV risk reduction",
+      "warnings": ["Small glucose increase", "Myopathy risk", "Monitor liver function"]
+    },
+    "beta_blockers": {
+      "drugs": ["metoprolol", "carvedilol", "bisoprolol", "atenolol", "propranolol"],
+      "indication": "Hypertension, heart failure, post-MI",
+      "diabetes_warnings": ["May mask hypoglycemia symptoms", "Non-selective agents may worsen glucose control", "Prefer cardioselective agents"]
+    },
+    "diuretics": {
+      "drugs": ["hydrochlorothiazide", "chlorthalidone", "furosemide", "spironolactone"],
+      "indication": "Hypertension, edema",
+      "diabetes_warnings": ["Thiazides may worsen glucose control", "Loop diuretics glucose-neutral", "Spironolactone hyperkalemia risk with ACE-I/ARB"]
+    }
+  },
+  "drugs_affecting_glucose": {
+    "increase_glucose": [
+      {"drug": "prednisone", "class": "corticosteroid", "effect": "significant"},
+      {"drug": "dexamethasone", "class": "corticosteroid", "effect": "significant"},
+      {"drug": "hydrochlorothiazide", "class": "thiazide", "effect": "mild"},
+      {"drug": "olanzapine", "class": "atypical_antipsychotic", "effect": "moderate"},
+      {"drug": "clozapine", "class": "atypical_antipsychotic", "effect": "moderate"},
+      {"drug": "niacin", "class": "lipid_agent", "effect": "mild"},
+      {"drug": "tacrolimus", "class": "immunosuppressant", "effect": "moderate"},
+      {"drug": "cyclosporine", "class": "immunosuppressant", "effect": "moderate"},
+      {"drug": "protease_inhibitors", "class": "antiretroviral", "effect": "moderate"}
+    ],
+    "decrease_glucose_or_mask_hypoglycemia": [
+      {"drug": "propranolol", "class": "beta_blocker", "effect": "masks_symptoms"},
+      {"drug": "alcohol", "class": "other", "effect": "hypoglycemia_risk"},
+      {"drug": "pentamidine", "class": "antiprotozoal", "effect": "hypoglycemia_then_hyperglycemia"},
+      {"drug": "quinolones", "class": "antibiotic", "effect": "glucose_fluctuations"}
+    ]
+  },
+  "egfr_dosing_guidance": {
+    "metformin": {
+      "above_45": "Full dose",
+      "30_to_45": "Reduce to max 1000mg/day; monitor closely",
+      "below_30": "Contraindicated"
+    },
+    "sitagliptin": {
+      "above_45": "100mg daily",
+      "30_to_45": "50mg daily",
+      "below_30": "25mg daily"
+    },
+    "canagliflozin": {
+      "above_60": "100-300mg daily",
+      "30_to_60": "100mg daily (limited efficacy)",
+      "below_30": "Not recommended for glycemic control"
+    },
+    "exenatide": {
+      "above_50": "Full dose",
+      "30_to_50": "Caution; consider alternatives",
+      "below_30": "Contraindicated"
+    },
+    "gabapentin": {
+      "above_60": "Up to 3600mg/day in divided doses",
+      "30_to_60": "Max 600mg TID",
+      "15_to_30": "Max 300mg BID",
+      "below_15": "Max 300mg daily"
+    }
+  },
+  "dangerous_combinations": [
+    {
+      "drugs": ["metformin", "iodinated_contrast"],
+      "risk": "Lactic acidosis",
+      "guidance": "Hold metformin 48h before and after contrast; restart after confirming stable renal function"
+    },
+    {
+      "drugs": ["sulfonylurea", "fluconazole"],
+      "risk": "Severe hypoglycemia",
+      "guidance": "Fluconazole inhibits CYP2C9; significantly increases sulfonylurea levels"
+    },
+    {
+      "drugs": ["ace_inhibitor", "arb", "potassium_supplement"],
+      "risk": "Severe hyperkalemia",
+      "guidance": "Avoid triple combination especially if eGFR < 45"
+    },
+    {
+      "drugs": ["insulin", "sulfonylurea", "alcohol"],
+      "risk": "Severe hypoglycemia",
+      "guidance": "Alcohol impairs gluconeogenesis; combined with insulin secretagogues increases hypoglycemia risk"
+    },
+    {
+      "drugs": ["sglt2_inhibitor", "loop_diuretic"],
+      "risk": "Volume depletion, AKI",
+      "guidance": "Monitor volume status and renal function closely; may need diuretic dose reduction"
+    }
+  ]
+}
+

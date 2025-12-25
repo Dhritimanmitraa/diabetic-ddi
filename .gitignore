@@ -1,0 +1,113 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+backend/data/*.db
+backend/data/*.sqlite
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# ML Models (large files - exclude from repo)
+backend/models/*.pkl
+backend/models/*.json
+!backend/models/optimal_threshold.json.example
+
+# Data files (large datasets - exclude from repo)
+backend/data/twosides/
+backend/data/offsides/
+backend/data/mimiciv/
+*.csv.gz
+*.csv
+!backend/data/diabetic/training/*.csv
+# Exclude large training CSVs (too big for GitHub)
+backend/data/training/train.csv
+backend/data/training/test.csv
+backend/data/training/val.csv
+
+# Large JSON files
+backend/data/real_drug_data.json
+backend/logs/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Frontend build
+frontend/dist/
+frontend/build/
+frontend/.vite/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
