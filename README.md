@@ -1,4 +1,4 @@
-# 💊 DrugGuard - Diabetic Drug Interaction Checker
+# DrugGuard - Diabetic Drug Interaction Checker
 
 A comprehensive clinical decision support system for assessing drug safety in diabetic patients. This hybrid system combines evidence-based clinical rules with machine learning models to prevent medication-related harm in diabetic populations.
 
@@ -7,7 +7,7 @@ A comprehensive clinical decision support system for assessing drug safety in di
 ![React](https://img.shields.io/badge/React-18.2-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## 🎯 Overview
+## Overview
 
 Diabetes patients face unique medication risks due to altered pharmacokinetics, renal impairment, and drug interactions that can lead to severe adverse events. Traditional drug interaction checkers fail to account for diabetes-specific factors like kidney function (eGFR), diabetic complications, and glucose-altering effects.
 
@@ -17,7 +17,7 @@ DrugGuard addresses this gap by integrating:
 - **Patient-specific risk assessment** considering eGFR, complications, and comorbidities
 - **Actionable recommendations** with dose adjustments and safer alternatives
 
-## ✨ Key Features
+## Key Features
 
 ### For Diabetic Patients
 - **Renal Function Assessment**: Automatic eGFR-based dose adjustments
@@ -33,7 +33,7 @@ DrugGuard addresses this gap by integrating:
 - **Real-time API**: FastAPI backend with async support
 - **Modern UI**: React frontend with Tailwind CSS
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐
@@ -53,7 +53,7 @@ DrugGuard addresses this gap by integrating:
 └───────┘ └───────┘
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -106,7 +106,7 @@ npm run dev
 
 Visit `http://localhost:3000` to access the application.
 
-## 📊 Machine Learning Models
+## Machine Learning Models
 
 The system uses ensemble models trained on the TWOSIDES database:
 
@@ -121,7 +121,7 @@ The system uses ensemble models trained on the TWOSIDES database:
 - **Sensitivity**: 85%+ for detecting interactions
 - **Specificity**: 90%+ for safe drug pairs
 
-## 🔬 Data Sources
+## Data Sources
 
 - **TWOSIDES**: 2M+ drug-drug interaction records
 - **OFFSIDES**: Adverse event database
@@ -129,7 +129,7 @@ The system uses ensemble models trained on the TWOSIDES database:
 - **DrugBank**: Drug information and interactions
 - **RxNorm**: Standardized drug nomenclature
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 diabetic-ddi/
@@ -168,7 +168,7 @@ diabetic-ddi/
 └── README.md
 ```
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Diabetic Patient Management
 - `POST /diabetic/patients` - Create patient profile
@@ -189,7 +189,7 @@ diabetic-ddi/
 - `GET /ml/metrics` - Model performance metrics
 - `GET /ml/predictions` - Recent predictions
 
-## 🧪 Training Models
+## Training Models
 
 To train the ML models from scratch:
 
@@ -206,7 +206,7 @@ python scripts/train_diabetic_ml.py
 python scripts/find_optimal_threshold.py
 ```
 
-## 📝 Example Usage
+## Example Usage
 
 ### Check Drug Safety for Diabetic Patient
 
@@ -234,35 +234,35 @@ print(response.json())
 # Returns: Contraindicated - Metformin must be stopped 48h before contrast
 ```
 
-## 🛡️ Safety Features
+## Safety Features
 
 1. **Rule Priority**: Clinical rules always override ML predictions for critical alerts
 2. **Conservative Thresholds**: Optimized for high NPV to minimize false negatives
 3. **Multiple Validation**: Cross-references multiple data sources
 4. **Audit Logging**: All predictions and decisions are logged
 
-## ⚠️ Medical Disclaimer
+## Medical Disclaimer
 
 **This software is for research and educational purposes only. It is NOT a substitute for professional medical advice, diagnosis, or treatment.**
 
 Always consult with qualified healthcare providers before making medication decisions. The absence of an interaction in this system does not guarantee safety.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please feel free to:
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 👤 Author
+## Author
 
 **Dhritiman Mitra**
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - TWOSIDES database for interaction data
 - Clinical guidelines from ADA and AACE
@@ -270,4 +270,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Made with ❤️ for diabetic patient safety**
+**Made for diabetic patient safety**

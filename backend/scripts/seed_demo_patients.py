@@ -200,7 +200,7 @@ async def seed_demo_patients():
                 try:
                     patient_create = DiabeticPatientCreate(**patient_data)
                     patient = await service.create_patient(patient_create)
-                    logger.info(f"✓ Created patient: {patient.name} ({patient_id})")
+                    logger.info(f"Created patient: {patient.name} ({patient_id})")
                     created_count += 1
                 except Exception as e:
                     logger.error(f"Failed to create patient {patient_id}: {e}")

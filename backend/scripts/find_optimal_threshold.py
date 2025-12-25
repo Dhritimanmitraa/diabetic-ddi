@@ -217,8 +217,8 @@ def main():
     with open(threshold_path, 'w') as f:
         json.dump(threshold_data, f, indent=2)
     
-    print(f"\n✓ Saved optimal threshold to {threshold_path}")
-    print(f"\n🎯 USE THIS THRESHOLD IN YOUR ML PREDICTOR: {opt_thresh:.4f}")
+    print(f"\nSaved optimal threshold to {threshold_path}")
+    print(f"\nUSE THIS THRESHOLD IN YOUR ML PREDICTOR: {opt_thresh:.4f}")
     print("="*80)
 
 

@@ -203,9 +203,9 @@ function MLPrediction({ prediction, isLoading }) {
 
 function ModelBar({ name, probability }) {
   const modelIcons = {
-    random_forest: '🌲',
-    xgboost: '🚀',
-    lightgbm: '⚡',
+    random_forest: '',
+    xgboost: '',
+    lightgbm: '',
   }
 
   const modelNames = {

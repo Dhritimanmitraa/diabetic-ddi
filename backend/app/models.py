@@ -151,7 +151,7 @@ class ComparisonLog(Base):
     drug2 = relationship("Drug", foreign_keys=[drug2_id])
     
     def __repr__(self):
-        status = "⚠️ INTERACTION" if self.has_interaction else "✅ SAFE"
+        status = "INTERACTION" if self.has_interaction else "SAFE"
         return f"<ComparisonLog({self.drug1_name} + {self.drug2_name} = {status})>"
 
 

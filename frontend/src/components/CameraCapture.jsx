@@ -116,7 +116,7 @@ function CameraCapture({ setResults, setAlternatives, setIsLoading }) {
         } else if (severity === 'major') {
           toast.error('Major interaction detected!')
         } else {
-          toast('Interaction detected', { icon: '⚠️' })
+          toast('Interaction detected')
         }
       }
     } catch (error) {

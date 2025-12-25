@@ -18,7 +18,7 @@ function ResultsDisplay({ results }) {
         bgColor: 'bg-green-500/10',
         borderColor: 'border-green-500/20',
         label: 'Minor Interaction',
-        emoji: '✅',
+        emoji: '',
       },
       moderate: {
         icon: <AlertTriangle className="w-8 h-8" />,
@@ -26,7 +26,7 @@ function ResultsDisplay({ results }) {
         bgColor: 'bg-yellow-500/10',
         borderColor: 'border-yellow-500/20',
         label: 'Moderate Interaction',
-        emoji: '⚡',
+        emoji: '',
       },
       major: {
         icon: <ShieldAlert className="w-8 h-8" />,
@@ -34,7 +34,7 @@ function ResultsDisplay({ results }) {
         bgColor: 'bg-orange-500/10',
         borderColor: 'border-orange-500/20',
         label: 'Major Interaction',
-        emoji: '⚠️',
+        emoji: '',
       },
       contraindicated: {
         icon: <ShieldX className="w-8 h-8" />,
@@ -42,7 +42,7 @@ function ResultsDisplay({ results }) {
         bgColor: 'bg-red-500/10',
         borderColor: 'border-red-500/20',
         label: 'Contraindicated',
-        emoji: '⛔',
+        emoji: '',
       },
       safe: {
         icon: <Shield className="w-8 h-8" />,
@@ -50,7 +50,7 @@ function ResultsDisplay({ results }) {
         bgColor: 'bg-medical-500/10',
         borderColor: 'border-medical-500/20',
         label: 'Safe to Use',
-        emoji: '✅',
+        emoji: '',
       },
     }
     return configs[severity] || configs.safe

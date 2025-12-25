@@ -193,9 +193,9 @@ function ModelDashboard() {
 
 function ModelCard({ name, metrics, delay }) {
   const modelConfig = {
-    random_forest: { icon: '🌲', color: 'green', label: 'Random Forest' },
-    xgboost: { icon: '🚀', color: 'orange', label: 'XGBoost' },
-    lightgbm: { icon: '⚡', color: 'yellow', label: 'LightGBM' },
+    random_forest: { icon: '', color: 'green', label: 'Random Forest' },
+    xgboost: { icon: '', color: 'orange', label: 'XGBoost' },
+    lightgbm: { icon: '', color: 'yellow', label: 'LightGBM' },
   }
 
   const config = modelConfig[name] || { icon: '🤖', color: 'purple', label: name }

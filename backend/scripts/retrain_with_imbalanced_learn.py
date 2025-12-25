@@ -39,7 +39,7 @@ def main():
     
     if result.returncode == 0:
         print("\n" + "=" * 80)
-        print("✅ TRAINING COMPLETE!")
+        print("TRAINING COMPLETE!")
         print("=" * 80)
         print("\nNext steps:")
         print("1. Check the NPV (Negative Predictive Value) in the results above")
@@ -49,9 +49,9 @@ def main():
         print("3. After training, run:")
         print("   - python -m scripts.find_optimal_threshold")
         print("   - python -m scripts.evaluate_models --find-optimal")
-        print("\n⚠️  Remember: NPV should be > 70% for safe predictions!")
+        print("\nWARNING: Remember NPV should be > 70% for safe predictions!")
     else:
-        print("\n❌ Training failed. Check errors above.")
+        print("\nERROR: Training failed. Check errors above.")
         sys.exit(1)
 
 if __name__ == "__main__":

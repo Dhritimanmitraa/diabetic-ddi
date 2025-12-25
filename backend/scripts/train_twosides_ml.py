@@ -351,7 +351,7 @@ def evaluate_model(model, X_test, y_test, model_name, threshold=0.5):
     logger.info(f"  Specificity: {metrics['specificity']:.4f}")
     logger.info(f"  Sensitivity: {metrics['sensitivity']:.4f}")
     logger.info(f"  PPV:       {metrics['ppv']:.4f}")
-    logger.info(f"  NPV:       {metrics['npv']:.4f} ⚠️")  # Highlight NPV
+    logger.info(f"  NPV:       {metrics['npv']:.4f}")  # Highlight NPV
     logger.info(f"  Brier:     {metrics['brier_score']:.4f}")
     logger.info(f"  Confusion Matrix: TN={tn}, FP={fp}, FN={fn}, TP={tp}")
     
@@ -594,7 +594,7 @@ def main():
         logger.info(f"  Specificity: {ensemble_metrics['specificity']:.4f}")
         logger.info(f"  Sensitivity: {ensemble_metrics['sensitivity']:.4f}")
         logger.info(f"  PPV:       {ensemble_metrics['ppv']:.4f}")
-        logger.info(f"  NPV:       {ensemble_metrics['npv']:.4f} ⚠️⚠️⚠️")  # CRITICAL METRIC
+        logger.info(f"  NPV:       {ensemble_metrics['npv']:.4f} [CRITICAL METRIC]")
         logger.info(f"  Confusion Matrix: TN={tn_ens}, FP={fp_ens}, FN={fn_ens}, TP={tp_ens}")
         
         results['ensemble'] = ensemble_metrics
@@ -622,11 +622,11 @@ def main():
     
     # Print summary
     print("\n" + "=" * 60)
-    print("📊 TRAINING COMPLETE!")
+    print("TRAINING COMPLETE!")
     print("=" * 60)
     print(f"Total time: {total_time/60:.1f} minutes")
     print(f"\nModels saved to: {model_dir}")
-    print("\n📈 Performance Summary:")
+    print("\nPerformance Summary:")
     print("-" * 60)
     print(f"{'Model':<15} {'AUC':>8} {'F1':>8} {'NPV':>8} {'Recall':>8} {'Precision':>10}")
     print("-" * 60)
@@ -640,14 +640,14 @@ def main():
         print("-" * 60)
         print(f"{'ENSEMBLE':<15} {e['auc_roc']:>8.4f} {e['f1_score']:>8.4f} {e.get('npv', 0):>8.4f} {e.get('recall', 0):>8.4f} {e.get('precision', 0):>10.4f}")
         print("-" * 60)
-        print(f"\n⚠️  NPV (Negative Predictive Value) is CRITICAL for safety!")
+        print(f"\nWARNING: NPV (Negative Predictive Value) is CRITICAL for safety!")
         print(f"   Current NPV: {e.get('npv', 0):.2%}")
         if e.get('npv', 0) < 0.5:
-            print(f"   ⚠️  WARNING: NPV < 50% - Model is unsafe for 'safe' predictions!")
+            print(f"   WARNING: NPV < 50% - Model is unsafe for 'safe' predictions!")
         elif e.get('npv', 0) < 0.7:
-            print(f"   ⚠️  CAUTION: NPV < 70% - Consider improving further")
+            print(f"   CAUTION: NPV < 70% - Consider improving further")
         else:
-            print(f"   ✅ NPV is acceptable for safety-critical applications")
+            print(f"   NPV is acceptable for safety-critical applications")
     
     print("=" * 60)
 
