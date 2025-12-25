@@ -85,20 +85,26 @@ class DDIModel:
         if not self.is_trained:
             raise ValueError("Model must be trained before prediction")
         model = self.calibrated_model if self.is_calibrated else self.model
-        return model.predict(X)
+        if model is None:
+            raise ValueError("Model not initialized")
+        return model.predict(X)  # type: ignore[union-attr]
     
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """Predict class probabilities (calibrated if available)."""
         if not self.is_trained:
             raise ValueError("Model must be trained before prediction")
         model = self.calibrated_model if self.is_calibrated else self.model
-        return model.predict_proba(X)
+        if model is None:
+            raise ValueError("Model not initialized")
+        return model.predict_proba(X)  # type: ignore[union-attr]
     
     def predict_proba_uncalibrated(self, X: np.ndarray) -> np.ndarray:
         """Predict raw uncalibrated probabilities."""
         if not self.is_trained:
             raise ValueError("Model must be trained before prediction")
-        return self.model.predict_proba(X)
+        if self.model is None:
+            raise ValueError("Model not initialized")
+        return self.model.predict_proba(X)  # type: ignore[union-attr]
     
     def evaluate(
         self, 
@@ -111,9 +117,9 @@ class DDIModel:
         
         self.metrics = {
             'accuracy': accuracy_score(y_test, y_pred),
-            'precision': precision_score(y_test, y_pred, zero_division=0),
-            'recall': recall_score(y_test, y_pred, zero_division=0),
-            'f1_score': f1_score(y_test, y_pred, zero_division=0),
+            'precision': precision_score(y_test, y_pred, zero_division=0),  # type: ignore[arg-type]
+            'recall': recall_score(y_test, y_pred, zero_division=0),  # type: ignore[arg-type]
+            'f1_score': f1_score(y_test, y_pred, zero_division=0),  # type: ignore[arg-type]
             'auc_roc': roc_auc_score(y_test, y_proba),
             'brier_score': brier_score_loss(y_test, y_proba),
             'is_calibrated': self.is_calibrated,
@@ -123,11 +129,11 @@ class DDIModel:
     
     def get_feature_importance(self) -> Optional[np.ndarray]:
         """Get feature importance scores."""
-        if not self.is_trained:
+        if not self.is_trained or self.model is None:
             return None
         
         if hasattr(self.model, 'feature_importances_'):
-            return self.model.feature_importances_
+            return self.model.feature_importances_  # type: ignore[attr-defined]
         return None
     
     def save(self, filepath: str):
