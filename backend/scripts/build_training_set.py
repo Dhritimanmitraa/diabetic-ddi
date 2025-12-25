@@ -44,7 +44,7 @@ LABEL_TO_SEVERITY = {v: k for k, v in SEVERITY_TO_LABEL.items()}
 DEFAULT_SPLIT = {"train": 0.6, "val": 0.2, "test": 0.2}
 
 
-async def load_drugs(db: AsyncSession) -> dict:
+async def load_drugs(db: AsyncSession) -> tuple[dict, dict]:
     """Load all drugs and create name lookup."""
     result = await db.execute(select(Drug))
     drugs = result.scalars().all()
@@ -68,15 +68,17 @@ async def load_drugs(db: AsyncSession) -> dict:
         drug_data[d.id] = drug_dict
         
         # Multiple lookup keys
-        if d.name:
-            lookup[d.name.lower().strip()] = d.id
-        if d.generic_name:
-            lookup[d.generic_name.lower().strip()] = d.id
+        name_val = d.name
+        if name_val:  # type: ignore[truthy-bool]
+            lookup[name_val.lower().strip()] = d.id
+        generic_name_val = d.generic_name
+        if generic_name_val:  # type: ignore[truthy-bool]
+            lookup[generic_name_val.lower().strip()] = d.id
     
     return lookup, drug_data
 
 
-def normalize_drug_name(name: str, lookup: dict) -> int:
+def normalize_drug_name(name: str, lookup: dict) -> int | None:
     """Try to match drug name to drugs table."""
     if not name:
         return None
