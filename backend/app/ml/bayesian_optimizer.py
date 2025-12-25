@@ -43,7 +43,7 @@ class OptimizationResult:
         best_score: float,
         n_trials: int,
         total_time: float,
-        all_trials: List[Dict] = None
+        all_trials: Optional[List[Dict]] = None
     ):
         self.method = method
         self.model_type = model_type
@@ -147,13 +147,13 @@ class BayesianOptimizer:
                     # Initialize the underlying sklearn model
                     if self.model_type == ModelType.RANDOM_FOREST:
                         from sklearn.ensemble import RandomForestClassifier
-                        temp_model.model = RandomForestClassifier(**params)
+                        temp_model.model = RandomForestClassifier(**params)  # type: ignore[assignment]
                     elif self.model_type == ModelType.XGBOOST:
                         import xgboost as xgb
-                        temp_model.model = xgb.XGBClassifier(**params)
+                        temp_model.model = xgb.XGBClassifier(**params)  # type: ignore[assignment]
                     elif self.model_type == ModelType.LIGHTGBM:
                         import lightgbm as lgb
-                        temp_model.model = lgb.LGBMClassifier(**params)
+                        temp_model.model = lgb.LGBMClassifier(**params)  # type: ignore[assignment]
                     
                     scores = cross_val_score(
                         temp_model.model,
@@ -305,7 +305,7 @@ class OptimizationComparator:
         model_type: ModelType,
         n_trials_bayesian: int = 100,
         n_trials_random: int = 200,
-        n_trials_grid: int = None,  # Auto-calculated
+        n_trials_grid: Optional[int] = None,  # Auto-calculated
         cv_folds: int = 5,
         random_state: int = 42
     ):
