@@ -186,9 +186,9 @@ def main():
         tn, fp, fn, tp = cm.ravel()
         
         acc = accuracy_score(y_test, y_pred)
-        prec = precision_score(y_test, y_pred, zero_division=0)
-        rec = recall_score(y_test, y_pred, zero_division=0)
-        f1 = f1_score(y_test, y_pred, zero_division=0)
+        prec = precision_score(y_test, y_pred, zero_division=0)  # type: ignore
+        rec = recall_score(y_test, y_pred, zero_division=0)  # type: ignore
+        f1 = f1_score(y_test, y_pred, zero_division=0)  # type: ignore
         npv = tn / (tn + fn) if (tn + fn) > 0 else 0
         spec = tn / (tn + fp) if (tn + fp) > 0 else 0
         
