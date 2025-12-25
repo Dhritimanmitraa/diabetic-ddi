@@ -182,7 +182,7 @@ async def check_medication_list(
     If medications list is not provided, uses the patient's current medications.
     Returns risk assessment for each drug plus overall recommendations.
     """
-    result = await service.check_all_medications(data.patient_id, data.medications)
+    result = await service.check_all_medications(data.patient_id, data.medications or [])
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
     return result
@@ -351,16 +351,18 @@ async def search_diabetic_drugs(
     candidates = []
     for d in pool:
         names = [d.name or ""]
-        if d.generic_name:
-            names.append(d.generic_name)
-        if d.brand_names:
+        generic_name = d.generic_name
+        if generic_name:  # type: ignore[truthy-bool]
+            names.append(generic_name)
+        brand_names = d.brand_names
+        if brand_names:  # type: ignore[truthy-bool]
             try:
-                brands = json.loads(d.brand_names)
+                brands = json.loads(brand_names)  # type: ignore[arg-type]
                 if isinstance(brands, list):
                     names.extend(brands)
             except Exception:
                 pass
-        names_l = [n.lower() for n in names if n]
+        names_l = [n.lower() for n in names if n]  # type: ignore[union-attr]
 
         # Exact/partial match first
         if any(query_l in n for n in names_l):
