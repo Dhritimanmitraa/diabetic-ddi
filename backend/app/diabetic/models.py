@@ -82,27 +82,30 @@ class DiabeticPatient(Base):
         return f"<DiabeticPatient(id={self.patient_id}, type={self.diabetes_type}, HbA1c={self.hba1c})>"
     
     @property
-    def bmi(self) -> float:
+    def bmi(self) -> float | None:
         """Calculate BMI."""
-        if self.weight_kg and self.height_cm:
-            height_m = self.height_cm / 100
-            return round(self.weight_kg / (height_m ** 2), 1)
+        weight = self.weight_kg
+        height = self.height_cm
+        if weight is not None and height is not None:
+            height_m = height / 100.0
+            return round(weight / (height_m ** 2), 1)  # type: ignore[operator]
         return None
     
     @property
     def kidney_stage(self) -> str:
         """Estimate CKD stage from eGFR."""
-        if not self.egfr:
+        if self.egfr is None:
             return "unknown"
-        if self.egfr >= 90:
+        egfr_val = self.egfr
+        if egfr_val >= 90:  # type: ignore[comparison-overlap]
             return "normal"
-        elif self.egfr >= 60:
+        elif egfr_val >= 60:  # type: ignore[comparison-overlap]
             return "stage_2"
-        elif self.egfr >= 45:
+        elif egfr_val >= 45:  # type: ignore[comparison-overlap]
             return "stage_3a"
-        elif self.egfr >= 30:
+        elif egfr_val >= 30:  # type: ignore[comparison-overlap]
             return "stage_3b"
-        elif self.egfr >= 15:
+        elif egfr_val >= 15:  # type: ignore[comparison-overlap]
             return "stage_4"
         else:
             return "stage_5"
