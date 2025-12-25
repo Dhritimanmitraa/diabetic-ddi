@@ -10,7 +10,7 @@ Pipeline:
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 import pandas as pd
 
@@ -61,10 +61,10 @@ def ensure_dirs():
 
 
 def load_table(path: Path, columns: Optional[List[str]] = None) -> pd.DataFrame:
-    kwargs = {"compression": "gzip"}
+    kwargs: dict[str, Any] = {"compression": "gzip"}
     if columns is not None:
         kwargs["usecols"] = columns
-    return pd.read_csv(path, **kwargs)
+    return pd.read_csv(path, **kwargs)  # type: ignore[arg-type]
 
 
 def load_patients() -> pd.DataFrame:
