@@ -6,6 +6,7 @@ Main service for managing diabetic patient profiles and drug risk assessments.
 import json
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.orm import selectinload
@@ -63,23 +64,23 @@ class DiabeticDDIService:
         
         # Set labs if provided
         if data.labs:
-            patient.hba1c = data.labs.hba1c
-            patient.fasting_glucose = data.labs.fasting_glucose
-            patient.egfr = data.labs.egfr
-            patient.creatinine = data.labs.creatinine
-            patient.potassium = data.labs.potassium
-            patient.alt = data.labs.alt
-            patient.ast = data.labs.ast
+            patient.hba1c = data.labs.hba1c  # type: ignore[assignment]
+            patient.fasting_glucose = data.labs.fasting_glucose  # type: ignore[assignment]
+            patient.egfr = data.labs.egfr  # type: ignore[assignment]
+            patient.creatinine = data.labs.creatinine  # type: ignore[assignment]
+            patient.potassium = data.labs.potassium  # type: ignore[assignment]
+            patient.alt = data.labs.alt  # type: ignore[assignment]
+            patient.ast = data.labs.ast  # type: ignore[assignment]
         
         # Set complications if provided
         if data.complications:
-            patient.has_nephropathy = data.complications.has_nephropathy
-            patient.has_retinopathy = data.complications.has_retinopathy
-            patient.has_neuropathy = data.complications.has_neuropathy
-            patient.has_cardiovascular = data.complications.has_cardiovascular
-            patient.has_hypertension = data.complications.has_hypertension
-            patient.has_hyperlipidemia = data.complications.has_hyperlipidemia
-            patient.has_obesity = data.complications.has_obesity
+            patient.has_nephropathy = data.complications.has_nephropathy  # type: ignore[assignment]
+            patient.has_retinopathy = data.complications.has_retinopathy  # type: ignore[assignment]
+            patient.has_neuropathy = data.complications.has_neuropathy  # type: ignore[assignment]
+            patient.has_cardiovascular = data.complications.has_cardiovascular  # type: ignore[assignment]
+            patient.has_hypertension = data.complications.has_hypertension  # type: ignore[assignment]
+            patient.has_hyperlipidemia = data.complications.has_hyperlipidemia  # type: ignore[assignment]
+            patient.has_obesity = data.complications.has_obesity  # type: ignore[assignment]
         
         self.db.add(patient)
         await self.db.commit()
@@ -122,16 +123,16 @@ class DiabeticDDIService:
         
         # Handle lists
         if "allergies" in update_data:
-            patient.allergies = json.dumps(update_data.pop("allergies"))
+            patient.allergies = json.dumps(update_data.pop("allergies"))  # type: ignore[assignment]
         if "comorbidities" in update_data:
-            patient.comorbidities = json.dumps(update_data.pop("comorbidities"))
+            patient.comorbidities = json.dumps(update_data.pop("comorbidities"))  # type: ignore[assignment]
         
         # Apply remaining updates
         for key, value in update_data.items():
             if value is not None:
                 setattr(patient, key, value)
         
-        patient.updated_at = datetime.utcnow()
+        patient.updated_at = datetime.utcnow()  # type: ignore[assignment]
         await self.db.commit()
         await self.db.refresh(patient)
         
@@ -153,7 +154,7 @@ class DiabeticDDIService:
         """List all patients with pagination."""
         # Get total count
         count_result = await self.db.execute(select(func.count(DiabeticPatient.id)))
-        total = count_result.scalar()
+        total = count_result.scalar() or 0
         
         # Get patients
         result = await self.db.execute(
@@ -239,7 +240,7 @@ class DiabeticDDIService:
         
         # Get current medications
         medications = await self.get_patient_medications(patient_id)
-        current_meds = [m.drug_name for m in medications]
+        current_meds = [str(m.drug_name) for m in medications]  # type: ignore[arg-type]
         
         # Build patient context dict
         patient_context = self._build_patient_context(patient)
@@ -304,7 +305,7 @@ class DiabeticDDIService:
         return response
     
     async def check_all_medications(
-        self, patient_id: str, medications: List[str] = None
+        self, patient_id: str, medications: Optional[List[str]] = None
     ) -> Optional[MedicationListCheckResponse]:
         """Check all medications for a patient."""
         patient = await self.get_patient(patient_id)
@@ -314,7 +315,7 @@ class DiabeticDDIService:
         # Use provided medications or get from patient profile
         if medications is None:
             patient_meds = await self.get_patient_medications(patient_id)
-            medications = [m.drug_name for m in patient_meds]
+            medications = [str(m.drug_name) for m in patient_meds]  # type: ignore[arg-type]
         
         if not medications:
             return MedicationListCheckResponse(
@@ -382,7 +383,7 @@ class DiabeticDDIService:
         
         # Get current medications
         medications = await self.get_patient_medications(patient_id)
-        current_meds = [m.drug_name for m in medications]
+        current_meds = [str(m.drug_name) for m in medications]  # type: ignore[arg-type]
         
         # Build patient context
         patient_context = self._build_patient_context(patient)
@@ -420,8 +421,11 @@ class DiabeticDDIService:
         
         # Check all medications
         check_result = await self.check_all_medications(
-            patient_id, [m.drug_name for m in medications]
+            patient_id, [str(m.drug_name) for m in medications]  # type: ignore[arg-type]
         )
+        
+        if not check_result:
+            raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
         
         # Find alternatives for risky drugs
         alternatives = {}
@@ -515,36 +519,38 @@ class DiabeticDDIService:
     
     def _patient_to_response(self, patient: DiabeticPatient) -> DiabeticPatientResponse:
         """Convert patient model to response schema."""
+        allergies_val = patient.allergies
+        comorbidities_val = patient.comorbidities
         return DiabeticPatientResponse(
-            id=patient.id,
-            patient_id=patient.patient_id,
-            name=patient.name,
-            age=patient.age,
-            gender=patient.gender,
-            weight_kg=patient.weight_kg,
-            height_cm=patient.height_cm,
+            id=patient.id,  # type: ignore[arg-type]
+            patient_id=patient.patient_id,  # type: ignore[arg-type]
+            name=patient.name,  # type: ignore[arg-type]
+            age=patient.age,  # type: ignore[arg-type]
+            gender=patient.gender,  # type: ignore[arg-type]
+            weight_kg=patient.weight_kg,  # type: ignore[arg-type]
+            height_cm=patient.height_cm,  # type: ignore[arg-type]
             bmi=patient.bmi,
-            diabetes_type=patient.diabetes_type,
-            years_with_diabetes=patient.years_with_diabetes,
-            hba1c=patient.hba1c,
-            fasting_glucose=patient.fasting_glucose,
-            egfr=patient.egfr,
+            diabetes_type=patient.diabetes_type,  # type: ignore[arg-type]
+            years_with_diabetes=patient.years_with_diabetes,  # type: ignore[arg-type]
+            hba1c=patient.hba1c,  # type: ignore[arg-type]
+            fasting_glucose=patient.fasting_glucose,  # type: ignore[arg-type]
+            egfr=patient.egfr,  # type: ignore[arg-type]
             kidney_stage=patient.kidney_stage,
-            creatinine=patient.creatinine,
-            potassium=patient.potassium,
-            alt=patient.alt,
-            ast=patient.ast,
-            has_nephropathy=patient.has_nephropathy,
-            has_retinopathy=patient.has_retinopathy,
-            has_neuropathy=patient.has_neuropathy,
-            has_cardiovascular=patient.has_cardiovascular,
-            has_hypertension=patient.has_hypertension,
-            has_hyperlipidemia=patient.has_hyperlipidemia,
-            has_obesity=patient.has_obesity,
-            allergies=json.loads(patient.allergies) if patient.allergies else None,
-            comorbidities=json.loads(patient.comorbidities) if patient.comorbidities else None,
-            created_at=patient.created_at,
-            updated_at=patient.updated_at
+            creatinine=patient.creatinine,  # type: ignore[arg-type]
+            potassium=patient.potassium,  # type: ignore[arg-type]
+            alt=patient.alt,  # type: ignore[arg-type]
+            ast=patient.ast,  # type: ignore[arg-type]
+            has_nephropathy=patient.has_nephropathy,  # type: ignore[arg-type]
+            has_retinopathy=patient.has_retinopathy,  # type: ignore[arg-type]
+            has_neuropathy=patient.has_neuropathy,  # type: ignore[arg-type]
+            has_cardiovascular=patient.has_cardiovascular,  # type: ignore[arg-type]
+            has_hypertension=patient.has_hypertension,  # type: ignore[arg-type]
+            has_hyperlipidemia=patient.has_hyperlipidemia,  # type: ignore[arg-type]
+            has_obesity=patient.has_obesity,  # type: ignore[arg-type]
+            allergies=json.loads(allergies_val) if allergies_val else None,  # type: ignore[arg-type]
+            comorbidities=json.loads(comorbidities_val) if comorbidities_val else None,  # type: ignore[arg-type]
+            created_at=patient.created_at,  # type: ignore[arg-type]
+            updated_at=patient.updated_at  # type: ignore[arg-type]
         )
     
     async def _save_risk_assessment(
