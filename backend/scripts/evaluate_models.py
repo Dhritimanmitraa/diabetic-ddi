@@ -119,9 +119,9 @@ def evaluate_model(model, X_test, y_test, model_name: str, threshold: float = 0.
     # Calculate metrics
     metrics = {
         'accuracy': accuracy_score(y_test, y_pred_binary),
-        'precision': precision_score(y_test, y_pred_binary, zero_division=0),
-        'recall': recall_score(y_test, y_pred_binary, zero_division=0),
-        'f1_score': f1_score(y_test, y_pred_binary, zero_division=0),
+        'precision': precision_score(y_test, y_pred_binary, zero_division=0),  # type: ignore
+        'recall': recall_score(y_test, y_pred_binary, zero_division=0),  # type: ignore
+        'f1_score': f1_score(y_test, y_pred_binary, zero_division=0),  # type: ignore
         'auc_roc': roc_auc_score(y_test, y_proba),
         'brier_score': brier_score_loss(y_test, y_proba),
     }
@@ -231,9 +231,9 @@ def evaluate_at_multiple_thresholds(y_true, y_proba, thresholds=[0.3, 0.4, 0.5, 
         results.append({
             'threshold': thresh,
             'accuracy': accuracy_score(y_true, y_pred),
-            'precision': precision_score(y_true, y_pred, zero_division=0),
-            'recall': recall_score(y_true, y_pred, zero_division=0),
-            'f1': f1_score(y_true, y_pred, zero_division=0),
+            'precision': precision_score(y_true, y_pred, zero_division=0),  # type: ignore
+            'recall': recall_score(y_true, y_pred, zero_division=0),  # type: ignore
+            'f1': f1_score(y_true, y_pred, zero_division=0),  # type: ignore
             'specificity': tn / (tn + fp) if (tn + fp) > 0 else 0,
             'npv': tn / (tn + fn) if (tn + fn) > 0 else 0,
             'fn': fn,
@@ -409,9 +409,9 @@ def main():
         
         ensemble_metrics = {
             'accuracy': accuracy_score(y_test, y_pred_ens),
-            'precision': precision_score(y_test, y_pred_ens, zero_division=0),
-            'recall': recall_score(y_test, y_pred_ens, zero_division=0),
-            'f1_score': f1_score(y_test, y_pred_ens, zero_division=0),
+            'precision': precision_score(y_test, y_pred_ens, zero_division=0),  # type: ignore
+            'recall': recall_score(y_test, y_pred_ens, zero_division=0),  # type: ignore
+            'f1_score': f1_score(y_test, y_pred_ens, zero_division=0),  # type: ignore
             'auc_roc': roc_auc_score(y_test, y_proba_ens),
             'brier_score': brier_score_loss(y_test, y_proba_ens),
         }
@@ -511,9 +511,9 @@ def main():
         opt_metrics = {
             'threshold': opt_thresh,
             'accuracy': accuracy_score(y_test, y_pred_opt),
-            'precision': precision_score(y_test, y_pred_opt, zero_division=0),
-            'recall': recall_score(y_test, y_pred_opt, zero_division=0),
-            'f1_score': f1_score(y_test, y_pred_opt, zero_division=0),
+            'precision': precision_score(y_test, y_pred_opt, zero_division=0),  # type: ignore
+            'recall': recall_score(y_test, y_pred_opt, zero_division=0),  # type: ignore
+            'f1_score': f1_score(y_test, y_pred_opt, zero_division=0),  # type: ignore
             'auc_roc': roc_auc_score(y_test, analysis_proba),
             'specificity': tn / (tn + fp) if (tn + fp) > 0 else 0,
             'npv': tn / (tn + fn) if (tn + fn) > 0 else 0,
