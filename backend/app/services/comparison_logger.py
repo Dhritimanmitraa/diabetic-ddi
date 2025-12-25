@@ -230,7 +230,7 @@ class ComparisonLogger:
 
         rows = await self.db.execute(base_query)
         total = await self.db.execute(count_query)
-        return rows.scalars().all(), total.scalar()
+        return list(rows.scalars().all()), total.scalar() or 0
     
     async def get_comparison_stats(self) -> Dict:
         """Get comparison statistics."""
