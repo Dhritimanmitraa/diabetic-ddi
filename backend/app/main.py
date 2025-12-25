@@ -176,11 +176,11 @@ async def get_statistics(db: AsyncSession = Depends(get_db)):
     """Get database statistics."""
     # Count drugs
     drug_count = await db.execute(select(func.count(Drug.id)))
-    total_drugs = drug_count.scalar()
+    total_drugs = drug_count.scalar() or 0
     
     # Count interactions
     interaction_count = await db.execute(select(func.count(DrugInteraction.id)))
-    total_interactions = interaction_count.scalar()
+    total_interactions = interaction_count.scalar() or 0
     
     # Count by severity
     severity_counts = {}
@@ -206,7 +206,7 @@ async def get_statistics(db: AsyncSession = Depends(get_db)):
 async def list_drugs(
     limit: int = 50,
     offset: int = 0,
-    request: Request = None,
+    request: Optional[Request] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -214,7 +214,7 @@ async def list_drugs(
     
     Returns drugs ordered by name for browsing.
     """
-    client_ip = request.client.host if request else "unknown"
+    client_ip = request.client.host if request and request.client else "unknown"
     logger.info(
         {
             "event": "drug_browse",
@@ -238,7 +238,7 @@ async def list_drugs(
 async def search_drugs(
     query: str,
     limit: int = 10,
-    request: Request = None,
+    request: Optional[Request] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -246,7 +246,7 @@ async def search_drugs(
     
     Supports partial matching on drug name, generic name, and brand names.
     """
-    client_ip = request.client.host if request else "unknown"
+    client_ip = request.client.host if request and request.client else "unknown"
     logger.info(
         {
             "event": "drug_search",
@@ -572,7 +572,7 @@ async def extract_from_upload(
     import base64
     
     # Validate file type
-    if not file.content_type.startswith("image/"):
+    if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(
             status_code=400,
             detail="File must be an image"
@@ -895,7 +895,7 @@ async def seed_initial_data():
     async with engine.begin() as conn:
         # Check if we have drugs
         result = await conn.execute(select(func.count(Drug.id)))
-        count = result.scalar()
+        count = result.scalar() or 0
         
         if count > 0:
             logger.info(f"Database has {count} drugs loaded from real APIs.")
