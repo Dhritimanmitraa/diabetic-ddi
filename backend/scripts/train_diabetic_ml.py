@@ -62,13 +62,14 @@ def build_feature_vector(row: pd.Series, hash_size: int = 48) -> np.ndarray:
         int(bool(row.get("has_hyperlipidemia", False))),
         int(bool(row.get("has_obesity", False))),
     ]
-    drug_vec = hash_text(row.get("drug_name", ""), n_features=hash_size)
+    drug_name_val = row.get("drug_name") or ""
+    drug_vec = hash_text(str(drug_name_val), n_features=hash_size)
     return np.concatenate([np.array(num_features, dtype=np.float32), drug_vec])
 
 
 def build_matrices(df: pd.DataFrame, hash_size: int = 48) -> Tuple[np.ndarray, np.ndarray]:
     X = np.vstack([build_feature_vector(row, hash_size) for _, row in df.iterrows()])
-    y = df["label"].astype(int).values
+    y = np.asarray(df["label"].astype(int).values)
     return X, y
 
 
@@ -133,7 +134,7 @@ def main():
         "n_val": int(len(val_df)),
         "n_test": int(len(test_df)),
     }
-    report = classification_report(y_test, preds, output_dict=True, zero_division=0)
+    report = classification_report(y_test, preds, output_dict=True, zero_division=0)  # type: ignore
     metrics["classification_report"] = report
 
     artifact = {
