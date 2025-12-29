@@ -5,7 +5,7 @@ Provides inference using trained ML models.
 Compatible with both DDIModel format and direct sklearn models.
 """
 import numpy as np
-from typing import Dict, Optional, List, Tuple, Any
+from typing import Dict, Optional, List, Tuple
 import os
 import json
 import logging
@@ -28,7 +28,7 @@ class PredictionResult:
         severity_prediction: str,
         confidence: float,
         model_predictions: Dict[str, float],
-        timestamp: Optional[datetime] = None
+        timestamp: datetime = None
     ):
         self.drug1_name = drug1_name
         self.drug2_name = drug2_name
@@ -112,7 +112,7 @@ class DDIPredictor:
     
     def __init__(self, model_dir: str = "./models"):
         self.model_dir = model_dir
-        self.models: Dict[str, Any] = {}
+        self.models: Dict[str, any] = {}
         self.is_loaded = False
         self.model_info = {}
         self.use_simple_features = False
@@ -208,7 +208,7 @@ class DDIPredictor:
         self,
         drug1: Dict,
         drug2: Dict,
-        threshold: Optional[float] = None
+        threshold: float = None
     ) -> PredictionResult:
         """
         Predict interaction for a drug pair.
@@ -226,9 +226,7 @@ class DDIPredictor:
         
         # Use optimal threshold if not specified
         if threshold is None:
-            threshold_val = float(self.optimal_threshold)
-        else:
-            threshold_val = float(threshold)
+            threshold = self.optimal_threshold
         
         # Extract features
         features = self._extract_features(drug1, drug2)
@@ -249,14 +247,14 @@ class DDIPredictor:
         
         # Calculate ensemble (average) probability
         ensemble_proba = np.mean(list(model_predictions.values()))
-        predicted_interaction = float(ensemble_proba) >= threshold_val
+        predicted_interaction = ensemble_proba >= threshold
         
         # Calculate confidence based on model agreement
         probas = list(model_predictions.values())
         confidence = 1.0 - np.std(probas) if len(probas) > 1 else 0.8
         
         # Determine severity based on probability
-        severity = self._predict_severity(float(ensemble_proba))
+        severity = self._predict_severity(ensemble_proba)
         
         return PredictionResult(
             drug1_name=drug1.get('name', 'Unknown'),
@@ -278,7 +276,7 @@ class DDIPredictor:
     def predict_batch(
         self,
         drug_pairs: List[Tuple[Dict, Dict]],
-        threshold: Optional[float] = None
+        threshold: float = None
     ) -> List[PredictionResult]:
         """
         Predict interactions for multiple drug pairs.

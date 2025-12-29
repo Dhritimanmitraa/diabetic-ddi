@@ -68,7 +68,7 @@ async def load_data_from_db() -> tuple:
                 'severity': i.severity,
             }
             for i in interactions_orm
-            if drug_id_to_name.get(i.drug1_id) and drug_id_to_name.get(i.drug2_id)  # type: ignore[truthy-bool]
+            if drug_id_to_name.get(i.drug1_id) and drug_id_to_name.get(i.drug2_id)
         ]
         
         return drugs, interactions

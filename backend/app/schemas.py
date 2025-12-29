@@ -1,6 +1,6 @@
 """Pydantic schemas for API request/response validation."""
-from pydantic import BaseModel, Field, field_validator, StringConstraints
-from typing import Optional, List, Annotated
+from pydantic import BaseModel, Field, field_validator, constr
+from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -89,8 +89,8 @@ class InteractionResponse(InteractionBase):
 
 class InteractionCheckRequest(BaseModel):
     """Request to check interaction between two drugs."""
-    drug1_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2)] = Field(..., description="First drug name")
-    drug2_name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2)] = Field(..., description="Second drug name")
+    drug1_name: constr(strip_whitespace=True, min_length=2) = Field(..., description="First drug name")
+    drug2_name: constr(strip_whitespace=True, min_length=2) = Field(..., description="Second drug name")
 
     @field_validator("drug1_name", "drug2_name")
     @classmethod

@@ -8,7 +8,7 @@ Contains curated rules for drug safety in diabetic patients based on:
 - Complication-specific risks
 """
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from dataclasses import dataclass
 import logging
 
@@ -315,7 +315,7 @@ class DiabeticDrugRules:
         self,
         drug_name: str,
         patient: Dict,
-        current_medications: Optional[List[str]] = None
+        current_medications: List[str] | None = None
     ) -> RiskAssessment:
         """
         Assess the risk of a drug for a specific diabetic patient.
@@ -613,7 +613,7 @@ class DiabeticDrugRules:
         self,
         drug_name: str,
         patient: Dict,
-        current_medications: Optional[List[str]] = None
+        current_medications: List[str] | None = None
     ) -> List[Dict]:
         """Find safer alternatives for a drug."""
         alternatives = self._get_alternatives(drug_name.lower(), patient)

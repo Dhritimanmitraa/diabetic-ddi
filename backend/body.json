@@ -1,1 +1,1 @@
-{"patient_id":"demo1","age":55,"gender":"M","diabetes_type":"type_2","labs":{"egfr":60,"creatinine":1.0,"potassium":4.2}}
+{patient_id:demo1,age:55,gender:M,diabetes_type:type_2,labs:{egfr:60,creatinine:1.0,potassium:4.2}}

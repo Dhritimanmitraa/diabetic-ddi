@@ -350,19 +350,25 @@ async def search_diabetic_drugs(
 
     candidates = []
     for d in pool:
-        names = [d.name or ""]
-        generic_name = d.generic_name
-        if generic_name:  # type: ignore[truthy-bool]
-            names.append(generic_name)
-        brand_names = d.brand_names
-        if brand_names:  # type: ignore[truthy-bool]
+        # Extract values from SQLAlchemy columns (type checker doesn't understand runtime behavior)
+        # At runtime, these are actual string values, not Column objects
+        drug_name_raw = getattr(d, 'name', None)
+        drug_name: str = str(drug_name_raw) if drug_name_raw is not None else ""
+        names = [drug_name]
+        generic_name_raw = getattr(d, 'generic_name', None)
+        if generic_name_raw is not None:
+            generic_name_val: str = str(generic_name_raw)
+            names.append(generic_name_val)
+        brand_names_raw = getattr(d, 'brand_names', None)
+        if brand_names_raw is not None:
+            brand_names_val: str = str(brand_names_raw)
             try:
-                brands = json.loads(brand_names)  # type: ignore[arg-type]
+                brands = json.loads(brand_names_val)
                 if isinstance(brands, list):
                     names.extend(brands)
             except Exception:
                 pass
-        names_l = [n.lower() for n in names if n]  # type: ignore[union-attr]
+        names_l = [n.lower() for n in names if n]
 
         # Exact/partial match first
         if any(query_l in n for n in names_l):
