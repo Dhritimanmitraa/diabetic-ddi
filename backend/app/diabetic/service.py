@@ -6,7 +6,6 @@ Main service for managing diabetic patient profiles and drug risk assessments.
 import json
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
-from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.orm import selectinload
@@ -154,7 +153,7 @@ class DiabeticDDIService:
         """List all patients with pagination."""
         # Get total count
         count_result = await self.db.execute(select(func.count(DiabeticPatient.id)))
-        total = count_result.scalar() or 0
+        total: int = count_result.scalar() or 0
         
         # Get patients
         result = await self.db.execute(
@@ -240,7 +239,8 @@ class DiabeticDDIService:
         
         # Get current medications
         medications = await self.get_patient_medications(patient_id)
-        current_meds = [str(m.drug_name) for m in medications]  # type: ignore[arg-type]
+        # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
+        current_meds: List[str] = [str(getattr(m, 'drug_name', '')) for m in medications]
         
         # Build patient context dict
         patient_context = self._build_patient_context(patient)
@@ -315,7 +315,8 @@ class DiabeticDDIService:
         # Use provided medications or get from patient profile
         if medications is None:
             patient_meds = await self.get_patient_medications(patient_id)
-            medications = [str(m.drug_name) for m in patient_meds]  # type: ignore[arg-type]
+            # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
+            medications = [str(getattr(m, 'drug_name', '')) for m in patient_meds]
         
         if not medications:
             return MedicationListCheckResponse(
@@ -383,7 +384,8 @@ class DiabeticDDIService:
         
         # Get current medications
         medications = await self.get_patient_medications(patient_id)
-        current_meds = [str(m.drug_name) for m in medications]  # type: ignore[arg-type]
+        # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
+        current_meds: List[str] = [str(getattr(m, 'drug_name', '')) for m in medications]
         
         # Build patient context
         patient_context = self._build_patient_context(patient)
@@ -420,12 +422,12 @@ class DiabeticDDIService:
         medications = await self.get_patient_medications(patient_id)
         
         # Check all medications
-        check_result = await self.check_all_medications(
-            patient_id, [str(m.drug_name) for m in medications]  # type: ignore[arg-type]
-        )
+        # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
+        medication_names: List[str] = [str(getattr(m, 'drug_name', '')) for m in medications]
+        check_result = await self.check_all_medications(patient_id, medication_names)
         
         if not check_result:
-            raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
+            return None
         
         # Find alternatives for risky drugs
         alternatives = {}
@@ -519,38 +521,40 @@ class DiabeticDDIService:
     
     def _patient_to_response(self, patient: DiabeticPatient) -> DiabeticPatientResponse:
         """Convert patient model to response schema."""
-        allergies_val = patient.allergies
-        comorbidities_val = patient.comorbidities
+        # Extract values from SQLAlchemy columns (type checker doesn't understand runtime behavior)
+        allergies_raw = getattr(patient, 'allergies', None)
+        comorbidities_raw = getattr(patient, 'comorbidities', None)
+        
         return DiabeticPatientResponse(
-            id=patient.id,  # type: ignore[arg-type]
-            patient_id=patient.patient_id,  # type: ignore[arg-type]
-            name=patient.name,  # type: ignore[arg-type]
-            age=patient.age,  # type: ignore[arg-type]
-            gender=patient.gender,  # type: ignore[arg-type]
-            weight_kg=patient.weight_kg,  # type: ignore[arg-type]
-            height_cm=patient.height_cm,  # type: ignore[arg-type]
-            bmi=patient.bmi,
-            diabetes_type=patient.diabetes_type,  # type: ignore[arg-type]
-            years_with_diabetes=patient.years_with_diabetes,  # type: ignore[arg-type]
-            hba1c=patient.hba1c,  # type: ignore[arg-type]
-            fasting_glucose=patient.fasting_glucose,  # type: ignore[arg-type]
-            egfr=patient.egfr,  # type: ignore[arg-type]
-            kidney_stage=patient.kidney_stage,
-            creatinine=patient.creatinine,  # type: ignore[arg-type]
-            potassium=patient.potassium,  # type: ignore[arg-type]
-            alt=patient.alt,  # type: ignore[arg-type]
-            ast=patient.ast,  # type: ignore[arg-type]
-            has_nephropathy=patient.has_nephropathy,  # type: ignore[arg-type]
-            has_retinopathy=patient.has_retinopathy,  # type: ignore[arg-type]
-            has_neuropathy=patient.has_neuropathy,  # type: ignore[arg-type]
-            has_cardiovascular=patient.has_cardiovascular,  # type: ignore[arg-type]
-            has_hypertension=patient.has_hypertension,  # type: ignore[arg-type]
-            has_hyperlipidemia=patient.has_hyperlipidemia,  # type: ignore[arg-type]
-            has_obesity=patient.has_obesity,  # type: ignore[arg-type]
-            allergies=json.loads(allergies_val) if allergies_val else None,  # type: ignore[arg-type]
-            comorbidities=json.loads(comorbidities_val) if comorbidities_val else None,  # type: ignore[arg-type]
-            created_at=patient.created_at,  # type: ignore[arg-type]
-            updated_at=patient.updated_at  # type: ignore[arg-type]
+            id=int(patient.id),  # type: ignore[arg-type]
+            patient_id=str(patient.patient_id),  # type: ignore[arg-type]
+            name=getattr(patient, 'name', None),  # type: ignore[arg-type]
+            age=getattr(patient, 'age', None),  # type: ignore[arg-type]
+            gender=getattr(patient, 'gender', None),  # type: ignore[arg-type]
+            weight_kg=getattr(patient, 'weight_kg', None),  # type: ignore[arg-type]
+            height_cm=getattr(patient, 'height_cm', None),  # type: ignore[arg-type]
+            bmi=getattr(patient, 'bmi', None),  # type: ignore[arg-type]
+            diabetes_type=str(patient.diabetes_type),  # type: ignore[arg-type]
+            years_with_diabetes=getattr(patient, 'years_with_diabetes', None),  # type: ignore[arg-type]
+            hba1c=getattr(patient, 'hba1c', None),  # type: ignore[arg-type]
+            fasting_glucose=getattr(patient, 'fasting_glucose', None),  # type: ignore[arg-type]
+            egfr=getattr(patient, 'egfr', None),  # type: ignore[arg-type]
+            kidney_stage=getattr(patient, 'kidney_stage', None),  # type: ignore[arg-type]
+            creatinine=getattr(patient, 'creatinine', None),  # type: ignore[arg-type]
+            potassium=getattr(patient, 'potassium', None),  # type: ignore[arg-type]
+            alt=getattr(patient, 'alt', None),  # type: ignore[arg-type]
+            ast=getattr(patient, 'ast', None),  # type: ignore[arg-type]
+            has_nephropathy=bool(patient.has_nephropathy),  # type: ignore[arg-type]
+            has_retinopathy=bool(patient.has_retinopathy),  # type: ignore[arg-type]
+            has_neuropathy=bool(patient.has_neuropathy),  # type: ignore[arg-type]
+            has_cardiovascular=bool(patient.has_cardiovascular),  # type: ignore[arg-type]
+            has_hypertension=bool(patient.has_hypertension),  # type: ignore[arg-type]
+            has_hyperlipidemia=bool(patient.has_hyperlipidemia),  # type: ignore[arg-type]
+            has_obesity=bool(patient.has_obesity),  # type: ignore[arg-type]
+            allergies=json.loads(str(allergies_raw)) if allergies_raw else None,
+            comorbidities=json.loads(str(comorbidities_raw)) if comorbidities_raw else None,
+            created_at=getattr(patient, 'created_at', datetime.utcnow()),  # type: ignore[arg-type]
+            updated_at=getattr(patient, 'updated_at', datetime.utcnow())  # type: ignore[arg-type]
         )
     
     async def _save_risk_assessment(

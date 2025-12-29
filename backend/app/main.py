@@ -33,6 +33,7 @@ from app.services import (
     create_comparison_logger
 )
 from app.diabetic.router import router as diabetic_router
+from app.exceptions import ValidationError as ValidationException
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -176,11 +177,11 @@ async def get_statistics(db: AsyncSession = Depends(get_db)):
     """Get database statistics."""
     # Count drugs
     drug_count = await db.execute(select(func.count(Drug.id)))
-    total_drugs = drug_count.scalar() or 0
+    total_drugs: int = drug_count.scalar() or 0
     
     # Count interactions
     interaction_count = await db.execute(select(func.count(DrugInteraction.id)))
-    total_interactions = interaction_count.scalar() or 0
+    total_interactions: int = interaction_count.scalar() or 0
     
     # Count by severity
     severity_counts = {}
@@ -204,9 +205,9 @@ async def get_statistics(db: AsyncSession = Depends(get_db)):
 
 @app.get("/drugs", response_model=List[DrugResponse], tags=["Drugs"])
 async def list_drugs(
+    request: Request,
     limit: int = 50,
     offset: int = 0,
-    request: Optional[Request] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -214,7 +215,7 @@ async def list_drugs(
     
     Returns drugs ordered by name for browsing.
     """
-    client_ip = request.client.host if request and request.client else "unknown"
+    client_ip = request.client.host if request.client else "unknown"
     logger.info(
         {
             "event": "drug_browse",
@@ -236,9 +237,9 @@ async def list_drugs(
 
 @app.get("/drugs/search", response_model=List[DrugResponse], tags=["Drugs"])
 async def search_drugs(
+    request: Request,
     query: str,
     limit: int = 10,
-    request: Optional[Request] = None,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -246,7 +247,7 @@ async def search_drugs(
     
     Supports partial matching on drug name, generic name, and brand names.
     """
-    client_ip = request.client.host if request and request.client else "unknown"
+    client_ip = request.client.host if request.client else "unknown"
     logger.info(
         {
             "event": "drug_search",
@@ -573,10 +574,7 @@ async def extract_from_upload(
     
     # Validate file type
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="File must be an image"
-        )
+        raise ValidationException("File must be an image (JPEG, PNG, etc.)")
     
     # Read and encode image
     contents = await file.read()
@@ -895,7 +893,7 @@ async def seed_initial_data():
     async with engine.begin() as conn:
         # Check if we have drugs
         result = await conn.execute(select(func.count(Drug.id)))
-        count = result.scalar() or 0
+        count: int = result.scalar() or 0
         
         if count > 0:
             logger.info(f"Database has {count} drugs loaded from real APIs.")
