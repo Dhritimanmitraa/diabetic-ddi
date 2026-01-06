@@ -115,3 +115,7 @@ dmypy.json
 *.bat
 *.ps1
 *.sh
+
+# Documentation (keep only README.md in repo)
+*.md
+!README.md
