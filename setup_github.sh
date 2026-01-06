@@ -1,6 +1,7 @@
 #!/bin/bash
 # Bash script to initialize and push to GitHub
 # Run this after installing Git
+# Last updated: 2026-01-06
 
 echo "Setting up GitHub repository..."
 
