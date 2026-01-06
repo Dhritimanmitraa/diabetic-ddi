@@ -20,6 +20,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import accuracy_score, classification_report, f1_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils.class_weight import compute_class_weight
 import xgboost as xgb
 
 
@@ -80,28 +81,50 @@ def load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 
 def train_model(X_train: np.ndarray, y_train: np.ndarray) -> xgb.XGBClassifier:
+    """Train XGBoost with class weights to handle imbalance."""
+    
+    # Compute class weights to handle severe imbalance (92.7% safe)
+    classes = np.unique(y_train)
+    weights = compute_class_weight('balanced', classes=classes, y=y_train)
+    class_weight_dict = {int(c): float(w) for c, w in zip(classes, weights)}
+    
+    # Create sample weights array
+    sample_weights = np.array([class_weight_dict[int(y)] for y in y_train])
+    
+    print(f"Class weights: {class_weight_dict}")
+    print(f"Class distribution: {np.bincount(y_train)}")
+    
     params = dict(
         objective="multi:softprob",
         num_class=len(RISK_LEVELS),
-        n_estimators=160,
-        max_depth=6,
-        learning_rate=0.1,
+        n_estimators=200,  # Increased for better learning
+        max_depth=8,  # Deeper trees for complex patterns
+        learning_rate=0.08,  # Slightly lower for better generalization
         subsample=0.8,
         colsample_bytree=0.8,
         random_state=42,
-        reg_lambda=1.0,
-        reg_alpha=0.0,
+        reg_lambda=1.5,  # Stronger regularization
+        reg_alpha=0.1,
         eval_metric="mlogloss",
+        min_child_weight=3,  # Prevent overfitting to majority
+        scale_pos_weight=1,  # We use sample_weight instead
     )
     model = xgb.XGBClassifier(**params)
-    model.fit(X_train, y_train)
+    model.fit(X_train, y_train, sample_weight=sample_weights)
     return model
 
 
 def calibrate_model(model: xgb.XGBClassifier, X_val: np.ndarray, y_val: np.ndarray):
-    calibrator = CalibratedClassifierCV(model, method="isotonic", cv="prefit")
-    calibrator.fit(X_val, y_val)
-    return calibrator
+    """Calibrate the model, return the base model if calibration fails."""
+    # Try calibration, but if it fails, just return the base model
+    try:
+        # Use cross-validation for calibration (more robust)
+        calibrator = CalibratedClassifierCV(model, method="isotonic", cv=3)
+        calibrator.fit(X_val, y_val)
+        return calibrator
+    except (ValueError, TypeError, RuntimeError) as e:
+        print(f"Warning: Calibration failed ({e}), using base model without calibration")
+        return model  # Return base model if calibration fails
 
 
 def main():
@@ -122,36 +145,70 @@ def main():
     model = train_model(X_train, y_train)
     calibrated = calibrate_model(model, X_val, y_val)
 
-    proba = calibrated.predict_proba(X_test)
-    preds = np.argmax(proba, axis=1)
+    # Test predictions
+    try:
+        proba = calibrated.predict_proba(X_test)
+        preds = np.argmax(proba, axis=1)
+    except Exception as e:
+        print(f"Warning: predict_proba failed ({e}), using predict instead")
+        preds = calibrated.predict(X_test)
+        # Create dummy probabilities for metrics
+        proba = np.zeros((len(preds), len(RISK_LEVELS)))
+        for i, p in enumerate(preds):
+            proba[i, p] = 1.0
 
     metrics = {
         "accuracy": float(accuracy_score(y_test, preds)),
         "macro_f1": float(f1_score(y_test, preds, average="macro")),
+        "weighted_f1": float(f1_score(y_test, preds, average="weighted")),
         "classes": INT_TO_RISK,
         "n_train": int(len(train_df)),
         "n_val": int(len(val_df)),
         "n_test": int(len(test_df)),
+        "training_method": "class_weighted",  # Document that we used class weights
     }
     report = classification_report(y_test, preds, output_dict=True, zero_division=0)
     metrics["classification_report"] = report
+    
+    # Track critical metrics: recall on risky classes
+    # These are more important than overall accuracy
+    risky_classes = ["high_risk", "contraindicated", "fatal"]
+    for risk_class in risky_classes:
+        class_idx = str(RISK_TO_INT[risk_class])
+        if class_idx in report:
+            metrics[f"{risk_class}_recall"] = report[class_idx].get("recall", 0)
+            metrics[f"{risk_class}_precision"] = report[class_idx].get("precision", 0)
+            metrics[f"{risk_class}_f1"] = report[class_idx].get("f1-score", 0)
 
+    # Save both the calibrated model and the base model for compatibility
     artifact = {
-        "model": calibrated,
+        "model": calibrated,  # Calibrated model (preferred)
+        "base_model": model,  # Base XGBClassifier (fallback)
         "scaler": scaler,
         "hash_size": hash_size,
         "risk_to_int": RISK_TO_INT,
         "int_to_risk": INT_TO_RISK,
-        "model_version": f"diabetic_mimic_demo_{pd.Timestamp.utcnow().strftime('%Y%m%d_%H%M%S')}",
+        "model_version": f"diabetic_class_weighted_{pd.Timestamp.utcnow().strftime('%Y%m%d_%H%M%S')}",
     }
 
     joblib.dump(artifact, MODEL_PATH)
     with open(RESULTS_PATH, "w") as f:
         json.dump(metrics, f, indent=2)
 
-    print("Saved model to", MODEL_PATH)
-    print("Accuracy:", metrics["accuracy"])
-    print("Macro F1:", metrics["macro_f1"])
+    print("=" * 60)
+    print("MODEL TRAINING COMPLETE")
+    print("=" * 60)
+    print(f"Saved model to {MODEL_PATH}")
+    print(f"Accuracy: {metrics['accuracy']:.4f}")
+    print(f"Macro F1: {metrics['macro_f1']:.4f}")
+    print(f"Weighted F1: {metrics['weighted_f1']:.4f}")
+    print()
+    print("Critical Risk Class Performance:")
+    for risk_class in risky_classes:
+        recall = metrics.get(f"{risk_class}_recall", 0)
+        precision = metrics.get(f"{risk_class}_precision", 0)
+        print(f"  {risk_class}: Recall={recall:.3f}, Precision={precision:.3f}")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

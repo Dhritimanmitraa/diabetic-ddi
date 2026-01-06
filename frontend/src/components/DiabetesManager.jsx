@@ -190,6 +190,70 @@ const DrugRiskCard = ({ assessment }) => (
         </div>
       </div>
     )}
+
+    {/* LLM Analysis Section */}
+    {assessment.llm_analysis ? (
+      <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+        <div className="flex items-center gap-2 mb-2">
+          <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          <h5 className="text-sm font-semibold text-purple-300">LLM Analysis</h5>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30">
+            {assessment.llm_analysis.model_used || 'AI'}
+          </span>
+        </div>
+        
+        <div className="mb-2">
+          <div className="flex items-center gap-2 mb-1">
+            <RiskBadge level={assessment.llm_analysis.risk_level} />
+            <span className="text-xs text-slate-400">
+              Risk Score: {assessment.llm_analysis.risk_score || 0}/100
+            </span>
+          </div>
+        </div>
+
+        {assessment.llm_analysis.reasoning && (
+          <p className="text-sm text-slate-300 mb-3 leading-relaxed">
+            {assessment.llm_analysis.reasoning}
+          </p>
+        )}
+
+        {assessment.llm_analysis.key_concerns && assessment.llm_analysis.key_concerns.length > 0 && (
+          <div className="mb-2">
+            <h6 className="text-xs font-medium text-purple-300 mb-1">Key Concerns:</h6>
+            <ul className="text-xs text-slate-300 space-y-1">
+              {assessment.llm_analysis.key_concerns.map((concern, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="text-purple-400 mt-0.5">•</span>
+                  {concern}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {assessment.llm_analysis.monitoring_needed && assessment.llm_analysis.monitoring_needed.length > 0 && (
+          <div>
+            <h6 className="text-xs font-medium text-purple-300 mb-1">Monitoring Recommendations:</h6>
+            <div className="flex flex-wrap gap-1">
+              {assessment.llm_analysis.monitoring_needed.map((monitor, i) => (
+                <span key={i} className="text-xs bg-purple-500/20 text-purple-200 px-2 py-1 rounded border border-purple-500/30">
+                  {monitor}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    ) : (
+      <div className="mt-4 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg">
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="w-4 h-4 border-2 border-purple-500/50 border-t-transparent rounded-full animate-spin"></div>
+          <span>LLM analysis loading...</span>
+        </div>
+      </div>
+    )}
   </motion.div>
 )
 
@@ -421,6 +485,7 @@ export default function DiabetesManager() {
     }
     setLoading(true)
     try {
+      // Step 1: Get immediate results (Rules + ML) - fast!
       const res = await fetch(`${API_URL}/diabetic/risk-check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -433,13 +498,40 @@ export default function DiabetesManager() {
         const data = await res.json()
         setCheckResult(data)
         setActiveSection('check')
+        setLoading(false) // Show results immediately
+        
+        // Step 2: Fetch LLM analysis in background (slow - 10-20 seconds)
+        // This updates the UI when LLM is ready
+        fetch(`${API_URL}/diabetic/risk-check/llm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            patient_id: selectedPatient.patient_id,
+            drug_name: drugToCheck.trim()
+          })
+        })
+        .then(async (llmRes) => {
+          if (llmRes.ok) {
+            const llmData = await llmRes.json()
+            // Update the existing result with LLM analysis
+            setCheckResult(prev => ({
+              ...prev,
+              llm_analysis: llmData.llm_analysis
+            }))
+            toast.success('LLM analysis complete', { duration: 2000 })
+          }
+        })
+        .catch((err) => {
+          console.error('LLM analysis failed:', err)
+          // Don't show error toast - LLM is optional
+        })
       } else {
         const err = await res.json()
         toast.error(err.detail || 'Failed to check drug')
+        setLoading(false)
       }
     } catch (err) {
       toast.error('Error checking drug risk')
-    } finally {
       setLoading(false)
     }
   }

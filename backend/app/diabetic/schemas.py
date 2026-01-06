@@ -197,6 +197,20 @@ class DrugRiskCheckResponse(BaseModel):
     ml_decision_source: Optional[str] = None  # ml_primary, rule_override, rules_only
     ml_model_version: Optional[str] = None
 
+    # Explainability (SHAP + LLM)
+    shap_explanation: Optional[Dict] = Field(
+        None, 
+        description="SHAP-based feature attributions showing why ML made this prediction"
+    )
+    llm_explanation: Optional[str] = Field(
+        None,
+        description="Patient-friendly explanation of the risk assessment"
+    )
+    llm_analysis: Optional[Dict] = Field(
+        None,
+        description="LLM-based drug risk analysis (runs in parallel with ML)"
+    )
+
 
 class MedicationListCheckRequest(BaseModel):
     """Check all medications for a patient."""

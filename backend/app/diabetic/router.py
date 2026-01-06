@@ -6,7 +6,7 @@ Provides endpoints for managing diabetic patient profiles and drug risk assessme
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from typing import List, Optional
+from typing import List, Optional, Dict
 import logging
 import json
 import difflib
@@ -156,6 +156,9 @@ async def check_drug_risk(
     """
     Check the risk of a drug for a specific diabetic patient.
     
+    Returns IMMEDIATELY with rules + ML results (fast).
+    LLM analysis is fetched separately via /risk-check/llm endpoint.
+    
     Takes into account:
     - Patient's diabetes type and complications
     - Lab values (eGFR, potassium, liver enzymes)
@@ -171,6 +174,53 @@ async def check_drug_risk(
     return result
 
 
+@router.post("/risk-check/llm", response_model=Dict)
+async def get_llm_analysis(
+    data: DrugRiskCheckRequest,
+    service: DiabeticDDIService = Depends(get_service)
+):
+    """
+    Get LLM analysis for a drug risk check (called separately after initial response).
+    
+    This endpoint is called in the background after the main risk-check endpoint
+    returns, allowing the UI to show results immediately and update when LLM is ready.
+    """
+    patient = await service.get_patient(data.patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
+    
+    # Get current medications
+    medications = await service.get_patient_medications(data.patient_id)
+    current_meds = [m.drug_name for m in medications]
+    
+    # Build patient context
+    patient_context = service._build_patient_context(patient)
+    
+    # Get LLM analysis
+    try:
+        llm_result = await service.llm_checker.check_drug_risk(
+            data.drug_name, patient_context, current_meds
+        )
+        
+        if llm_result:
+            return {
+                "llm_analysis": {
+                    "risk_level": llm_result.risk_level,
+                    "risk_score": llm_result.risk_score,
+                    "reasoning": llm_result.reasoning,
+                    "key_concerns": llm_result.key_concerns,
+                    "monitoring_needed": llm_result.monitoring_needed,
+                    "model_used": llm_result.model_used,
+                    "was_fallback": llm_result.was_fallback,
+                }
+            }
+        else:
+            return {"llm_analysis": None, "error": "LLM analysis unavailable"}
+    except Exception as e:
+        logger.error(f"LLM analysis failed: {e}")
+        return {"llm_analysis": None, "error": str(e)}
+
+
 @router.post("/medication-list-check", response_model=MedicationListCheckResponse)
 async def check_medication_list(
     data: MedicationListCheckRequest,
@@ -182,7 +232,7 @@ async def check_medication_list(
     If medications list is not provided, uses the patient's current medications.
     Returns risk assessment for each drug plus overall recommendations.
     """
-    result = await service.check_all_medications(data.patient_id, data.medications or [])
+    result = await service.check_all_medications(data.patient_id, data.medications)
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
     return result
@@ -350,20 +400,12 @@ async def search_diabetic_drugs(
 
     candidates = []
     for d in pool:
-        # Extract values from SQLAlchemy columns (type checker doesn't understand runtime behavior)
-        # At runtime, these are actual string values, not Column objects
-        drug_name_raw = getattr(d, 'name', None)
-        drug_name: str = str(drug_name_raw) if drug_name_raw is not None else ""
-        names = [drug_name]
-        generic_name_raw = getattr(d, 'generic_name', None)
-        if generic_name_raw is not None:
-            generic_name_val: str = str(generic_name_raw)
-            names.append(generic_name_val)
-        brand_names_raw = getattr(d, 'brand_names', None)
-        if brand_names_raw is not None:
-            brand_names_val: str = str(brand_names_raw)
+        names = [d.name or ""]
+        if d.generic_name:
+            names.append(d.generic_name)
+        if d.brand_names:
             try:
-                brands = json.loads(brand_names_val)
+                brands = json.loads(d.brand_names)
                 if isinstance(brands, list):
                     names.extend(brands)
             except Exception:

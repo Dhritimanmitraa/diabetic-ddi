@@ -8,11 +8,16 @@ Contains curated rules for drug safety in diabetic patients based on:
 - Complication-specific risks
 """
 import json
-from typing import Dict, List, Optional, Tuple, Union
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Path to the diabetes medications JSON file
+_DATA_DIR = Path(__file__).parent / "data"
+_MEDICATIONS_JSON_PATH = _DATA_DIR / "diabetes_medications.json"
 
 
 @dataclass
@@ -309,13 +314,128 @@ class DiabeticDrugRules:
     }
 
     def __init__(self):
+        """Initialize rules engine and load data from JSON file."""
         self.rules_loaded = True
+        self.json_data = self._load_json_data()
+        self._integrate_json_data()
+    
+    def _load_json_data(self) -> Dict:
+        """Load diabetes medications data from JSON file."""
+        try:
+            if _MEDICATIONS_JSON_PATH.exists():
+                with open(_MEDICATIONS_JSON_PATH, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                logger.info(f"Loaded diabetes medications data from {_MEDICATIONS_JSON_PATH}")
+                return data
+            else:
+                logger.warning(f"JSON file not found at {_MEDICATIONS_JSON_PATH}, using hardcoded rules only")
+                return {}
+        except Exception as e:
+            logger.error(f"Error loading JSON data: {e}, using hardcoded rules only")
+            return {}
+    
+    def _integrate_json_data(self):
+        """Integrate JSON data into the rules engine."""
+        if not self.json_data:
+            return
+        
+        # 1. Build hypoglycemia risk drugs from diabetes_medications
+        if "diabetes_medications" in self.json_data:
+            for class_name, class_data in self.json_data["diabetes_medications"].items():
+                drugs = class_data.get("drugs", [])
+                hypoglycemia_risk = class_data.get("hypoglycemia_risk", "low")
+                
+                if hypoglycemia_risk in ["high", "moderate"]:
+                    # Add to hypoglycemia risk drugs
+                    if class_name not in self.HYPOGLYCEMIA_RISK_DRUGS:
+                        self.HYPOGLYCEMIA_RISK_DRUGS[class_name] = []
+                    for drug in drugs:
+                        if drug.lower() not in [d.lower() for d in self.HYPOGLYCEMIA_RISK_DRUGS[class_name]]:
+                            self.HYPOGLYCEMIA_RISK_DRUGS[class_name].append(drug)
+        
+        # 2. Build hyperglycemia risk drugs from drugs_affecting_glucose
+        if "drugs_affecting_glucose" in self.json_data:
+            increase_glucose = self.json_data["drugs_affecting_glucose"].get("increase_glucose", [])
+            for item in increase_glucose:
+                drug = item.get("drug", "").lower()
+                drug_class = item.get("class", "")
+                if drug and drug_class:
+                    if drug_class not in self.HYPERGLYCEMIA_RISK_DRUGS:
+                        self.HYPERGLYCEMIA_RISK_DRUGS[drug_class] = []
+                    if drug not in [d.lower() for d in self.HYPERGLYCEMIA_RISK_DRUGS[drug_class]]:
+                        self.HYPERGLYCEMIA_RISK_DRUGS[drug_class].append(item.get("drug"))
+        
+        # 3. Integrate eGFR dosing guidance
+        if "egfr_dosing_guidance" in self.json_data:
+            for drug_name, guidance in self.json_data["egfr_dosing_guidance"].items():
+                drug_lower = drug_name.lower()
+                # Parse guidance and add to EGFR_CONTRAINDICATIONS if not already present
+                if drug_lower not in self.EGFR_CONTRAINDICATIONS:
+                    # Try to infer thresholds from guidance text
+                    if "Contraindicated" in guidance.get("below_30", ""):
+                        self.EGFR_CONTRAINDICATIONS[drug_lower] = {
+                            "contraindicated_below": 30,
+                            "reason": guidance.get("below_30", "Renal adjustment required")
+                        }
+                    elif "30_to_45" in guidance or "30_to_60" in guidance:
+                        caution_threshold = 45 if "30_to_45" in guidance else 60
+                        self.EGFR_CONTRAINDICATIONS[drug_lower] = {
+                            "caution_below": caution_threshold,
+                            "reason": f"Renal dosing: {guidance.get('30_to_45') or guidance.get('30_to_60', 'Dose adjustment needed')}"
+                        }
+        
+        # 4. Integrate dangerous combinations
+        if "dangerous_combinations" in self.json_data:
+            for combo in self.json_data["dangerous_combinations"]:
+                drugs = combo.get("drugs", [])
+                risk = combo.get("risk", "")
+                guidance = combo.get("guidance", "")
+                
+                # Add to FATAL_COMBINATIONS if not already present
+                combo_normalized = sorted([d.lower() for d in drugs])
+                existing_combo = False
+                for existing in self.FATAL_COMBINATIONS:
+                    existing_drugs = sorted([d.lower() for d in existing.get("drugs", [])])
+                    if combo_normalized == existing_drugs:
+                        existing_combo = True
+                        break
+                
+                if not existing_combo:
+                    self.FATAL_COMBINATIONS.append({
+                        "drugs": drugs,
+                        "condition": combo.get("condition", ""),
+                        "reason": f"{risk}: {guidance}"
+                    })
+        
+        # 5. Build additional drug lists from common_comorbidity_medications
+        if "common_comorbidity_medications" in self.json_data:
+            # Add ACE inhibitors and ARBs to hyperkalemia risk if not already there
+            for class_name, class_data in self.json_data["common_comorbidity_medications"].items():
+                drugs = class_data.get("drugs", [])
+                if class_name in ["ace_inhibitors", "arbs"]:
+                    for drug in drugs:
+                        if drug.lower() not in [d.lower() for d in self.HYPERKALEMIA_RISK_DRUGS]:
+                            self.HYPERKALEMIA_RISK_DRUGS.append(drug)
+                
+                # Add beta blockers to mask hypoglycemia list
+                if class_name == "beta_blockers":
+                    for drug in drugs:
+                        if drug.lower() not in [d.lower() for d in self.MASK_HYPOGLYCEMIA]:
+                            self.MASK_HYPOGLYCEMIA.append(drug)
+                
+                # Add cardioprotective drugs
+                if class_name in ["ace_inhibitors", "statins"]:
+                    for drug in drugs:
+                        if drug.lower() not in [d.lower() for d in self.CARDIOPROTECTIVE_IN_DIABETES]:
+                            self.CARDIOPROTECTIVE_IN_DIABETES.append(drug)
+        
+        logger.info("JSON data integrated into rules engine")
     
     def assess_drug_risk(
         self,
         drug_name: str,
         patient: Dict,
-        current_medications: List[str] | None = None
+        current_medications: Optional[List[str]] = None
     ) -> RiskAssessment:
         """
         Assess the risk of a drug for a specific diabetic patient.
@@ -347,6 +467,12 @@ class DiabeticDrugRules:
         if egfr and drug_lower in self.EGFR_CONTRAINDICATIONS:
             rule = self.EGFR_CONTRAINDICATIONS[drug_lower]
             if egfr < rule.get("contraindicated_below", 0):
+                # Get dosing guidance from JSON if available
+                dosing_guidance = self._get_egfr_dosing_guidance(drug_lower, egfr)
+                recommendation_text = f"CONTRAINDICATED: {rule['reason']}. Do not use."
+                if dosing_guidance:
+                    recommendation_text += f" {dosing_guidance}"
+                
                 return RiskAssessment(
                     drug_name=drug_name,
                     risk_level="contraindicated",
@@ -356,25 +482,42 @@ class DiabeticDrugRules:
                     rule_references=[f"Renal threshold: {drug_lower} contraindicated if eGFR < {rule['contraindicated_below']}"],
                     evidence_sources=[self.EVIDENCE_TAGS["renal"]],
                     patient_factors=[f"eGFR={egfr}"],
-                    recommendation=f"CONTRAINDICATED: {rule['reason']}. Do not use.",
+                    recommendation=recommendation_text,
                     alternatives=self._get_alternatives(drug_lower, patient),
                     monitoring=[],
                     interactions=[]
                 )
             elif egfr < rule.get("caution_below", 0):
+                dosing_guidance = self._get_egfr_dosing_guidance(drug_lower, egfr)
                 risk_factors.append(f"eGFR {egfr} requires caution: {rule['reason']}")
+                if dosing_guidance:
+                    risk_factors.append(f"Dosing guidance: {dosing_guidance}")
                 rule_refs.append(f"Renal adjustment: {drug_lower} caution if eGFR < {rule['caution_below']}")
                 evidence_sources.append(self.EVIDENCE_TAGS["renal"])
                 patient_factors.append(f"eGFR={egfr}")
                 risk_score += 40
                 monitoring.append("Monitor kidney function closely")
             elif egfr < rule.get("dose_adjust_below", 0):
+                dosing_guidance = self._get_egfr_dosing_guidance(drug_lower, egfr)
                 risk_factors.append(f"eGFR {egfr} - dose adjustment needed: {rule['reason']}")
+                if dosing_guidance:
+                    risk_factors.append(f"Dosing guidance: {dosing_guidance}")
                 rule_refs.append(f"Renal dose adjustment for {drug_lower}")
                 evidence_sources.append(self.EVIDENCE_TAGS["renal"])
                 patient_factors.append(f"eGFR={egfr}")
                 risk_score += 25
                 monitoring.append("Monitor kidney function, adjust dose")
+        
+        # 1a-json. Check eGFR dosing guidance from JSON (if not in hardcoded rules)
+        elif egfr and self.json_data and "egfr_dosing_guidance" in self.json_data:
+            dosing_guidance = self._get_egfr_dosing_guidance(drug_lower, egfr)
+            if dosing_guidance:
+                risk_factors.append(f"eGFR {egfr} - {dosing_guidance}")
+                rule_refs.append(f"Renal dosing guidance from clinical data")
+                evidence_sources.append(self.EVIDENCE_TAGS["renal"])
+                patient_factors.append(f"eGFR={egfr}")
+                risk_score += 20
+                monitoring.append("Monitor kidney function and adjust dose as needed")
         
         # 1b. Check severe CKD caution drugs (eGFR < 30)
         if egfr and egfr < 30:
@@ -558,19 +701,42 @@ class DiabeticDrugRules:
                 risk_score += 35
                 monitoring.append("Monitor liver function tests")
 
-        # 10. Alcohol + hypoglycemia risk
+        # 10. Check dangerous combinations from JSON
+        dangerous_combo = self._check_dangerous_combinations(drug_lower, current_meds)
+        if dangerous_combo:
+            risk_factors.append(f"Dangerous combination: {dangerous_combo['reason']}")
+            rule_refs.append(f"Dangerous combination: {', '.join(dangerous_combo['drugs'])}")
+            evidence_sources.append("Clinical guideline - dangerous combination")
+            risk_score += 60
+            interactions.append({
+                "drugs": dangerous_combo["drugs"],
+                "risk": dangerous_combo.get("risk", "High risk"),
+                "guidance": dangerous_combo.get("guidance", "")
+            })
+        
+        # 11. Alcohol + hypoglycemia risk
         if drug_lower == "alcohol":
             risk_factors.append("Alcohol increases hypoglycemia risk with insulin/secretagogues")
             rule_refs.append("Alcohol hypoglycemia risk")
             evidence_sources.append(self.EVIDENCE_TAGS["alcohol_hypo"])
             risk_score += 20
 
-        # 11. GLP-1 GI/pancreatitis caution
+        # 12. GLP-1 GI/pancreatitis caution
         if drug_lower in ["liraglutide", "semaglutide", "dulaglutide", "exenatide", "tirzepatide"]:
             risk_factors.append("GLP-1 RA: GI/pancreatitis caution; monitor symptoms")
             rule_refs.append("GLP-1 GI/pancreatitis caution")
             evidence_sources.append(self.EVIDENCE_TAGS["glp1_pancreatitis"])
             monitoring.append("Monitor abdominal pain, pancreatitis symptoms")
+        
+        # 13. Check drug class warnings from JSON
+        drug_class_info = self._get_drug_class_info(drug_lower)
+        if drug_class_info:
+            warnings = drug_class_info.get("warnings", [])
+            if warnings:
+                for warning in warnings:
+                    risk_factors.append(f"Class warning: {warning}")
+                    risk_score += 15
+                    monitoring.append("Monitor for class-specific adverse effects")
         
         # 10. Calculate final risk level
         risk_level = self._score_to_risk_level(risk_score)
@@ -613,7 +779,7 @@ class DiabeticDrugRules:
         self,
         drug_name: str,
         patient: Dict,
-        current_medications: List[str] | None = None
+        current_medications: Optional[List[str]] = None
     ) -> List[Dict]:
         """Find safer alternatives for a drug."""
         alternatives = self._get_alternatives(drug_name.lower(), patient)
@@ -694,6 +860,68 @@ class DiabeticDrugRules:
         else:
             return f"SAFE: {drug} is generally safe for this patient."
     
+    def _check_dangerous_combinations(self, drug: str, current_meds: List[str]) -> Optional[Dict]:
+        """Check if drug forms a dangerous combination with current medications."""
+        all_meds = [drug] + current_meds
+        all_meds_lower = [m.lower() for m in all_meds]
+        
+        for combo in self.FATAL_COMBINATIONS:
+            combo_drugs = [d.lower() for d in combo.get("drugs", [])]
+            # Check if all drugs in the combination are present
+            if all(combo_drug in all_meds_lower or any(combo_drug in med for med in all_meds_lower) for combo_drug in combo_drugs):
+                return {
+                    "drugs": combo.get("drugs", []),
+                    "risk": combo.get("risk", "High risk"),
+                    "reason": combo.get("reason", ""),
+                    "guidance": combo.get("guidance", "")
+                }
+        return None
+    
+    def _get_drug_class_info(self, drug: str) -> Optional[Dict]:
+        """Get drug class information from JSON data."""
+        if not self.json_data or "diabetes_medications" not in self.json_data:
+            return None
+        
+        drug_lower = drug.lower()
+        
+        # Check diabetes medications
+        for class_name, class_data in self.json_data["diabetes_medications"].items():
+            drugs = [d.lower() for d in class_data.get("drugs", [])]
+            if drug_lower in drugs or any(d in drug_lower for d in drugs):
+                return class_data
+        
+        # Check comorbidity medications
+        if "common_comorbidity_medications" in self.json_data:
+            for class_name, class_data in self.json_data["common_comorbidity_medications"].items():
+                drugs = [d.lower() for d in class_data.get("drugs", [])]
+                if drug_lower in drugs or any(d in drug_lower for d in drugs):
+                    return class_data
+        
+        return None
+    
+    def _get_egfr_dosing_guidance(self, drug: str, egfr: float) -> Optional[str]:
+        """Get eGFR-based dosing guidance from JSON data."""
+        if not self.json_data or "egfr_dosing_guidance" not in self.json_data:
+            return None
+        
+        drug_lower = drug.lower()
+        guidance_data = self.json_data["egfr_dosing_guidance"].get(drug_lower)
+        
+        if not guidance_data:
+            return None
+        
+        # Return appropriate guidance based on eGFR range
+        if egfr < 15:
+            return guidance_data.get("below_15") or guidance_data.get("below_30")
+        elif egfr < 30:
+            return guidance_data.get("below_30")
+        elif egfr < 45:
+            return guidance_data.get("30_to_45") or guidance_data.get("30_to_60")
+        elif egfr < 60:
+            return guidance_data.get("30_to_60") or guidance_data.get("above_45")
+        else:
+            return guidance_data.get("above_60") or guidance_data.get("above_45")
+    
     def _get_alternatives(self, drug: str, patient: Dict) -> List[str]:
         """Get safer alternatives for a drug class."""
         alternatives_map = {
@@ -715,6 +943,27 @@ class DiabeticDrugRules:
             "pioglitazone": ["metformin", "empagliflozin", "liraglutide"],
             "rosiglitazone": ["metformin", "empagliflozin", "liraglutide"],
         }
+        
+        # Try to get alternatives from JSON data
+        drug_class_info = self._get_drug_class_info(drug)
+        if drug_class_info and self.json_data:
+            # Look for safer alternatives in other drug classes
+            alternatives = []
+            
+            # If it's a weight-gain drug, suggest weight-loss alternatives
+            if drug_class_info.get("weight_effect") == "gain":
+                for class_name, class_data in self.json_data.get("diabetes_medications", {}).items():
+                    if class_data.get("weight_effect") == "loss":
+                        alternatives.extend(class_data.get("drugs", []))
+            
+            # If it has high hypoglycemia risk, suggest low-risk alternatives
+            if drug_class_info.get("hypoglycemia_risk") == "high":
+                for class_name, class_data in self.json_data.get("diabetes_medications", {}).items():
+                    if class_data.get("hypoglycemia_risk") == "low":
+                        alternatives.extend(class_data.get("drugs", []))
+            
+            if alternatives:
+                return alternatives[:5]  # Limit to top 5
         
         return alternatives_map.get(drug, [])
 
