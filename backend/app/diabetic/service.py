@@ -3,6 +3,7 @@ Diabetic DDI Service.
 
 Main service for managing diabetic patient profiles and drug risk assessments.
 """
+import asyncio
 import json
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
@@ -23,6 +24,12 @@ from app.diabetic.schemas import (
     PatientDDIReportResponse, RiskLevelEnum
 )
 from app.diabetic.ml_predictor import get_diabetic_predictor
+from app.diabetic.ml_predictor_v2 import get_diabetic_predictor_v2
+from app.diabetic.explainability import get_shap_explainer, SHAPExplainer
+from app.diabetic.llm_explainer import get_llm_explainer, LLMExplainer
+from app.diabetic.llm_drug_checker import get_llm_checker
+from app.diabetic.smart_model import select_smart_model, SmartModelResult
+from app.database import async_session
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +42,13 @@ class DiabeticDDIService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.rules = DiabeticDrugRules()
+        # Try V2 predictor first (trained on clinical rules with patient context)
+        self.ml_predictor_v2 = get_diabetic_predictor_v2()
+        # Fallback to V1 predictor (DDI-frequency based - less accurate)
         self.ml_predictor = get_diabetic_predictor()
+        self.shap_explainer = get_shap_explainer()
+        self.llm_explainer = get_llm_explainer()
+        self.llm_checker = get_llm_checker()
     
     # ==================== Patient Management ====================
     
@@ -63,23 +76,23 @@ class DiabeticDDIService:
         
         # Set labs if provided
         if data.labs:
-            patient.hba1c = data.labs.hba1c  # type: ignore[assignment]
-            patient.fasting_glucose = data.labs.fasting_glucose  # type: ignore[assignment]
-            patient.egfr = data.labs.egfr  # type: ignore[assignment]
-            patient.creatinine = data.labs.creatinine  # type: ignore[assignment]
-            patient.potassium = data.labs.potassium  # type: ignore[assignment]
-            patient.alt = data.labs.alt  # type: ignore[assignment]
-            patient.ast = data.labs.ast  # type: ignore[assignment]
+            patient.hba1c = data.labs.hba1c
+            patient.fasting_glucose = data.labs.fasting_glucose
+            patient.egfr = data.labs.egfr
+            patient.creatinine = data.labs.creatinine
+            patient.potassium = data.labs.potassium
+            patient.alt = data.labs.alt
+            patient.ast = data.labs.ast
         
         # Set complications if provided
         if data.complications:
-            patient.has_nephropathy = data.complications.has_nephropathy  # type: ignore[assignment]
-            patient.has_retinopathy = data.complications.has_retinopathy  # type: ignore[assignment]
-            patient.has_neuropathy = data.complications.has_neuropathy  # type: ignore[assignment]
-            patient.has_cardiovascular = data.complications.has_cardiovascular  # type: ignore[assignment]
-            patient.has_hypertension = data.complications.has_hypertension  # type: ignore[assignment]
-            patient.has_hyperlipidemia = data.complications.has_hyperlipidemia  # type: ignore[assignment]
-            patient.has_obesity = data.complications.has_obesity  # type: ignore[assignment]
+            patient.has_nephropathy = data.complications.has_nephropathy
+            patient.has_retinopathy = data.complications.has_retinopathy
+            patient.has_neuropathy = data.complications.has_neuropathy
+            patient.has_cardiovascular = data.complications.has_cardiovascular
+            patient.has_hypertension = data.complications.has_hypertension
+            patient.has_hyperlipidemia = data.complications.has_hyperlipidemia
+            patient.has_obesity = data.complications.has_obesity
         
         self.db.add(patient)
         await self.db.commit()
@@ -122,16 +135,16 @@ class DiabeticDDIService:
         
         # Handle lists
         if "allergies" in update_data:
-            patient.allergies = json.dumps(update_data.pop("allergies"))  # type: ignore[assignment]
+            patient.allergies = json.dumps(update_data.pop("allergies"))
         if "comorbidities" in update_data:
-            patient.comorbidities = json.dumps(update_data.pop("comorbidities"))  # type: ignore[assignment]
+            patient.comorbidities = json.dumps(update_data.pop("comorbidities"))
         
         # Apply remaining updates
         for key, value in update_data.items():
             if value is not None:
                 setattr(patient, key, value)
         
-        patient.updated_at = datetime.utcnow()  # type: ignore[assignment]
+        patient.updated_at = datetime.utcnow()
         await self.db.commit()
         await self.db.refresh(patient)
         
@@ -153,7 +166,7 @@ class DiabeticDDIService:
         """List all patients with pagination."""
         # Get total count
         count_result = await self.db.execute(select(func.count(DiabeticPatient.id)))
-        total: int = count_result.scalar() or 0
+        total = count_result.scalar()
         
         # Get patients
         result = await self.db.execute(
@@ -233,79 +246,133 @@ class DiabeticDDIService:
         self, patient_id: str, drug_name: str
     ) -> Optional[DrugRiskCheckResponse]:
         """Check the risk of a drug for a specific patient."""
-        patient = await self.get_patient(patient_id)
-        if not patient:
-            return None
-        
-        # Get current medications
-        medications = await self.get_patient_medications(patient_id)
-        # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
-        current_meds: List[str] = [str(getattr(m, 'drug_name', '')) for m in medications]
-        
-        # Build patient context dict
-        patient_context = self._build_patient_context(patient)
-        
-        # RULES ARE PRIMARY - clinically validated logic
-        # ML is SUPPLEMENTARY only - for additional insights
-        
-        # Assess risk using rule-based system (PRIMARY)
-        assessment = self.rules.assess_drug_risk(drug_name, patient_context, current_meds)
-        
-        # Save assessment to database
-        await self._save_risk_assessment(patient, drug_name, assessment)
-        
-        # Structured log of rule hit
-        logger.info({
-            "event": "diabetic_rule_hit",
-            "drug": drug_name,
-            "risk_level": assessment.risk_level,
-            "severity": assessment.severity,
-            "risk_score": assessment.risk_score,
-            "rule_refs": assessment.rule_references,
-            "evidence_sources": assessment.evidence_sources,
-            "patient_factors": assessment.patient_factors,
-            "patient_id": patient.patient_id,
-        })
-
-        # Build response from RULES (always primary)
-        response = self._assessment_to_response(assessment)
-        decision_source = "rules_primary"
-
-        # Try ML prediction for supplementary info only
-        ml_result = None
-        if self.ml_predictor and self.ml_predictor.is_loaded:
-            try:
-                ml_result = self.ml_predictor.predict(drug_name, patient_context)
-            except Exception as exc:  # noqa: BLE001
-                logger.error(f"Diabetic ML prediction failed: {exc}")
-
-        if ml_result:
-            # ML is supplementary - never overrides rules
-            # Only add ML info for transparency
-            response.ml_risk_level = RiskLevelEnum(ml_result.risk_level)
-            response.ml_probability = ml_result.probability
-            response.ml_decision_source = decision_source
-            response.ml_model_version = ml_result.model_version
+        try:
+            patient = await self.get_patient(patient_id)
+            if not patient:
+                return None
             
-            # Log if ML disagrees with rules (for monitoring/retraining)
-            if ml_result.risk_level != assessment.risk_level:
-                logger.warning({
-                    "event": "ml_rule_disagreement",
-                    "drug": drug_name,
-                    "rule_risk": assessment.risk_level,
-                    "ml_risk": ml_result.risk_level,
-                    "patient_id": patient.patient_id,
-                    "patient_factors": {
-                        "egfr": patient_context.get("egfr"),
-                        "potassium": patient_context.get("potassium"),
-                        "age": patient_context.get("age"),
-                    }
-                })
+            # Get current medications
+            medications = await self.get_patient_medications(patient_id)
+            current_meds = [m.drug_name for m in medications]
+            
+            # Build patient context dict
+            patient_context = self._build_patient_context(patient)
+            
+            # RULES ARE PRIMARY - clinically validated logic
+            # ML is SUPPLEMENTARY only - for additional insights
+            
+            # Assess risk using rule-based system (PRIMARY)
+            assessment = self.rules.assess_drug_risk(drug_name, patient_context, current_meds)
+            
+            # Get ML result immediately (fast - synchronous)
+            # Try V2 predictor first (trained on clinical rules with patient context)
+            ml_result = None
+            if self.ml_predictor_v2 and self.ml_predictor_v2.is_loaded:
+                try:
+                    ml_result = self.ml_predictor_v2.predict(drug_name, patient_context)
+                    if ml_result:
+                        logger.info(f"V2 ML prediction for {drug_name}: {ml_result.risk_level} (p={ml_result.probability:.2f})")
+                except Exception as exc:
+                    logger.error(f"V2 ML prediction failed: {exc}")
+            
+            # Fallback to V1 predictor if V2 not available
+            if ml_result is None and self.ml_predictor and self.ml_predictor.is_loaded:
+                try:
+                    ml_result = self.ml_predictor.predict(drug_name, patient_context)
+                    if ml_result:
+                        logger.warning(f"Using V1 ML (DDI-based) for {drug_name}: {ml_result.risk_level}")
+                except Exception as exc:
+                    logger.error(f"V1 ML prediction failed: {exc}")
+            
+            # Use smart model to intelligently combine Rules + ML
+            # This applies rule floors and handles ML overconfidence
+            smart_result = select_smart_model(
+                rule_risk_level=assessment.risk_level,
+                rule_risk_score=assessment.risk_score,
+                ml_risk_level=ml_result.risk_level if ml_result else None,
+                ml_risk_score=ml_result.risk_score if ml_result else None,
+                ml_confidence=ml_result.probability if ml_result else None,
+                llm_risk_level=None,  # LLM will be fetched separately
+                llm_risk_score=None,
+                drug_name=drug_name,
+            )
+            
+            # Update assessment with smart model result if it changed
+            if smart_result.final_risk_level != assessment.risk_level:
+                assessment.risk_level = smart_result.final_risk_level
+                assessment.risk_score = smart_result.final_risk_score
+                logger.info(f"Smart model adjusted risk: {drug_name} - {smart_result.reasoning}")
+            
+            # Build response from smart-adjusted assessment
+            response = self._assessment_to_response(assessment)
+            decision_source = smart_result.decision_source
 
-        return response
+            # Add ML to response (with smart model adjustments if applied)
+            if ml_result:
+                # Use smart-adjusted ML values if floor was applied
+                if smart_result.applied_floor:
+                    # ML was adjusted by rule floor - reflect that in response
+                    response.ml_risk_level = RiskLevelEnum(smart_result.final_risk_level)
+                    response.ml_probability = ml_result.probability  # Keep original confidence
+                    response.ml_decision_source = f"{decision_source}_with_floor"
+                else:
+                    response.ml_risk_level = RiskLevelEnum(ml_result.risk_level)
+                    response.ml_probability = ml_result.probability
+                    response.ml_decision_source = decision_source
+                response.ml_model_version = ml_result.model_version
+                
+                # Log if ML disagrees with rules (for monitoring/retraining) - non-blocking
+                if ml_result.risk_level != assessment.risk_level:
+                    asyncio.create_task(asyncio.to_thread(
+                        logger.warning,
+                        {
+                            "event": "ml_rule_disagreement",
+                            "drug": drug_name,
+                            "rule_risk": assessment.risk_level,
+                            "ml_risk": ml_result.risk_level,
+                            "patient_id": patient.patient_id,
+                            "patient_factors": {
+                                "egfr": patient_context.get("egfr"),
+                                "potassium": patient_context.get("potassium"),
+                                "age": patient_context.get("age"),
+                            }
+                        }
+                    ))
+            
+            # NOTE: LLM is NOT awaited here - it will be fetched separately via /risk-check/llm endpoint
+            # This allows the frontend to show results immediately and update when LLM is ready
+            
+            # Save assessment to database in background (non-blocking)
+            # Use asyncio.create_task to fire-and-forget - don't await!
+            asyncio.create_task(self._save_risk_assessment(patient, drug_name, assessment))
+            
+            # Log in background (non-blocking)
+            asyncio.create_task(asyncio.to_thread(
+                logger.info,
+                {
+                    "event": "diabetic_rule_hit",
+                    "drug": drug_name,
+                    "risk_level": assessment.risk_level,
+                    "severity": assessment.severity,
+                    "risk_score": assessment.risk_score,
+                    "rule_refs": assessment.rule_references,
+                    "evidence_sources": assessment.evidence_sources,
+                    "patient_factors": assessment.patient_factors,
+                    "patient_id": patient.patient_id,
+                }
+            ))
+            
+            # SHAP and LLM explainer are slow - skip them for immediate response
+            # They can be added later if needed via separate endpoints
+            
+            # Return response IMMEDIATELY (before database save, SHAP, or LLM explainer)
+            return response
+        except Exception as e:
+            logger.error(f"Error in check_drug_risk for {drug_name} (patient {patient_id}): {e}", exc_info=True)
+            raise
     
     async def check_all_medications(
-        self, patient_id: str, medications: Optional[List[str]] = None
+        self, patient_id: str, medications: List[str] = None
     ) -> Optional[MedicationListCheckResponse]:
         """Check all medications for a patient."""
         patient = await self.get_patient(patient_id)
@@ -315,8 +382,7 @@ class DiabeticDDIService:
         # Use provided medications or get from patient profile
         if medications is None:
             patient_meds = await self.get_patient_medications(patient_id)
-            # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
-            medications = [str(getattr(m, 'drug_name', '')) for m in patient_meds]
+            medications = [m.drug_name for m in patient_meds]
         
         if not medications:
             return MedicationListCheckResponse(
@@ -384,8 +450,7 @@ class DiabeticDDIService:
         
         # Get current medications
         medications = await self.get_patient_medications(patient_id)
-        # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
-        current_meds: List[str] = [str(getattr(m, 'drug_name', '')) for m in medications]
+        current_meds = [m.drug_name for m in medications]
         
         # Build patient context
         patient_context = self._build_patient_context(patient)
@@ -422,12 +487,9 @@ class DiabeticDDIService:
         medications = await self.get_patient_medications(patient_id)
         
         # Check all medications
-        # Convert SQLAlchemy Column[str] to List[str] (type checker doesn't understand runtime behavior)
-        medication_names: List[str] = [str(getattr(m, 'drug_name', '')) for m in medications]
-        check_result = await self.check_all_medications(patient_id, medication_names)
-        
-        if not check_result:
-            return None
+        check_result = await self.check_all_medications(
+            patient_id, [m.drug_name for m in medications]
+        )
         
         # Find alternatives for risky drugs
         alternatives = {}
@@ -521,63 +583,64 @@ class DiabeticDDIService:
     
     def _patient_to_response(self, patient: DiabeticPatient) -> DiabeticPatientResponse:
         """Convert patient model to response schema."""
-        # Extract values from SQLAlchemy columns (type checker doesn't understand runtime behavior)
-        allergies_raw = getattr(patient, 'allergies', None)
-        comorbidities_raw = getattr(patient, 'comorbidities', None)
-        
         return DiabeticPatientResponse(
-            id=int(patient.id),  # type: ignore[arg-type]
-            patient_id=str(patient.patient_id),  # type: ignore[arg-type]
-            name=getattr(patient, 'name', None),  # type: ignore[arg-type]
-            age=getattr(patient, 'age', None),  # type: ignore[arg-type]
-            gender=getattr(patient, 'gender', None),  # type: ignore[arg-type]
-            weight_kg=getattr(patient, 'weight_kg', None),  # type: ignore[arg-type]
-            height_cm=getattr(patient, 'height_cm', None),  # type: ignore[arg-type]
-            bmi=getattr(patient, 'bmi', None),  # type: ignore[arg-type]
-            diabetes_type=str(patient.diabetes_type),  # type: ignore[arg-type]
-            years_with_diabetes=getattr(patient, 'years_with_diabetes', None),  # type: ignore[arg-type]
-            hba1c=getattr(patient, 'hba1c', None),  # type: ignore[arg-type]
-            fasting_glucose=getattr(patient, 'fasting_glucose', None),  # type: ignore[arg-type]
-            egfr=getattr(patient, 'egfr', None),  # type: ignore[arg-type]
-            kidney_stage=getattr(patient, 'kidney_stage', None),  # type: ignore[arg-type]
-            creatinine=getattr(patient, 'creatinine', None),  # type: ignore[arg-type]
-            potassium=getattr(patient, 'potassium', None),  # type: ignore[arg-type]
-            alt=getattr(patient, 'alt', None),  # type: ignore[arg-type]
-            ast=getattr(patient, 'ast', None),  # type: ignore[arg-type]
-            has_nephropathy=bool(patient.has_nephropathy),  # type: ignore[arg-type]
-            has_retinopathy=bool(patient.has_retinopathy),  # type: ignore[arg-type]
-            has_neuropathy=bool(patient.has_neuropathy),  # type: ignore[arg-type]
-            has_cardiovascular=bool(patient.has_cardiovascular),  # type: ignore[arg-type]
-            has_hypertension=bool(patient.has_hypertension),  # type: ignore[arg-type]
-            has_hyperlipidemia=bool(patient.has_hyperlipidemia),  # type: ignore[arg-type]
-            has_obesity=bool(patient.has_obesity),  # type: ignore[arg-type]
-            allergies=json.loads(str(allergies_raw)) if allergies_raw else None,
-            comorbidities=json.loads(str(comorbidities_raw)) if comorbidities_raw else None,
-            created_at=getattr(patient, 'created_at', datetime.utcnow()),  # type: ignore[arg-type]
-            updated_at=getattr(patient, 'updated_at', datetime.utcnow())  # type: ignore[arg-type]
+            id=patient.id,
+            patient_id=patient.patient_id,
+            name=patient.name,
+            age=patient.age,
+            gender=patient.gender,
+            weight_kg=patient.weight_kg,
+            height_cm=patient.height_cm,
+            bmi=patient.bmi,
+            diabetes_type=patient.diabetes_type,
+            years_with_diabetes=patient.years_with_diabetes,
+            hba1c=patient.hba1c,
+            fasting_glucose=patient.fasting_glucose,
+            egfr=patient.egfr,
+            kidney_stage=patient.kidney_stage,
+            creatinine=patient.creatinine,
+            potassium=patient.potassium,
+            alt=patient.alt,
+            ast=patient.ast,
+            has_nephropathy=patient.has_nephropathy,
+            has_retinopathy=patient.has_retinopathy,
+            has_neuropathy=patient.has_neuropathy,
+            has_cardiovascular=patient.has_cardiovascular,
+            has_hypertension=patient.has_hypertension,
+            has_hyperlipidemia=patient.has_hyperlipidemia,
+            has_obesity=patient.has_obesity,
+            allergies=json.loads(patient.allergies) if patient.allergies else None,
+            comorbidities=json.loads(patient.comorbidities) if patient.comorbidities else None,
+            created_at=patient.created_at,
+            updated_at=patient.updated_at
         )
     
     async def _save_risk_assessment(
         self, patient: DiabeticPatient, drug_name: str, assessment: RiskAssessment
     ):
-        """Save risk assessment to database."""
-        risk_record = DiabeticDrugRisk(
-            patient_id=patient.id,
-            drug_name=drug_name,
-            risk_level=assessment.risk_level,
-            risk_score=assessment.risk_score,
-            risk_factors=json.dumps(assessment.risk_factors),
-            recommendation=assessment.recommendation,
-            alternative_drugs=json.dumps(assessment.alternatives),
-            monitoring_required=json.dumps(assessment.monitoring),
-            labs_at_assessment=json.dumps({
-                "hba1c": patient.hba1c,
-                "egfr": patient.egfr,
-                "potassium": patient.potassium,
-            })
-        )
-        self.db.add(risk_record)
-        await self.db.commit()
+        """Save risk assessment to database (creates its own session for background task)."""
+        try:
+            async with async_session() as session:
+                risk_record = DiabeticDrugRisk(
+                    patient_id=patient.id,
+                    drug_name=drug_name,
+                    risk_level=assessment.risk_level,
+                    risk_score=assessment.risk_score,
+                    risk_factors=json.dumps(assessment.risk_factors),
+                    recommendation=assessment.recommendation,
+                    alternative_drugs=json.dumps(assessment.alternatives),
+                    monitoring_required=json.dumps(assessment.monitoring),
+                    labs_at_assessment=json.dumps({
+                        "hba1c": patient.hba1c,
+                        "egfr": patient.egfr,
+                        "potassium": patient.potassium,
+                    })
+                )
+                session.add(risk_record)
+                await session.commit()
+        except Exception as e:
+            # Log error but don't raise - this is a background task
+            logger.error(f"Failed to save risk assessment to database: {e}", exc_info=True)
     
     def _generate_recommendations(self, assessments: List[RiskAssessment]) -> List[str]:
         """Generate overall recommendations."""

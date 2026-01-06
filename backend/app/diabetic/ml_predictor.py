@@ -86,7 +86,10 @@ class DiabeticMLPredictor:
             return
         with self._load_lock:
             artifact = joblib.load(self.model_path)
-            self.model = artifact["model"]
+            # Try to load calibrated model first, fall back to base model
+            self.model = artifact.get("model")  # Calibrated model
+            if self.model is None:
+                self.model = artifact.get("base_model")  # Base model fallback
             self.scaler = artifact["scaler"]
             self.hash_size = artifact.get("hash_size", 48)
             self.risk_to_int = artifact.get("risk_to_int", {})
@@ -97,14 +100,64 @@ class DiabeticMLPredictor:
     def predict(self, drug_name: str, patient: Dict) -> Optional[DiabeticMLResult]:
         if not self.is_loaded or self.model is None or self.scaler is None:
             return None
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        
         vec = build_vector(patient, drug_name, self.scaler, self.hash_size)
-        proba = self.model.predict_proba(vec)[0]
-        pred_idx = int(np.argmax(proba))
+        
+        # The model is now saved as a base XGBClassifier (no calibration wrapper)
+        # Try predict_proba first (standard for classifiers)
+        try:
+            if hasattr(self.model, 'predict_proba'):
+                proba = self.model.predict_proba(vec)[0]
+                pred_idx = int(np.argmax(proba))
+                prob_map = {self.int_to_risk.get(i, str(i)): float(p) for i, p in enumerate(proba)}
+                top_prob = float(proba[pred_idx])
+            else:
+                # Fallback to predict if predict_proba not available
+                pred = self.model.predict(vec)[0]
+                if isinstance(pred, (int, np.integer)):
+                    pred_idx = int(pred)
+                else:
+                    pred_idx = min(int(pred), len(self.int_to_risk) - 1) if pred >= 0 else 0
+                top_prob = 0.6
+                prob_map = {self.int_to_risk.get(pred_idx, "caution"): top_prob}
+        except Exception as e:
+            # If prediction fails, log and return None
+            logger.error(f"ML prediction failed: {e}")
+            return None
+        
         risk_level = self.int_to_risk.get(pred_idx, "caution")
-        prob_map = {self.int_to_risk.get(i, str(i)): float(p) for i, p in enumerate(proba)}
-        top_prob = float(proba[pred_idx])
         severity = RISK_SEVERITY.get(risk_level, "moderate")
-        risk_score = round(top_prob * 100, 2)
+        
+        # Map risk level to appropriate risk score (not just probability)
+        # This ensures risk_score reflects actual risk, not just model confidence
+        risk_level_to_score = {
+            "safe": 0,
+            "caution": 30,
+            "high_risk": 60,
+            "contraindicated": 85,
+            "fatal": 100,
+        }
+        base_risk_score = risk_level_to_score.get(risk_level, 30)
+        
+        # Adjust risk score based on confidence:
+        # - High confidence (p > 0.9): use base score
+        # - Medium confidence (0.7-0.9): adjust ±10 points
+        # - Low confidence (p < 0.7): adjust ±20 points (more uncertainty)
+        if top_prob > 0.9:
+            risk_score = base_risk_score
+        elif top_prob > 0.7:
+            # Medium confidence: slight adjustment
+            risk_score = base_risk_score + (10 if risk_level in ["safe", "caution"] else -10)
+        else:
+            # Low confidence: more uncertainty, move toward middle
+            risk_score = base_risk_score + (20 if risk_level in ["safe", "caution"] else -20)
+        
+        # Clamp to valid range
+        risk_score = max(0, min(100, round(risk_score, 2)))
+        
         return DiabeticMLResult(
             risk_level=risk_level,
             probability=top_prob,

@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "accuracy": 0.914,
+  "training_date": "2026-01-03T22:15:38.278405",
+  "num_training_samples": 65000,
+  "feature_count": 6941,
+  "model_type": "XGBoost-Advanced",
+  "classes": [
+    "none",
+    "mild",
+    "moderate",
+    "severe"
+  ],
+  "features": {
+    "class_feature_names": [
+      "has_anticoagulant",
+      "has_nsaid",
+      "has_opioid",
+      "has_sedative",
+      "has_cyp_inhibitor",
+      "has_cyp_inducer",
+      "has_narrow_therapeutic",
+      "has_antihypertensive",
+      "has_antidepressant",
+      "has_antipsychotic",
+      "class_match",
+      "risk_combo_anticoag_nsaid",
+      "risk_combo_opioid_sedative",
+      "risk_combo_cyp_drug"
+    ],
+    "num_tfidf_features": 6000,
+    "num_word_features": 927,
+    "num_class_features": 14
+  },
+  "enhancements": [
+    "Pharmacological class features",
+    "Drug interaction risk patterns",
+    "Extended character n-grams (2-5)",
+    "Word-level n-grams (1-2)",
+    "High-risk combination detection"
+  ]
+}
