@@ -111,3 +111,7 @@ htmlcov/
 .dmypy.json
 dmypy.json
 
+# Helper scripts (local use only)
+*.bat
+*.ps1
+*.sh
