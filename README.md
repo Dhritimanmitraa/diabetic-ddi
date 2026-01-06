@@ -60,9 +60,24 @@ DrugGuard addresses this gap by integrating:
 - Python 3.10+
 - Node.js 18+
 - Tesseract OCR ([Installation Guide](https://tesseract-ocr.github.io/tessdoc/Installation.html))
+- **Optional**: Anaconda/Miniconda (recommended for ML features)
 
 ### Installation
 
+#### Option A: Anaconda (Recommended for ML)
+```bash
+# Clone the repository
+git clone https://github.com/Dhritimanmitraa/diabetic-ddi.git
+cd diabetic-ddi
+
+# Run setup script (creates conda environment)
+setup_conda.bat
+
+# Start the application
+start_app_conda.bat
+```
+
+#### Option B: Virtual Environment
 1. **Clone the repository**
 ```bash
 git clone https://github.com/Dhritimanmitraa/diabetic-ddi.git
