@@ -12,6 +12,7 @@ Usage:
     cd backend
     python -m scripts.load_offsides
 """
+
 import asyncio
 import gzip
 import io
@@ -40,14 +41,36 @@ LOCAL_PATH_GZ = os.path.join(DATA_DIR, "OFFSIDES.csv.gz")
 LOCAL_PATH_CSV = os.path.join(DATA_DIR, "OFFSIDES.csv")
 
 
-async def load_offsides(session: AsyncSession, df: pd.DataFrame, chunk_size: int = 5000):
+async def load_offsides(
+    session: AsyncSession, df: pd.DataFrame, chunk_size: int = 5000
+):
     inserted = 0
     col_names = [c.lower() for c in df.columns]
-    drug_col = next((c for c in col_names if c in ["drug", "drug_name", "drug1", "drug_1", "drug_concept_name"]), None)
-    effect_col = next((c for c in col_names if c in ["condition_concept_name"] or "effect" in c or "event" in c or "adr" in c or "side" in c), None)
+    drug_col = next(
+        (
+            c
+            for c in col_names
+            if c in ["drug", "drug_name", "drug1", "drug_1", "drug_concept_name"]
+        ),
+        None,
+    )
+    effect_col = next(
+        (
+            c
+            for c in col_names
+            if c in ["condition_concept_name"]
+            or "effect" in c
+            or "event" in c
+            or "adr" in c
+            or "side" in c
+        ),
+        None,
+    )
 
     if not drug_col:
-        raise ValueError(f"Could not infer drug column from OFFSIDES headers: {df.columns}")
+        raise ValueError(
+            f"Could not infer drug column from OFFSIDES headers: {df.columns}"
+        )
 
     def get(row, col):
         return row[col] if col in row else None
@@ -120,4 +143,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

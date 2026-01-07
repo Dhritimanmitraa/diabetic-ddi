@@ -27,16 +27,47 @@ MODEL_DIR = BASE_DIR / "models"
 
 # Drug class patterns for feature extraction
 DRUG_CLASS_PATTERNS = {
-    "hypoglycemia_risk": ["insulin", "sulfonylurea", "glipizide", "glyburide", "glimepiride"],
-    "hyperglycemia_risk": ["prednisone", "prednisolone", "dexamethasone", "methylprednisolone", 
-                           "hydrocortisone", "cortisone", "corticosteroid"],
+    "hypoglycemia_risk": [
+        "insulin",
+        "sulfonylurea",
+        "glipizide",
+        "glyburide",
+        "glimepiride",
+    ],
+    "hyperglycemia_risk": [
+        "prednisone",
+        "prednisolone",
+        "dexamethasone",
+        "methylprednisolone",
+        "hydrocortisone",
+        "cortisone",
+        "corticosteroid",
+    ],
     "thiazide": ["hydrochlorothiazide", "chlorthalidone", "indapamide", "metolazone"],
-    "statin": ["atorvastatin", "simvastatin", "rosuvastatin", "pravastatin", "lovastatin"],
+    "statin": [
+        "atorvastatin",
+        "simvastatin",
+        "rosuvastatin",
+        "pravastatin",
+        "lovastatin",
+    ],
     "ace_inhibitor": ["lisinopril", "enalapril", "ramipril", "captopril", "benazepril"],
     "arb": ["losartan", "valsartan", "irbesartan", "olmesartan", "candesartan"],
-    "beta_blocker": ["metoprolol", "atenolol", "propranolol", "carvedilol", "bisoprolol"],
+    "beta_blocker": [
+        "metoprolol",
+        "atenolol",
+        "propranolol",
+        "carvedilol",
+        "bisoprolol",
+    ],
     "nsaid": ["ibuprofen", "naproxen", "diclofenac", "indomethacin", "ketorolac"],
-    "antipsychotic": ["olanzapine", "clozapine", "quetiapine", "risperidone", "aripiprazole"],
+    "antipsychotic": [
+        "olanzapine",
+        "clozapine",
+        "quetiapine",
+        "risperidone",
+        "aripiprazole",
+    ],
     "biguanide": ["metformin"],
     "sglt2": ["empagliflozin", "dapagliflozin", "canagliflozin"],
     "glp1": ["semaglutide", "liraglutide", "dulaglutide", "exenatide"],
@@ -50,17 +81,17 @@ def get_drug_class_features(drug_name: str) -> List[float]:
     """Extract drug class one-hot features."""
     drug_lower = drug_name.lower()
     features = []
-    
+
     for class_name, patterns in DRUG_CLASS_PATTERNS.items():
         match = 1.0 if any(p in drug_lower for p in patterns) else 0.0
         features.append(match)
-    
+
     return features
 
 
 def build_features(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     """Build feature matrix for regression on risk_score."""
-    
+
     features = []
     for _, row in df.iterrows():
         p = [
@@ -78,39 +109,41 @@ def build_features(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
             int(bool(row.get("has_hyperlipidemia", False))),
             int(bool(row.get("has_obesity", False))),
         ]
-        
+
         # Add drug class features
         drug_class_feats = get_drug_class_features(row.get("drug_name", ""))
         p.extend(drug_class_feats)
-        
+
         features.append(p)
-    
+
     X = np.array(features, dtype=np.float32)
-    
+
     # Target is risk_score (0-100), not label (0-4)
     y = df["risk_score"].astype(float).values
-    
+
     return X, y
 
 
 def train():
     """Train regression model for risk_score."""
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # Load data
     train_df = pd.read_csv(DATA_DIR / "train.csv")
     val_df = pd.read_csv(DATA_DIR / "val.csv")
     test_df = pd.read_csv(DATA_DIR / "test.csv")
-    
+
     print(f"Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
-    print(f"Risk score range: {train_df['risk_score'].min()} - {train_df['risk_score'].max()}")
+    print(
+        f"Risk score range: {train_df['risk_score'].min()} - {train_df['risk_score'].max()}"
+    )
     print(f"Risk score mean: {train_df['risk_score'].mean():.2f}")
-    
+
     # Build features
     X_train, y_train = build_features(train_df)
     X_val, y_val = build_features(val_df)
     X_test, y_test = build_features(test_df)
-    
+
     # Scale features
     scaler = StandardScaler()
     n_patient_feats = 13 + len(DRUG_CLASS_PATTERNS)
@@ -118,15 +151,15 @@ def train():
     X_train[:, :n_patient_feats] = scaler.transform(X_train[:, :n_patient_feats])
     X_val[:, :n_patient_feats] = scaler.transform(X_val[:, :n_patient_feats])
     X_test[:, :n_patient_feats] = scaler.transform(X_test[:, :n_patient_feats])
-    
+
     # High risk samples (risk_score > 50) get more weight
     sample_weights = np.ones(len(y_train))
     sample_weights[y_train > 50] = 3.0  # 3x weight for high risk
     sample_weights[y_train > 80] = 5.0  # 5x weight for very high risk
-    
+
     print(f"High risk samples (>50): {(y_train > 50).sum()}")
     print(f"Very high risk samples (>80): {(y_train > 80).sum()}")
-    
+
     # Train XGBoost Regressor
     model = xgb.XGBRegressor(
         objective="reg:squarederror",
@@ -141,22 +174,30 @@ def train():
         min_child_weight=3,
     )
     model.fit(X_train, y_train, sample_weight=sample_weights)
-    
+
     # Predictions
     preds = model.predict(X_test)
     preds = np.clip(preds, 0, 100)  # Clamp to valid range
-    
+
     # Metrics
     rmse = np.sqrt(mean_squared_error(y_test, preds))
     mae = mean_absolute_error(y_test, preds)
     r2 = r2_score(y_test, preds)
-    
+
     # High-risk detection accuracy (risk_score > 50)
     actual_high_risk = y_test > 50
     predicted_high_risk = preds > 50
-    high_risk_recall = (actual_high_risk & predicted_high_risk).sum() / actual_high_risk.sum() if actual_high_risk.sum() > 0 else 0
-    high_risk_precision = (actual_high_risk & predicted_high_risk).sum() / predicted_high_risk.sum() if predicted_high_risk.sum() > 0 else 0
-    
+    high_risk_recall = (
+        (actual_high_risk & predicted_high_risk).sum() / actual_high_risk.sum()
+        if actual_high_risk.sum() > 0
+        else 0
+    )
+    high_risk_precision = (
+        (actual_high_risk & predicted_high_risk).sum() / predicted_high_risk.sum()
+        if predicted_high_risk.sum() > 0
+        else 0
+    )
+
     print("\n" + "=" * 60)
     print("REGRESSION MODEL EVALUATION")
     print("=" * 60)
@@ -168,7 +209,7 @@ def train():
     print(f"  Recall: {high_risk_recall:.3f}")
     print(f"  Precision: {high_risk_precision:.3f}")
     print("=" * 60)
-    
+
     # Save artifacts
     artifact = {
         "model": model,
@@ -177,9 +218,9 @@ def train():
         "target": "risk_score",
         "model_version": f"diabetic_regression_{pd.Timestamp.utcnow().strftime('%Y%m%d_%H%M%S')}",
     }
-    
+
     joblib.dump(artifact, MODEL_DIR / "diabetic_risk_regressor.pkl")
-    
+
     metrics = {
         "model_type": "regression",
         "rmse": float(rmse),
@@ -188,10 +229,10 @@ def train():
         "high_risk_recall": float(high_risk_recall),
         "high_risk_precision": float(high_risk_precision),
     }
-    
+
     with open(MODEL_DIR / "regression_training_results.json", "w") as f:
         json.dump(metrics, f, indent=2)
-    
+
     print(f"\nSaved regression model to {MODEL_DIR / 'diabetic_risk_regressor.pkl'}")
 
 

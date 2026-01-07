@@ -12,6 +12,7 @@ rows into the twosides_interactions table with minimal columns:
 Usage:
     python -m scripts.load_twosides
 """
+
 # pyright: reportMissingImports=false
 import asyncio
 import gzip
@@ -35,7 +36,9 @@ LOCAL_PATH_GZ = os.path.join(DATA_DIR, "TWOSIDES.csv.gz")
 LOCAL_PATH_CSV = os.path.join(DATA_DIR, "TWOSIDES.csv")
 
 
-async def load_twosides(session: AsyncSession, df: pd.DataFrame, chunk_size: int = 5000):
+async def load_twosides(
+    session: AsyncSession, df: pd.DataFrame, chunk_size: int = 5000
+):
     inserted = 0
     # Expected columns in TWOSIDES: drug1, drug2, side_effect_name or event_name; this can vary.
     # Common real-world headers: drug_1_concept_name, drug_2_concept_name, condition_concept_name
@@ -43,24 +46,47 @@ async def load_twosides(session: AsyncSession, df: pd.DataFrame, chunk_size: int
 
     # Heuristic column picks (ordered by preference)
     drug1_candidates = [
-        "drug1", "drug_1", "drug_a", "drug", "drug 1",
-        "drug_1_concept_name", "drug_1_name"
+        "drug1",
+        "drug_1",
+        "drug_a",
+        "drug",
+        "drug 1",
+        "drug_1_concept_name",
+        "drug_1_name",
     ]
     drug2_candidates = [
-        "drug2", "drug_2", "drug_b", "drug2", "drug 2",
-        "drug_2_concept_name", "drug_2_name"
+        "drug2",
+        "drug_2",
+        "drug_b",
+        "drug2",
+        "drug 2",
+        "drug_2_concept_name",
+        "drug_2_name",
     ]
     effect_candidates = [
-        "side_effect_name", "event_name", "effect", "adr",
-        "condition_concept_name", "condition_name"
+        "side_effect_name",
+        "event_name",
+        "effect",
+        "adr",
+        "condition_concept_name",
+        "condition_name",
     ]
 
     drug1_col = next((c for c in col_names if c in drug1_candidates), None)
     drug2_col = next((c for c in col_names if c in drug2_candidates), None)
-    effect_col = next((c for c in col_names if c in effect_candidates or "effect" in c or "event" in c or "adr" in c), None)
+    effect_col = next(
+        (
+            c
+            for c in col_names
+            if c in effect_candidates or "effect" in c or "event" in c or "adr" in c
+        ),
+        None,
+    )
 
     if not drug1_col or not drug2_col:
-        raise ValueError(f"Could not infer drug columns from TWOSIDES headers: {df.columns}")
+        raise ValueError(
+            f"Could not infer drug columns from TWOSIDES headers: {df.columns}"
+        )
 
     # Normalize column access
     def get(row, col):
@@ -144,4 +170,3 @@ async def _iter_chunks(reader):
 
 if __name__ == "__main__":
     asyncio.run(main())
-

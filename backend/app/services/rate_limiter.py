@@ -1,6 +1,7 @@
 """
 Simple rate limiting using Redis (fixed window).
 """
+
 import logging
 from typing import Optional
 
@@ -11,7 +12,9 @@ from app.services.cache import get_redis_client
 logger = logging.getLogger(__name__)
 
 
-async def rate_limit(request: Request, limit: int = 60, window_seconds: int = 60, key_prefix: str = "rl") -> None:
+async def rate_limit(
+    request: Request, limit: int = 60, window_seconds: int = 60, key_prefix: str = "rl"
+) -> None:
     """
     Apply a fixed-window rate limit based on client IP.
 
@@ -42,4 +45,3 @@ async def rate_limit(request: Request, limit: int = 60, window_seconds: int = 60
     except Exception as exc:  # pragma: no cover - network dependent
         logger.debug(f"Rate limit check failed: {exc}")
         return
-

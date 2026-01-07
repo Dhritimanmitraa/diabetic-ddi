@@ -3,6 +3,7 @@ Redis cache utilities.
 Uses async redis client when REDIS_URL is configured. Falls back gracefully if
 Redis is unavailable.
 """
+
 import json
 import logging
 import os
@@ -23,7 +24,9 @@ async def get_redis_client() -> Optional[redis.Redis]:
 
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     try:
-        _redis_client = redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+        _redis_client = redis.from_url(
+            redis_url, encoding="utf-8", decode_responses=True
+        )
         # quick ping to validate connection
         await _redis_client.ping()
         logger.info("Connected to Redis cache")
@@ -54,4 +57,3 @@ async def cache_set_json(key: str, value: Any, ttl_seconds: int = 3600):
         await client.set(key, json.dumps(value), ex=ttl_seconds)
     except Exception as exc:  # pragma: no cover - network dependent
         logger.debug(f"Cache set failed for {key}: {exc}")
-

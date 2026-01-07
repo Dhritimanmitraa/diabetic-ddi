@@ -11,6 +11,7 @@ Run:
     cd backend
     python -m scripts.map_offsides_severity
 """
+
 import asyncio
 import json
 import sqlite3
@@ -28,14 +29,34 @@ def classify_effect(effect: str) -> str:
     e = effect.lower()
     fatal_kw = ["death", "fatal", "cardiac arrest", "anaphylaxis"]
     major_kw = [
-        "hospital", "hospitalization", "shock", "hemorrhage", "bleeding",
-        "lactic acidosis", "renal failure", "kidney failure", "arrhythmia",
-        "seizure", "stroke", "torsades", "ventricular", "mi", "myocardial infarction",
-        "gi bleed", "internal bleed"
+        "hospital",
+        "hospitalization",
+        "shock",
+        "hemorrhage",
+        "bleeding",
+        "lactic acidosis",
+        "renal failure",
+        "kidney failure",
+        "arrhythmia",
+        "seizure",
+        "stroke",
+        "torsades",
+        "ventricular",
+        "mi",
+        "myocardial infarction",
+        "gi bleed",
+        "internal bleed",
     ]
     moderate_kw = [
-        "syncope", "hypotension", "hyperkalemia", "hypoglycemia",
-        "pancreatitis", "severe nausea", "severe vomiting", "ak i", "aki"
+        "syncope",
+        "hypotension",
+        "hyperkalemia",
+        "hypoglycemia",
+        "pancreatitis",
+        "severe nausea",
+        "severe vomiting",
+        "ak i",
+        "aki",
     ]
     if any(k in e for k in fatal_kw):
         return "fatal"
@@ -51,7 +72,10 @@ async def map_severity(session: AsyncSession, batch: int = 5000):
     updated = 0
     while True:
         result = await session.execute(
-            select(OffsidesEffect).where(OffsidesEffect.severity == None).offset(offset).limit(batch)
+            select(OffsidesEffect)
+            .where(OffsidesEffect.severity == None)
+            .offset(offset)
+            .limit(batch)
         )
         rows = result.scalars().all()
         if not rows:
@@ -93,4 +117,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

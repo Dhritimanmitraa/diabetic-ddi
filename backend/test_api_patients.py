@@ -1,9 +1,10 @@
 """Test the patients API endpoint."""
+
 import requests
 import json
 
 try:
-    response = requests.get('http://localhost:8000/diabetic/patients')
+    response = requests.get("http://localhost:8000/diabetic/patients")
     print(f"Status Code: {response.status_code}")
     if response.status_code == 200:
         patients = response.json()
@@ -18,5 +19,3 @@ try:
 except Exception as e:
     print(f"Error connecting to API: {e}")
     print("Is the backend server running on port 8000?")
-
-

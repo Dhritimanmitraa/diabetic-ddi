@@ -13,7 +13,9 @@ from typing import Dict, Optional
 import joblib
 import numpy as np
 
-DEFAULT_MODEL_PATH = os.environ.get("DIABETIC_MODEL_PATH", "./models/diabetic_risk_model.pkl")
+DEFAULT_MODEL_PATH = os.environ.get(
+    "DIABETIC_MODEL_PATH", "./models/diabetic_risk_model.pkl"
+)
 
 RISK_SEVERITY = {
     "safe": "minor",
@@ -30,7 +32,7 @@ def hash_text(text: str, n_features: int) -> np.ndarray:
         return vec
     lower = text.lower()
     for idx, ch in enumerate(lower):
-        bucket = (hash(ch + str(idx)) % n_features)
+        bucket = hash(ch + str(idx)) % n_features
         vec[bucket] += 1.0
     return vec
 
@@ -100,19 +102,23 @@ class DiabeticMLPredictor:
     def predict(self, drug_name: str, patient: Dict) -> Optional[DiabeticMLResult]:
         if not self.is_loaded or self.model is None or self.scaler is None:
             return None
-        
+
         import logging
+
         logger = logging.getLogger(__name__)
-        
+
         vec = build_vector(patient, drug_name, self.scaler, self.hash_size)
-        
+
         # The model is now saved as a base XGBClassifier (no calibration wrapper)
         # Try predict_proba first (standard for classifiers)
         try:
-            if hasattr(self.model, 'predict_proba'):
+            if hasattr(self.model, "predict_proba"):
                 proba = self.model.predict_proba(vec)[0]
                 pred_idx = int(np.argmax(proba))
-                prob_map = {self.int_to_risk.get(i, str(i)): float(p) for i, p in enumerate(proba)}
+                prob_map = {
+                    self.int_to_risk.get(i, str(i)): float(p)
+                    for i, p in enumerate(proba)
+                }
                 top_prob = float(proba[pred_idx])
             else:
                 # Fallback to predict if predict_proba not available
@@ -120,17 +126,19 @@ class DiabeticMLPredictor:
                 if isinstance(pred, (int, np.integer)):
                     pred_idx = int(pred)
                 else:
-                    pred_idx = min(int(pred), len(self.int_to_risk) - 1) if pred >= 0 else 0
+                    pred_idx = (
+                        min(int(pred), len(self.int_to_risk) - 1) if pred >= 0 else 0
+                    )
                 top_prob = 0.6
                 prob_map = {self.int_to_risk.get(pred_idx, "caution"): top_prob}
         except Exception as e:
             # If prediction fails, log and return None
             logger.error(f"ML prediction failed: {e}")
             return None
-        
+
         risk_level = self.int_to_risk.get(pred_idx, "caution")
         severity = RISK_SEVERITY.get(risk_level, "moderate")
-        
+
         # Map risk level to appropriate risk score (not just probability)
         # This ensures risk_score reflects actual risk, not just model confidence
         risk_level_to_score = {
@@ -141,7 +149,7 @@ class DiabeticMLPredictor:
             "fatal": 100,
         }
         base_risk_score = risk_level_to_score.get(risk_level, 30)
-        
+
         # Adjust risk score based on confidence:
         # - High confidence (p > 0.9): use base score
         # - Medium confidence (0.7-0.9): adjust ±10 points
@@ -150,14 +158,18 @@ class DiabeticMLPredictor:
             risk_score = base_risk_score
         elif top_prob > 0.7:
             # Medium confidence: slight adjustment
-            risk_score = base_risk_score + (10 if risk_level in ["safe", "caution"] else -10)
+            risk_score = base_risk_score + (
+                10 if risk_level in ["safe", "caution"] else -10
+            )
         else:
             # Low confidence: more uncertainty, move toward middle
-            risk_score = base_risk_score + (20 if risk_level in ["safe", "caution"] else -20)
-        
+            risk_score = base_risk_score + (
+                20 if risk_level in ["safe", "caution"] else -20
+            )
+
         # Clamp to valid range
         risk_score = max(0, min(100, round(risk_score, 2)))
-        
+
         return DiabeticMLResult(
             risk_level=risk_level,
             probability=top_prob,
@@ -180,5 +192,3 @@ def get_diabetic_predictor(model_path: str = DEFAULT_MODEL_PATH) -> DiabeticMLPr
         if _predictor is None:
             _predictor = DiabeticMLPredictor(model_path)
     return _predictor
-
-

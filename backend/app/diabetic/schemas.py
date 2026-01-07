@@ -1,7 +1,8 @@
 """
 Pydantic schemas for Diabetic Patient DDI Module.
 """
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
@@ -9,6 +10,7 @@ from enum import Enum
 
 class DiabetesTypeEnum(str, Enum):
     """Type of diabetes."""
+
     TYPE_1 = "type_1"
     TYPE_2 = "type_2"
     GESTATIONAL = "gestational"
@@ -18,6 +20,7 @@ class DiabetesTypeEnum(str, Enum):
 
 class RiskLevelEnum(str, Enum):
     """Risk level for drug."""
+
     SAFE = "safe"
     CAUTION = "caution"
     HIGH_RISK = "high_risk"
@@ -28,6 +31,7 @@ class RiskLevelEnum(str, Enum):
 # Patient Schemas
 class PatientLabsBase(BaseModel):
     """Lab values for a diabetic patient."""
+
     hba1c: Optional[float] = Field(None, description="HbA1c percentage (e.g., 7.5)")
     fasting_glucose: Optional[float] = Field(None, description="Fasting glucose mg/dL")
     egfr: Optional[float] = Field(None, description="eGFR mL/min/1.73m²")
@@ -39,6 +43,7 @@ class PatientLabsBase(BaseModel):
 
 class PatientComplicationsBase(BaseModel):
     """Diabetes complications flags."""
+
     has_nephropathy: bool = False
     has_retinopathy: bool = False
     has_neuropathy: bool = False
@@ -50,22 +55,23 @@ class PatientComplicationsBase(BaseModel):
 
 class DiabeticPatientCreate(BaseModel):
     """Create a new diabetic patient profile."""
+
     patient_id: str = Field(..., min_length=1, description="Unique patient identifier")
     name: Optional[str] = None
     age: Optional[int] = Field(None, ge=0, le=150)
     gender: Optional[str] = None
     weight_kg: Optional[float] = Field(None, gt=0)
     height_cm: Optional[float] = Field(None, gt=0)
-    
+
     diabetes_type: DiabetesTypeEnum = DiabetesTypeEnum.TYPE_2
     years_with_diabetes: Optional[int] = Field(None, ge=0)
-    
+
     # Labs
     labs: Optional[PatientLabsBase] = None
-    
+
     # Complications
     complications: Optional[PatientComplicationsBase] = None
-    
+
     # Other
     allergies: Optional[List[str]] = None
     comorbidities: Optional[List[str]] = None
@@ -73,23 +79,25 @@ class DiabeticPatientCreate(BaseModel):
 
 class DiabeticPatientUpdate(BaseModel):
     """Update patient profile."""
+
     name: Optional[str] = None
     age: Optional[int] = None
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
-    
+
     diabetes_type: Optional[DiabetesTypeEnum] = None
     years_with_diabetes: Optional[int] = None
-    
+
     labs: Optional[PatientLabsBase] = None
     complications: Optional[PatientComplicationsBase] = None
-    
+
     allergies: Optional[List[str]] = None
     comorbidities: Optional[List[str]] = None
 
 
 class DiabeticPatientResponse(BaseModel):
     """Patient profile response."""
+
     id: int
     patient_id: str
     name: Optional[str]
@@ -98,10 +106,10 @@ class DiabeticPatientResponse(BaseModel):
     weight_kg: Optional[float]
     height_cm: Optional[float]
     bmi: Optional[float]
-    
+
     diabetes_type: str
     years_with_diabetes: Optional[int]
-    
+
     # Labs
     hba1c: Optional[float]
     fasting_glucose: Optional[float]
@@ -111,7 +119,7 @@ class DiabeticPatientResponse(BaseModel):
     potassium: Optional[float]
     alt: Optional[float]
     ast: Optional[float]
-    
+
     # Complications
     has_nephropathy: bool
     has_retinopathy: bool
@@ -120,22 +128,22 @@ class DiabeticPatientResponse(BaseModel):
     has_hypertension: bool
     has_hyperlipidemia: bool
     has_obesity: bool
-    
+
     # Other
     allergies: Optional[List[str]]
     comorbidities: Optional[List[str]]
-    
+
     # Metadata
     created_at: datetime
     updated_at: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Medication Schemas
 class MedicationCreate(BaseModel):
     """Add medication to patient."""
+
     drug_name: str = Field(..., min_length=1)
     generic_name: Optional[str] = None
     drug_class: Optional[str] = None
@@ -148,6 +156,7 @@ class MedicationCreate(BaseModel):
 
 class MedicationResponse(BaseModel):
     """Medication response."""
+
     id: int
     drug_name: str
     generic_name: Optional[str]
@@ -159,20 +168,21 @@ class MedicationResponse(BaseModel):
     is_diabetes_medication: bool
     is_active: bool
     start_date: Optional[datetime]
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Risk Assessment Schemas
 class DrugRiskCheckRequest(BaseModel):
     """Request to check a drug's risk for a patient."""
+
     patient_id: str = Field(..., description="Patient identifier")
     drug_name: str = Field(..., min_length=1, description="Drug to check")
 
 
 class DrugRiskCheckResponse(BaseModel):
     """Drug risk assessment result."""
+
     drug_name: str
     risk_level: RiskLevelEnum
     risk_score: float = Field(..., ge=0, le=100)
@@ -185,7 +195,7 @@ class DrugRiskCheckResponse(BaseModel):
     alternatives: List[str]
     monitoring: List[str]
     interactions: List[Dict]
-    
+
     # Visual indicators
     is_safe: bool
     is_fatal: bool
@@ -199,27 +209,27 @@ class DrugRiskCheckResponse(BaseModel):
 
     # Explainability (SHAP + LLM)
     shap_explanation: Optional[Dict] = Field(
-        None, 
-        description="SHAP-based feature attributions showing why ML made this prediction"
+        None,
+        description="SHAP-based feature attributions showing why ML made this prediction",
     )
     llm_explanation: Optional[str] = Field(
-        None,
-        description="Patient-friendly explanation of the risk assessment"
+        None, description="Patient-friendly explanation of the risk assessment"
     )
     llm_analysis: Optional[Dict] = Field(
-        None,
-        description="LLM-based drug risk analysis (runs in parallel with ML)"
+        None, description="LLM-based drug risk analysis (runs in parallel with ML)"
     )
 
 
 class MedicationListCheckRequest(BaseModel):
     """Check all medications for a patient."""
+
     patient_id: str
     medications: Optional[List[str]] = None  # If None, use patient's current meds
 
 
 class MedicationListCheckResponse(BaseModel):
     """Results for checking medication list."""
+
     patient_id: str
     total_medications: int
     safe_count: int
@@ -227,9 +237,9 @@ class MedicationListCheckResponse(BaseModel):
     high_risk_count: int
     contraindicated_count: int
     fatal_count: int
-    
+
     assessments: List[DrugRiskCheckResponse]
-    
+
     # Overall recommendation
     overall_risk_level: str
     critical_alerts: List[str]
@@ -238,12 +248,14 @@ class MedicationListCheckResponse(BaseModel):
 
 class SafeAlternativesRequest(BaseModel):
     """Request for safe alternatives."""
+
     patient_id: str
     drug_name: str
 
 
 class SafeAlternativeResponse(BaseModel):
     """A safe alternative drug."""
+
     drug: str
     risk_level: str
     risk_score: float
@@ -252,6 +264,7 @@ class SafeAlternativeResponse(BaseModel):
 
 class SafeAlternativesResponse(BaseModel):
     """Response with safe alternatives."""
+
     original_drug: str
     original_risk_level: str
     alternatives: List[SafeAlternativeResponse]
@@ -260,6 +273,7 @@ class SafeAlternativesResponse(BaseModel):
 # Report Schemas
 class PatientDDIReportRequest(BaseModel):
     """Request a full DDI report for a patient."""
+
     patient_id: str
     include_alternatives: bool = True
     include_monitoring_plan: bool = True
@@ -267,24 +281,25 @@ class PatientDDIReportRequest(BaseModel):
 
 class PatientDDIReportResponse(BaseModel):
     """Full DDI report for a patient."""
+
     patient: DiabeticPatientResponse
     report_generated_at: datetime
-    
+
     # Current medications
     current_medications: List[MedicationResponse]
-    
+
     # Risk summary
     medication_assessments: List[DrugRiskCheckResponse]
-    
+
     # Alerts
     fatal_risks: List[Dict]
     contraindicated_drugs: List[Dict]
     high_risk_drugs: List[Dict]
-    
+
     # Recommendations
     recommended_alternatives: Dict[str, List[SafeAlternativeResponse]]
     monitoring_plan: List[str]
-    
+
     # Summary
     overall_safety_score: float
     action_required: bool
@@ -318,4 +333,3 @@ class RulesPreviewRequest(BaseModel):
 
 class RulesPreviewResponse(BaseModel):
     assessments: List[DrugRiskCheckResponse]
-

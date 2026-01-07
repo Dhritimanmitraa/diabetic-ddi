@@ -15,6 +15,7 @@ Run:
     cd backend
     python -m scripts.map_twosides_severity
 """
+
 import asyncio
 import logging
 import json
@@ -35,14 +36,34 @@ def classify_effect(effect: str) -> str:
     e = effect.lower()
     fatal_kw = ["death", "fatal", "cardiac arrest", "anaphylaxis"]
     major_kw = [
-        "hospital", "hospitalization", "shock", "hemorrhage", "bleeding",
-        "lactic acidosis", "renal failure", "kidney failure", "arrhythmia",
-        "seizure", "stroke", "torsades", "ventricular", "mi", "myocardial infarction",
-        "gi bleed", "internal bleed"
+        "hospital",
+        "hospitalization",
+        "shock",
+        "hemorrhage",
+        "bleeding",
+        "lactic acidosis",
+        "renal failure",
+        "kidney failure",
+        "arrhythmia",
+        "seizure",
+        "stroke",
+        "torsades",
+        "ventricular",
+        "mi",
+        "myocardial infarction",
+        "gi bleed",
+        "internal bleed",
     ]
     moderate_kw = [
-        "syncope", "hypotension", "hyperkalemia", "hypoglycemia",
-        "pancreatitis", "severe nausea", "severe vomiting", "ak i", "aki"
+        "syncope",
+        "hypotension",
+        "hyperkalemia",
+        "hypoglycemia",
+        "pancreatitis",
+        "severe nausea",
+        "severe vomiting",
+        "ak i",
+        "aki",
     ]
     if any(k in e for k in fatal_kw):
         return "fatal"
@@ -58,24 +79,26 @@ async def map_severity(session: AsyncSession, batch: int = 5000):
     last_id = 0
     updated = 0
     total_processed = 0
-    
+
     while True:
         # Fetch rows missing severity using cursor-based pagination
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT id, effect, raw_row 
                 FROM twosides_interactions 
                 WHERE id > :last_id AND severity IS NULL 
                 ORDER BY id 
                 LIMIT :batch
-            """),
-            {"last_id": last_id, "batch": batch}
+            """
+            ),
+            {"last_id": last_id, "batch": batch},
         )
         rows = result.fetchall()
-        
+
         if not rows:
             break
-        
+
         # Prepare batch updates
         updates = []
         for row in rows:
@@ -90,14 +113,14 @@ async def map_severity(session: AsyncSession, batch: int = 5000):
             severity = classify_effect(effect)
             updates.append((severity, row_id))
             last_id = row_id  # Track last processed ID
-        
+
         # Batch update - split into sub-batches to avoid huge IN clauses
         if updates:
             # Process in sub-batches of 500 to avoid SQLite query size limits
             sub_batch_size = 500
             for i in range(0, len(updates), sub_batch_size):
-                sub_batch = updates[i:i + sub_batch_size]
-                
+                sub_batch = updates[i : i + sub_batch_size]
+
                 # Build CASE statement for this sub-batch
                 case_whens = []
                 ids_list = []
@@ -105,10 +128,10 @@ async def map_severity(session: AsyncSession, batch: int = 5000):
                     sev_escaped = sev.replace("'", "''")
                     case_whens.append(f"WHEN {rid} THEN '{sev_escaped}'")
                     ids_list.append(str(rid))
-                
+
                 case_sql = " ".join(case_whens)
                 ids_sql = ",".join(ids_list)
-                
+
                 # Update this sub-batch
                 batch_update_sql = f"""
                     UPDATE twosides_interactions 
@@ -118,15 +141,15 @@ async def map_severity(session: AsyncSession, batch: int = 5000):
                     WHERE id IN ({ids_sql})
                 """
                 await session.execute(text(batch_update_sql))
-            
+
             await session.commit()
             updated += len(updates)
             total_processed += len(updates)
-            
+
             # Progress indicator
             if total_processed % 50000 == 0:
                 print(f"Processed {total_processed} rows, last_id={last_id}...")
-    
+
     return updated
 
 
@@ -139,15 +162,19 @@ def ensure_severity_column(db_path: str):
     if "severity" not in cols:
         cur.execute("ALTER TABLE twosides_interactions ADD COLUMN severity TEXT")
         conn.commit()
-    
+
     # Create index on severity for faster WHERE severity IS NULL queries
-    cur.execute("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_twosides_severity'")
+    cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_twosides_severity'"
+    )
     if not cur.fetchone():
         print("Creating index on severity column...")
-        cur.execute("CREATE INDEX idx_twosides_severity ON twosides_interactions(severity)")
+        cur.execute(
+            "CREATE INDEX idx_twosides_severity ON twosides_interactions(severity)"
+        )
         conn.commit()
         print("Index created.")
-    
+
     conn.close()
 
 
@@ -163,4 +190,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

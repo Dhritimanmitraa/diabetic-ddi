@@ -38,6 +38,10 @@ async def test_rule_override_on_low_egfr_metformin():
         data = resp.json()
         assert data["risk_level"] == "contraindicated"
         assert data["ml_decision_source"] in ("rule_override", "rules_only")
-        assert data["ml_risk_level"] == "safe"  # model can differ but override should stand
 
-
+        # If ML model is loaded and predicted safe, check that override happened
+        if data["ml_decision_source"] == "rule_override":
+            assert data["ml_risk_level"] == "safe"
+        # If ML model is not loaded, ml_risk_level should be None
+        elif data["ml_decision_source"] == "rules_only":
+            assert data.get("ml_risk_level") is None

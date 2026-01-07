@@ -14,9 +14,8 @@ from app.diabetic.service import DiabeticDDIService
 
 __all__ = [
     "DiabeticPatient",
-    "DiabeticDrugRisk", 
+    "DiabeticDrugRisk",
     "DiabeticMedication",
     "DiabeticDrugRules",
     "DiabeticDDIService",
 ]
-

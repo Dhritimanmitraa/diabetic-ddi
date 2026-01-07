@@ -59,6 +59,7 @@ Output ONLY valid JSON (no markdown, no extra text):
 @dataclass
 class LLMDrugRiskResult:
     """Result from LLM drug risk analysis."""
+
     risk_level: str
     risk_score: float
     reasoning: str
@@ -66,7 +67,7 @@ class LLMDrugRiskResult:
     monitoring_needed: List[str]
     model_used: str
     was_fallback: bool
-    
+
     def to_dict(self) -> Dict:
         return {
             "risk_level": self.risk_level,
@@ -82,23 +83,24 @@ class LLMDrugRiskResult:
 class LLMDrugChecker:
     """
     LLM-based drug risk checker running in parallel with ML model.
-    
+
     Uses Ollama for local inference. Designed to work alongside ML predictions
     to provide complementary reasoning and context-aware analysis.
     """
-    
+
     def __init__(self, model: str = DEFAULT_MODEL, host: str = DEFAULT_HOST):
         self.model = model
         self.host = host
         self._client = None
         self._available = None
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
-        
+
     async def _get_client(self):
         """Lazy initialization of Ollama client."""
         if self._client is None:
             try:
                 import ollama
+
                 self._client = ollama.AsyncClient(host=self.host)
                 self._available = True
             except ImportError:
@@ -108,7 +110,7 @@ class LLMDrugChecker:
                 logger.error(f"Failed to initialize Ollama client: {e}")
                 self._available = False
         return self._client
-    
+
     async def is_available(self) -> bool:
         """Check if Ollama is available and model is ready."""
         try:
@@ -121,26 +123,26 @@ class LLMDrugChecker:
         except Exception as e:
             logger.debug(f"Ollama not available: {e}")
             return False
-    
+
     async def check_drug_risk(
         self,
         drug_name: str,
         patient_context: Dict,
-        current_medications: Optional[List[str]] = None
+        current_medications: Optional[List[str]] = None,
     ) -> LLMDrugRiskResult:
         """
         Check drug risk using LLM analysis.
-        
+
         Args:
             drug_name: Name of the drug to check
             patient_context: Patient clinical profile (age, eGFR, complications, etc.)
             current_medications: List of current medications
-            
+
         Returns:
             LLMDrugRiskResult with risk assessment
         """
         prompt = self._build_prompt(drug_name, patient_context, current_medications)
-        
+
         # Use semaphore to limit concurrent requests
         async with self._semaphore:
             try:
@@ -151,42 +153,42 @@ class LLMDrugChecker:
                             model=self.model,
                             messages=[
                                 {"role": "system", "content": SYSTEM_PROMPT},
-                                {"role": "user", "content": prompt}
+                                {"role": "user", "content": prompt},
                             ],
                             options={
                                 "temperature": 0.2,  # Slightly higher for better reasoning with 8B model
                                 "top_p": 0.9,  # More diverse reasoning
                                 "num_predict": 400,  # Allow more detailed analysis with larger model
-                            }
+                            },
                         ),
-                        timeout=TIMEOUT_SECONDS
+                        timeout=TIMEOUT_SECONDS,
                     )
-                    
+
                     text = response["message"]["content"].strip()
                     return self._parse_response(text)
-                    
+
             except asyncio.TimeoutError:
                 logger.warning(f"LLM drug check timed out for {drug_name}")
             except Exception as e:
                 logger.warning(f"LLM drug check failed for {drug_name}: {e}")
-        
+
         # Fallback to conservative assessment
         return self._generate_fallback(drug_name, patient_context)
-    
+
     async def check_multiple_drugs(
         self,
         drug_names: List[str],
         patient_context: Dict,
-        current_medications: Optional[List[str]] = None
+        current_medications: Optional[List[str]] = None,
     ) -> Dict[str, LLMDrugRiskResult]:
         """
         Check multiple drugs in parallel (with concurrency limit).
-        
+
         Args:
             drug_names: List of drug names to check
             patient_context: Patient clinical profile
             current_medications: List of current medications
-            
+
         Returns:
             Dictionary mapping drug names to LLMDrugRiskResult
         """
@@ -194,9 +196,9 @@ class LLMDrugChecker:
             self.check_drug_risk(drug, patient_context, current_medications)
             for drug in drug_names
         ]
-        
+
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         drug_results = {}
         for drug, result in zip(drug_names, results):
             if isinstance(result, Exception):
@@ -204,48 +206,48 @@ class LLMDrugChecker:
                 drug_results[drug] = self._generate_fallback(drug, patient_context)
             else:
                 drug_results[drug] = result
-        
+
         return drug_results
-    
+
     def _build_prompt(
         self,
         drug_name: str,
         patient_context: Dict,
-        current_medications: Optional[List[str]] = None
+        current_medications: Optional[List[str]] = None,
     ) -> str:
         """Build the prompt for LLM analysis (optimized for speed)."""
         # Build compact patient profile
         profile_parts = []
-        if patient_context.get('age'):
+        if patient_context.get("age"):
             profile_parts.append(f"Age:{patient_context['age']}")
-        if patient_context.get('diabetes_type'):
+        if patient_context.get("diabetes_type"):
             profile_parts.append(f"DM:{patient_context['diabetes_type']}")
-        if patient_context.get('egfr'):
+        if patient_context.get("egfr"):
             profile_parts.append(f"eGFR:{patient_context['egfr']}")
-        if patient_context.get('hba1c'):
+        if patient_context.get("hba1c"):
             profile_parts.append(f"HbA1c:{patient_context['hba1c']}%")
-        
+
         complications = []
-        if patient_context.get('has_nephropathy'):
+        if patient_context.get("has_nephropathy"):
             complications.append("Nephropathy")
-        if patient_context.get('has_cardiovascular'):
+        if patient_context.get("has_cardiovascular"):
             complications.append("CVD")
-        if patient_context.get('has_neuropathy'):
+        if patient_context.get("has_neuropathy"):
             complications.append("Neuropathy")
-        if patient_context.get('has_hypertension'):
+        if patient_context.get("has_hypertension"):
             complications.append("HTN")
-        
+
         prompt = f"Drug: {drug_name}\nPatient: {', '.join(profile_parts)}"
         if complications:
             prompt += f" | Complications: {', '.join(complications)}"
         if current_medications:
-            meds_str = ', '.join(current_medications[:5])  # Limit to 5 meds
+            meds_str = ", ".join(current_medications[:5])  # Limit to 5 meds
             prompt += f"\nCurrent meds: {meds_str}"
-        
+
         prompt += "\n\nProvide JSON risk assessment only."
-        
+
         return prompt
-    
+
     def _parse_response(self, text: str) -> LLMDrugRiskResult:
         """Parse LLM response into structured result."""
         try:
@@ -259,10 +261,10 @@ class LLMDrugChecker:
                 start = text.find("```") + 3
                 end = text.find("```", start)
                 text = text[start:end].strip()
-            
+
             # Parse JSON
             data = json.loads(text)
-            
+
             return LLMDrugRiskResult(
                 risk_level=data.get("risk_level", "caution").lower(),
                 risk_score=float(data.get("risk_score", 50)),
@@ -270,7 +272,7 @@ class LLMDrugChecker:
                 key_concerns=data.get("key_concerns", []),
                 monitoring_needed=data.get("monitoring_needed", []),
                 model_used=self.model,
-                was_fallback=False
+                was_fallback=False,
             )
         except (json.JSONDecodeError, KeyError, ValueError) as e:
             logger.warning(f"Failed to parse LLM response: {e}, text: {text[:200]}")
@@ -282,7 +284,7 @@ class LLMDrugChecker:
                 risk_level = "high_risk"
             elif "safe" in text.lower():
                 risk_level = "safe"
-            
+
             return LLMDrugRiskResult(
                 risk_level=risk_level,
                 risk_score=50.0,
@@ -290,13 +292,11 @@ class LLMDrugChecker:
                 key_concerns=[],
                 monitoring_needed=[],
                 model_used=self.model,
-                was_fallback=True
+                was_fallback=True,
             )
-    
+
     def _generate_fallback(
-        self,
-        drug_name: str,
-        patient_context: Dict
+        self, drug_name: str, patient_context: Dict
     ) -> LLMDrugRiskResult:
         """Generate conservative fallback assessment."""
         egfr = patient_context.get("egfr")
@@ -312,7 +312,7 @@ class LLMDrugChecker:
             risk_level = "caution"
             risk_score = 40.0
             reasoning = f"Conservative assessment: {drug_name} appears generally safe but requires standard monitoring"
-        
+
         return LLMDrugRiskResult(
             risk_level=risk_level,
             risk_score=risk_score,
@@ -320,7 +320,7 @@ class LLMDrugChecker:
             key_concerns=["Standard diabetic patient monitoring recommended"],
             monitoring_needed=["Monitor blood glucose", "Monitor kidney function"],
             model_used="fallback",
-            was_fallback=True
+            was_fallback=True,
         )
 
 
@@ -347,11 +347,10 @@ async def check_ollama_drug_checker_status() -> Dict:
     """Check Ollama availability for drug checking."""
     checker = get_llm_checker()
     available = await checker.is_available()
-    
+
     return {
         "ollama_available": available,
         "model": checker.model,
         "host": checker.host,
         "fallback_enabled": True,
     }
-
