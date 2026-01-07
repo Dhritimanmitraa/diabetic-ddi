@@ -5,6 +5,7 @@ Run with:
     cd backend
     python -m scripts.rq_worker
 """
+
 import os
 from rq import Worker, Queue, Connection
 import redis
@@ -23,4 +24,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -289,7 +289,7 @@ def save_splits(df: pd.DataFrame):
     )
     train = df.loc[train_indices]
     temp = df.loc[temp_indices]
-    
+
     temp_strat = temp["label"] if temp["label"].nunique() > 1 else None  # type: ignore
     val_indices, test_indices = train_test_split(
         temp.index, test_size=0.5, random_state=42, stratify=temp_strat

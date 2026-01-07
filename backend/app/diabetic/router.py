@@ -3,6 +3,7 @@ Diabetic DDI API Router.
 
 Provides endpoints for managing diabetic patient profiles and drug risk assessments.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -15,13 +16,21 @@ from app.database import get_db
 from app.diabetic.service import DiabeticDDIService, create_diabetic_service
 from app.diabetic.ml_predictor import get_diabetic_predictor
 from app.diabetic.schemas import (
-    DiabeticPatientCreate, DiabeticPatientUpdate, DiabeticPatientResponse,
-    MedicationCreate, MedicationResponse,
-    DrugRiskCheckRequest, DrugRiskCheckResponse,
-    MedicationListCheckRequest, MedicationListCheckResponse,
-    SafeAlternativesRequest, SafeAlternativesResponse,
-    PatientDDIReportRequest, PatientDDIReportResponse,
-    RulesPreviewRequest, RulesPreviewResponse,
+    DiabeticPatientCreate,
+    DiabeticPatientUpdate,
+    DiabeticPatientResponse,
+    MedicationCreate,
+    MedicationResponse,
+    DrugRiskCheckRequest,
+    DrugRiskCheckResponse,
+    MedicationListCheckRequest,
+    MedicationListCheckResponse,
+    SafeAlternativesRequest,
+    SafeAlternativesResponse,
+    PatientDDIReportRequest,
+    PatientDDIReportResponse,
+    RulesPreviewRequest,
+    RulesPreviewResponse,
 )
 from app.schemas import DrugResponse
 from app.models import Drug, TwosidesInteraction, OffsidesEffect
@@ -38,14 +47,18 @@ async def get_service(db: AsyncSession = Depends(get_db)) -> DiabeticDDIService:
 
 # ==================== Patient Endpoints ====================
 
-@router.post("/patients", response_model=DiabeticPatientResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/patients",
+    response_model=DiabeticPatientResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_patient(
-    data: DiabeticPatientCreate,
-    service: DiabeticDDIService = Depends(get_service)
+    data: DiabeticPatientCreate, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Create a new diabetic patient profile.
-    
+
     Include diabetes type, labs (HbA1c, eGFR, etc.), and complications
     for accurate drug risk assessment.
     """
@@ -60,7 +73,7 @@ async def create_patient(
 async def list_patients(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
 ):
     """List all diabetic patients with pagination."""
     patients, total = await service.list_patients(limit, offset)
@@ -69,8 +82,7 @@ async def list_patients(
 
 @router.get("/patients/{patient_id}", response_model=DiabeticPatientResponse)
 async def get_patient(
-    patient_id: str,
-    service: DiabeticDDIService = Depends(get_service)
+    patient_id: str, service: DiabeticDDIService = Depends(get_service)
 ):
     """Get a specific patient profile by ID."""
     patient = await service.get_patient(patient_id)
@@ -83,11 +95,11 @@ async def get_patient(
 async def update_patient(
     patient_id: str,
     data: DiabeticPatientUpdate,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
 ):
     """
     Update patient profile.
-    
+
     Update labs, complications, or other patient data.
     This will affect future drug risk assessments.
     """
@@ -99,8 +111,7 @@ async def update_patient(
 
 @router.delete("/patients/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_patient(
-    patient_id: str,
-    service: DiabeticDDIService = Depends(get_service)
+    patient_id: str, service: DiabeticDDIService = Depends(get_service)
 ):
     """Delete a patient and all associated data."""
     deleted = await service.delete_patient(patient_id)
@@ -110,11 +121,16 @@ async def delete_patient(
 
 # ==================== Medication Endpoints ====================
 
-@router.post("/patients/{patient_id}/medications", response_model=MedicationResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/patients/{patient_id}/medications",
+    response_model=MedicationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_medication(
     patient_id: str,
     data: MedicationCreate,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
 ):
     """Add a medication to a patient's profile."""
     medication = await service.add_medication(patient_id, data)
@@ -123,22 +139,27 @@ async def add_medication(
     return MedicationResponse.model_validate(medication)
 
 
-@router.get("/patients/{patient_id}/medications", response_model=List[MedicationResponse])
+@router.get(
+    "/patients/{patient_id}/medications", response_model=List[MedicationResponse]
+)
 async def get_medications(
     patient_id: str,
     active_only: bool = Query(True),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
 ):
     """Get all medications for a patient."""
     medications = await service.get_patient_medications(patient_id, active_only)
     return [MedicationResponse.model_validate(m) for m in medications]
 
 
-@router.delete("/patients/{patient_id}/medications/{medication_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/patients/{patient_id}/medications/{medication_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 async def remove_medication(
     patient_id: str,
     medication_id: int,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
 ):
     """Remove a medication from a patient's profile."""
     deleted = await service.remove_medication(patient_id, medication_id)
@@ -148,60 +169,63 @@ async def remove_medication(
 
 # ==================== Risk Assessment Endpoints ====================
 
+
 @router.post("/risk-check", response_model=DrugRiskCheckResponse)
 async def check_drug_risk(
-    data: DrugRiskCheckRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    data: DrugRiskCheckRequest, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Check the risk of a drug for a specific diabetic patient.
-    
+
     Returns IMMEDIATELY with rules + ML results (fast).
     LLM analysis is fetched separately via /risk-check/llm endpoint.
-    
+
     Takes into account:
     - Patient's diabetes type and complications
     - Lab values (eGFR, potassium, liver enzymes)
     - Current medications (for interactions)
     - Drug-specific risks in diabetics
-    
+
     Returns risk level (safe/caution/high_risk/contraindicated/fatal),
     risk factors, recommendations, and safer alternatives.
     """
     result = await service.check_drug_risk(data.patient_id, data.drug_name)
     if not result:
-        raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Patient {data.patient_id} not found"
+        )
     return result
 
 
 @router.post("/risk-check/llm", response_model=Dict)
 async def get_llm_analysis(
-    data: DrugRiskCheckRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    data: DrugRiskCheckRequest, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Get LLM analysis for a drug risk check (called separately after initial response).
-    
+
     This endpoint is called in the background after the main risk-check endpoint
     returns, allowing the UI to show results immediately and update when LLM is ready.
     """
     patient = await service.get_patient(data.patient_id)
     if not patient:
-        raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
-    
+        raise HTTPException(
+            status_code=404, detail=f"Patient {data.patient_id} not found"
+        )
+
     # Get current medications
     medications = await service.get_patient_medications(data.patient_id)
     current_meds = [m.drug_name for m in medications]
-    
+
     # Build patient context
     patient_context = service._build_patient_context(patient)
-    
+
     # Get LLM analysis
     try:
         llm_result = await service.llm_checker.check_drug_risk(
             data.drug_name, patient_context, current_meds
         )
-        
+
         if llm_result:
             return {
                 "llm_analysis": {
@@ -223,48 +247,50 @@ async def get_llm_analysis(
 
 @router.post("/medication-list-check", response_model=MedicationListCheckResponse)
 async def check_medication_list(
-    data: MedicationListCheckRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    data: MedicationListCheckRequest, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Check all medications in a patient's regimen.
-    
+
     If medications list is not provided, uses the patient's current medications.
     Returns risk assessment for each drug plus overall recommendations.
     """
     result = await service.check_all_medications(data.patient_id, data.medications)
     if not result:
-        raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Patient {data.patient_id} not found"
+        )
     return result
 
 
 @router.post("/alternatives", response_model=SafeAlternativesResponse)
 async def find_alternatives(
-    data: SafeAlternativesRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    data: SafeAlternativesRequest, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Find safer alternatives for a drug.
-    
+
     Suggests drugs from the same class that are safer for this specific
     diabetic patient based on their labs and complications.
     """
     result = await service.find_safe_alternatives(data.patient_id, data.drug_name)
     if not result:
-        raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Patient {data.patient_id} not found"
+        )
     return result
 
 
 # ==================== Report Endpoints ====================
 
+
 @router.post("/report", response_model=PatientDDIReportResponse)
 async def generate_report(
-    data: PatientDDIReportRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    data: PatientDDIReportRequest, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Generate a comprehensive DDI report for a diabetic patient.
-    
+
     Includes:
     - Patient profile summary
     - All current medications with risk assessments
@@ -277,7 +303,9 @@ async def generate_report(
         data.patient_id, data.include_alternatives
     )
     if not result:
-        raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Patient {data.patient_id} not found"
+        )
     return result
 
 
@@ -285,7 +313,7 @@ async def generate_report(
 async def get_report(
     patient_id: str,
     include_alternatives: bool = Query(True),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
 ):
     """Get a DDI report for a patient (GET variant)."""
     result = await service.generate_patient_report(patient_id, include_alternatives)
@@ -296,15 +324,16 @@ async def get_report(
 
 # ==================== Quick Check Endpoints ====================
 
-@router.get("/quick-check/{patient_id}/{drug_name}", response_model=DrugRiskCheckResponse)
+
+@router.get(
+    "/quick-check/{patient_id}/{drug_name}", response_model=DrugRiskCheckResponse
+)
 async def quick_drug_check(
-    patient_id: str,
-    drug_name: str,
-    service: DiabeticDDIService = Depends(get_service)
+    patient_id: str, drug_name: str, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Quick drug risk check (GET endpoint).
-    
+
     Convenient endpoint for checking a single drug without POST body.
     """
     result = await service.check_drug_risk(patient_id, drug_name)
@@ -315,22 +344,28 @@ async def quick_drug_check(
 
 # ==================== Info Endpoints ====================
 
+
 @router.get("/rules/info")
 async def get_rules_info():
     """Get information about the rules engine."""
     from app.diabetic.rules import DiabeticDrugRules
+
     rules = DiabeticDrugRules()
-    
+
     return {
         "version": "1.0.0",
-        "hypoglycemia_risk_drugs": sum(len(v) for v in rules.HYPOGLYCEMIA_RISK_DRUGS.values()),
-        "hyperglycemia_risk_drugs": sum(len(v) for v in rules.HYPERGLYCEMIA_RISK_DRUGS.values()),
+        "hypoglycemia_risk_drugs": sum(
+            len(v) for v in rules.HYPOGLYCEMIA_RISK_DRUGS.values()
+        ),
+        "hyperglycemia_risk_drugs": sum(
+            len(v) for v in rules.HYPERGLYCEMIA_RISK_DRUGS.values()
+        ),
         "nephrotoxic_drugs": len(rules.NEPHROTOXIC_DRUGS),
         "egfr_contraindications": list(rules.EGFR_CONTRAINDICATIONS.keys()),
         "hyperkalemia_risk_drugs": len(rules.HYPERKALEMIA_RISK_DRUGS),
         "cardioprotective_drugs": len(rules.CARDIOPROTECTIVE_IN_DIABETES),
         "masks_hypoglycemia": rules.MASK_HYPOGLYCEMIA,
-        "description": "Diabetic-specific drug safety rules based on ADA/AACE guidelines"
+        "description": "Diabetic-specific drug safety rules based on ADA/AACE guidelines",
     }
 
 
@@ -349,8 +384,9 @@ async def get_diabetic_model_info():
 async def get_drug_classes():
     """Get categorized drug lists for diabetics."""
     from app.diabetic.rules import DiabeticDrugRules
+
     rules = DiabeticDrugRules()
-    
+
     return {
         "hypoglycemia_risk": rules.HYPOGLYCEMIA_RISK_DRUGS,
         "hyperglycemia_risk": rules.HYPERGLYCEMIA_RISK_DRUGS,
@@ -364,6 +400,7 @@ async def get_drug_classes():
 
 
 # ==================== TWOSIDES Stats ====================
+
 
 @router.get("/twosides/count")
 async def twosides_count(db: AsyncSession = Depends(get_db)):
@@ -383,12 +420,15 @@ async def offsides_count(db: AsyncSession = Depends(get_db)):
 
 # ==================== Drug Search (diabetic-focused) ====================
 
+
 @router.get("/drugs/search", response_model=List[DrugResponse])
 async def search_diabetic_drugs(
     query: str,
     limit: int = Query(10, ge=1, le=50),
-    exclude_topical: bool = Query(True, description="Exclude obvious topicals/ophthalmic"),
-    db: AsyncSession = Depends(get_db)
+    exclude_topical: bool = Query(
+        True, description="Exclude obvious topicals/ophthalmic"
+    ),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Search drugs for diabetic workflow, backed by the local DB (real data fetched from APIs).
@@ -430,7 +470,9 @@ async def search_diabetic_drugs(
         if d.id in seen:
             continue
         seen.add(d.id)
-        if exclude_topical and any(k in (d.name or "").lower() for k in topical_keywords):
+        if exclude_topical and any(
+            k in (d.name or "").lower() for k in topical_keywords
+        ):
             continue
         filtered.append(d)
 
@@ -442,10 +484,10 @@ async def search_diabetic_drugs(
 
 # ==================== Rules Preview / Simulation ====================
 
+
 @router.post("/rules/preview", response_model=RulesPreviewResponse)
 async def preview_rules(
-    data: RulesPreviewRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    data: RulesPreviewRequest, service: DiabeticDDIService = Depends(get_service)
 ):
     """
     Simulate rule hits for an ad-hoc patient context and a list of drugs.
@@ -479,4 +521,3 @@ async def preview_rules(
         assessments.append(service._assessment_to_response(ra))
 
     return RulesPreviewResponse(assessments=assessments)
-

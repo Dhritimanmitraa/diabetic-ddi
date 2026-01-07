@@ -1,6 +1,7 @@
 """
 Background task helpers using RQ.
 """
+
 import os
 import asyncio
 from typing import Optional
@@ -38,13 +39,19 @@ def get_job(job_id: str) -> Optional[Job]:
 
 def train_models_job(n_trials: int, run_comparison: bool):
     """Run model training inside RQ (sync wrapper)."""
+
     async def _run():
         async with async_session() as db:
-            await train_from_database(db_session=db, model_dir="./models", n_trials=n_trials, run_comparison=run_comparison)
+            await train_from_database(
+                db_session=db,
+                model_dir="./models",
+                n_trials=n_trials,
+                run_comparison=run_comparison,
+            )
+
     asyncio.run(_run())
 
 
 def fetch_data_job(drugs: int, interactions: int):
     """Run data fetch inside RQ (sync wrapper)."""
     asyncio.run(fetch_and_load(target_drugs=drugs, target_interactions=interactions))
-

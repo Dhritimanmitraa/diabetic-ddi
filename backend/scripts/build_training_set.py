@@ -8,6 +8,7 @@ Assembles drug pairs with severity labels for ML training:
 4. Splits into train/val/test sets
 5. Persists labeled CSV for reproducibility
 """
+
 import os
 import sys
 import asyncio
@@ -31,12 +32,12 @@ from app.models import Drug
 
 # Severity label mapping to numeric
 SEVERITY_TO_LABEL = {
-    'fatal': 4,
-    'contraindicated': 3,
-    'major': 2,
-    'moderate': 1,
-    'minor': 0,
-    None: -1  # Unknown
+    "fatal": 4,
+    "contraindicated": 3,
+    "major": 2,
+    "moderate": 1,
+    "minor": 0,
+    None: -1,  # Unknown
 }
 
 LABEL_TO_SEVERITY = {v: k for k, v in SEVERITY_TO_LABEL.items()}
@@ -48,31 +49,31 @@ async def load_drugs(db: AsyncSession) -> dict:
     """Load all drugs and create name lookup."""
     result = await db.execute(select(Drug))
     drugs = result.scalars().all()
-    
+
     # Create multiple lookup keys (name, generic_name, lowercased)
     lookup = {}
     drug_data = {}
-    
+
     for d in drugs:
         drug_dict = {
-            'id': d.id,
-            'name': d.name,
-            'generic_name': d.generic_name,
-            'drug_class': d.drug_class,
-            'description': d.description,
-            'mechanism': d.mechanism,
-            'indication': d.indication,
-            'molecular_weight': d.molecular_weight,
-            'is_approved': d.is_approved,
+            "id": d.id,
+            "name": d.name,
+            "generic_name": d.generic_name,
+            "drug_class": d.drug_class,
+            "description": d.description,
+            "mechanism": d.mechanism,
+            "indication": d.indication,
+            "molecular_weight": d.molecular_weight,
+            "is_approved": d.is_approved,
         }
         drug_data[d.id] = drug_dict
-        
+
         # Multiple lookup keys
         if d.name:
             lookup[d.name.lower().strip()] = d.id
         if d.generic_name:
             lookup[d.generic_name.lower().strip()] = d.id
-    
+
     return lookup, drug_data
 
 
@@ -80,24 +81,24 @@ def normalize_drug_name(name: str, lookup: dict) -> int:
     """Try to match drug name to drugs table."""
     if not name:
         return None
-    
+
     name_lower = name.lower().strip()
-    
+
     # Direct match
     if name_lower in lookup:
         return lookup[name_lower]
-    
+
     # Try removing common suffixes
-    for suffix in [' hydrochloride', ' hcl', ' sodium', ' potassium', ' sulfate']:
-        cleaned = name_lower.replace(suffix, '').strip()
+    for suffix in [" hydrochloride", " hcl", " sodium", " potassium", " sulfate"]:
+        cleaned = name_lower.replace(suffix, "").strip()
         if cleaned in lookup:
             return lookup[cleaned]
-    
+
     # Try first word only
-    first_word = name_lower.split()[0] if name_lower else ''
+    first_word = name_lower.split()[0] if name_lower else ""
     if first_word in lookup:
         return lookup[first_word]
-    
+
     return None
 
 
@@ -152,12 +153,30 @@ def iter_twosides_rows(
 
 def parse_args():
     p = argparse.ArgumentParser(description="Build labeled training set from TWOSIDES")
-    p.add_argument("--max-positives", type=int, default=2_000_000, help="Cap TWOSIDES positives (0 = no cap)")
+    p.add_argument(
+        "--max-positives",
+        type=int,
+        default=2_000_000,
+        help="Cap TWOSIDES positives (0 = no cap)",
+    )
     p.add_argument("--batch-size", type=int, default=50000, help="DB fetch batch size")
-    p.add_argument("--negatives", type=int, default=50000, help="Number of negative samples to generate")
+    p.add_argument(
+        "--negatives",
+        type=int,
+        default=50000,
+        help="Number of negative samples to generate",
+    )
     p.add_argument("--seed", type=int, default=42, help="Random seed")
-    p.add_argument("--out-dir", type=str, default=str(Path(__file__).parent.parent / "data" / "training"))
-    p.add_argument("--write-full", action="store_true", help="Also write full_dataset.csv (can be large)")
+    p.add_argument(
+        "--out-dir",
+        type=str,
+        default=str(Path(__file__).parent.parent / "data" / "training"),
+    )
+    p.add_argument(
+        "--write-full",
+        action="store_true",
+        help="Also write full_dataset.csv (can be large)",
+    )
     return p.parse_args()
 
 
@@ -167,12 +186,12 @@ async def build_training_set():
     print("=" * 60)
     print("Building Training Set from TWOSIDES")
     print("=" * 60)
-    
+
     await init_db()
 
     # reduce noisy SQL logs
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
-    
+
     async with async_session() as db:
         # Load drugs
         print("\n1. Loading drugs from database...")
@@ -192,9 +211,21 @@ async def build_training_set():
         full_path = out_dir / "full_dataset.csv"
 
         fieldnames = [
-            "drug1_name","drug2_name","drug1_id","drug2_id","drug1_matched","drug2_matched",
-            "effect","severity","severity_label","has_interaction","source",
-            "drug1_class","drug1_mechanism","drug2_class","drug2_mechanism",
+            "drug1_name",
+            "drug2_name",
+            "drug1_id",
+            "drug2_id",
+            "drug1_matched",
+            "drug2_matched",
+            "effect",
+            "severity",
+            "severity_label",
+            "has_interaction",
+            "source",
+            "drug1_class",
+            "drug1_mechanism",
+            "drug2_class",
+            "drug2_mechanism",
         ]
 
         rng = np.random.default_rng(args.seed)
@@ -239,7 +270,9 @@ async def build_training_set():
             full_writer.writeheader()
 
         try:
-            for rows, total_loaded in iter_twosides_rows(conn, args.batch_size, max_rows):
+            for rows, total_loaded in iter_twosides_rows(
+                conn, args.batch_size, max_rows
+            ):
                 for _id, d1n, d2n, effect, severity, source in rows:
                     sev = severity or "minor"
                     severity_counts[sev] = severity_counts.get(sev, 0) + 1
@@ -264,10 +297,26 @@ async def build_training_set():
                         "severity_label": SEVERITY_TO_LABEL.get(sev, -1),
                         "has_interaction": 1,
                         "source": source or "twosides",
-                        "drug1_class": drug_data.get(drug1_id, {}).get("drug_class") if drug1_id else None,
-                        "drug1_mechanism": drug_data.get(drug1_id, {}).get("mechanism") if drug1_id else None,
-                        "drug2_class": drug_data.get(drug2_id, {}).get("drug_class") if drug2_id else None,
-                        "drug2_mechanism": drug_data.get(drug2_id, {}).get("mechanism") if drug2_id else None,
+                        "drug1_class": (
+                            drug_data.get(drug1_id, {}).get("drug_class")
+                            if drug1_id
+                            else None
+                        ),
+                        "drug1_mechanism": (
+                            drug_data.get(drug1_id, {}).get("mechanism")
+                            if drug1_id
+                            else None
+                        ),
+                        "drug2_class": (
+                            drug_data.get(drug2_id, {}).get("drug_class")
+                            if drug2_id
+                            else None
+                        ),
+                        "drug2_mechanism": (
+                            drug_data.get(drug2_id, {}).get("mechanism")
+                            if drug2_id
+                            else None
+                        ),
                     }
 
                     s = pick_split()
@@ -312,10 +361,18 @@ async def build_training_set():
                     "severity_label": -1,
                     "has_interaction": 0,
                     "source": "negative_sample",
-                    "drug1_class": drug_data.get(d1_id, {}).get("drug_class") if d1_id else None,
-                    "drug1_mechanism": drug_data.get(d1_id, {}).get("mechanism") if d1_id else None,
-                    "drug2_class": drug_data.get(d2_id, {}).get("drug_class") if d2_id else None,
-                    "drug2_mechanism": drug_data.get(d2_id, {}).get("mechanism") if d2_id else None,
+                    "drug1_class": (
+                        drug_data.get(d1_id, {}).get("drug_class") if d1_id else None
+                    ),
+                    "drug1_mechanism": (
+                        drug_data.get(d1_id, {}).get("mechanism") if d1_id else None
+                    ),
+                    "drug2_class": (
+                        drug_data.get(d2_id, {}).get("drug_class") if d2_id else None
+                    ),
+                    "drug2_mechanism": (
+                        drug_data.get(d2_id, {}).get("mechanism") if d2_id else None
+                    ),
                 }
                 s = pick_split()
                 writers[s].writerow(rec)
@@ -324,9 +381,13 @@ async def build_training_set():
                     full_writer.writerow(rec)
 
             if sum(neg_counts.values()) < n_negative:
-                print(f"   Warning: generated only {sum(neg_counts.values()):,} negatives (attempts={attempts:,})")
+                print(
+                    f"   Warning: generated only {sum(neg_counts.values()):,} negatives (attempts={attempts:,})"
+                )
             else:
-                print(f"   Generated {sum(neg_counts.values()):,} negatives (attempts={attempts:,})")
+                print(
+                    f"   Generated {sum(neg_counts.values()):,} negatives (attempts={attempts:,})"
+                )
 
         finally:
             f_train.close()
@@ -338,30 +399,35 @@ async def build_training_set():
 
         total_samples = sum(pos_counts.values()) + sum(neg_counts.values())
         print("\n4. Dataset summary:")
-        print(f"   Positives: {sum(pos_counts.values()):,}  Negatives: {sum(neg_counts.values()):,}  Total: {total_samples:,}")
-        print(f"   Train: {pos_counts['train'] + neg_counts['train']:,} | Val: {pos_counts['val'] + neg_counts['val']:,} | Test: {pos_counts['test'] + neg_counts['test']:,}")
+        print(
+            f"   Positives: {sum(pos_counts.values()):,}  Negatives: {sum(neg_counts.values()):,}  Total: {total_samples:,}"
+        )
+        print(
+            f"   Train: {pos_counts['train'] + neg_counts['train']:,} | Val: {pos_counts['val'] + neg_counts['val']:,} | Test: {pos_counts['test'] + neg_counts['test']:,}"
+        )
 
         # Save metadata
         metadata = {
-            'created_at': datetime.utcnow().isoformat(),
-            'max_positives': max_rows,
-            'batch_size': args.batch_size,
-            'negatives': int(args.negatives),
-            'total_samples': int(total_samples),
-            'train_samples': int(pos_counts['train'] + neg_counts['train']),
-            'val_samples': int(pos_counts['val'] + neg_counts['val']),
-            'test_samples': int(pos_counts['test'] + neg_counts['test']),
-            'positive_samples': int(sum(pos_counts.values())),
-            'negative_samples': int(sum(neg_counts.values())),
-            'severity_distribution': severity_counts,
-            'matched_to_drugs_table_drug1_only': int(matched),
-            'unmatched_to_drugs_table_drug1_only': int(unmatched),
-            'source': 'TWOSIDES',
-            'split': split_probs,
-            'write_full_dataset': bool(args.write_full),
+            "created_at": datetime.utcnow().isoformat(),
+            "max_positives": max_rows,
+            "batch_size": args.batch_size,
+            "negatives": int(args.negatives),
+            "total_samples": int(total_samples),
+            "train_samples": int(pos_counts["train"] + neg_counts["train"]),
+            "val_samples": int(pos_counts["val"] + neg_counts["val"]),
+            "test_samples": int(pos_counts["test"] + neg_counts["test"]),
+            "positive_samples": int(sum(pos_counts.values())),
+            "negative_samples": int(sum(neg_counts.values())),
+            "severity_distribution": severity_counts,
+            "matched_to_drugs_table_drug1_only": int(matched),
+            "unmatched_to_drugs_table_drug1_only": int(unmatched),
+            "source": "TWOSIDES",
+            "split": split_probs,
+            "write_full_dataset": bool(args.write_full),
         }
 
         import json
+
         with open(out_dir / "metadata.json", "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
 
@@ -373,4 +439,3 @@ async def build_training_set():
 
 if __name__ == "__main__":
     asyncio.run(build_training_set())
-

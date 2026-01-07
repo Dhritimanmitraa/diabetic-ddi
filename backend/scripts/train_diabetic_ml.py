@@ -42,7 +42,7 @@ def hash_text(text: str, n_features: int = 48) -> np.ndarray:
         return vec
     lower = text.lower()
     for idx, ch in enumerate(lower):
-        bucket = (hash(ch + str(idx)) % n_features)
+        bucket = hash(ch + str(idx)) % n_features
         vec[bucket] += 1.0
     return vec
 
@@ -67,7 +67,9 @@ def build_feature_vector(row: pd.Series, hash_size: int = 48) -> np.ndarray:
     return np.concatenate([np.array(num_features, dtype=np.float32), drug_vec])
 
 
-def build_matrices(df: pd.DataFrame, hash_size: int = 48) -> Tuple[np.ndarray, np.ndarray]:
+def build_matrices(
+    df: pd.DataFrame, hash_size: int = 48
+) -> Tuple[np.ndarray, np.ndarray]:
     X = np.vstack([build_feature_vector(row, hash_size) for _, row in df.iterrows()])
     y = df["label"].astype(int).values
     return X, y
@@ -82,18 +84,18 @@ def load_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 def train_model(X_train: np.ndarray, y_train: np.ndarray) -> xgb.XGBClassifier:
     """Train XGBoost with class weights to handle imbalance."""
-    
+
     # Compute class weights to handle severe imbalance (92.7% safe)
     classes = np.unique(y_train)
-    weights = compute_class_weight('balanced', classes=classes, y=y_train)
+    weights = compute_class_weight("balanced", classes=classes, y=y_train)
     class_weight_dict = {int(c): float(w) for c, w in zip(classes, weights)}
-    
+
     # Create sample weights array
     sample_weights = np.array([class_weight_dict[int(y)] for y in y_train])
-    
+
     print(f"Class weights: {class_weight_dict}")
     print(f"Class distribution: {np.bincount(y_train)}")
-    
+
     params = dict(
         objective="multi:softprob",
         num_class=len(RISK_LEVELS),
@@ -123,7 +125,9 @@ def calibrate_model(model: xgb.XGBClassifier, X_val: np.ndarray, y_val: np.ndarr
         calibrator.fit(X_val, y_val)
         return calibrator
     except (ValueError, TypeError, RuntimeError) as e:
-        print(f"Warning: Calibration failed ({e}), using base model without calibration")
+        print(
+            f"Warning: Calibration failed ({e}), using base model without calibration"
+        )
         return model  # Return base model if calibration fails
 
 
@@ -169,7 +173,7 @@ def main():
     }
     report = classification_report(y_test, preds, output_dict=True, zero_division=0)
     metrics["classification_report"] = report
-    
+
     # Track critical metrics: recall on risky classes
     # These are more important than overall accuracy
     risky_classes = ["high_risk", "contraindicated", "fatal"]
@@ -213,5 +217,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

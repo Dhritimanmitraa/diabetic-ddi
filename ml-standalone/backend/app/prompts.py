@@ -16,15 +16,13 @@ You must respond in a specific JSON format for parsing."""
 
 
 def build_prediction_prompt(
-    drug1: str,
-    drug2: str,
-    twosides_data: dict | None = None
+    drug1: str, drug2: str, twosides_data: dict | None = None
 ) -> str:
     """
     Build the prediction prompt with optional TWOSIDES context
     """
     context_section = ""
-    
+
     if twosides_data:
         context_section = f"""
 ## Known Database Information (TWOSIDES):
@@ -72,8 +70,7 @@ FALLBACK_RESPONSE = {
     "recommendations": [
         "Consult a pharmacist or physician",
         "Review drug package inserts",
-        "Check with your healthcare provider before combining medications"
+        "Check with your healthcare provider before combining medications",
     ],
-    "reasoning": "LLM analysis was unable to complete successfully."
+    "reasoning": "LLM analysis was unable to complete successfully.",
 }
-

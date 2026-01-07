@@ -43,10 +43,11 @@ You will receive the drug name, risk level, and key factors. Your job is to expl
 @dataclass
 class LLMExplanation:
     """Result from LLM explanation generation."""
+
     patient_friendly_text: str
     model_used: str
     was_fallback: bool  # True if template was used instead of LLM
-    
+
     def to_dict(self) -> Dict:
         return {
             "text": self.patient_friendly_text,
@@ -58,22 +59,23 @@ class LLMExplanation:
 class LLMExplainer:
     """
     Ollama-based LLM explainer for patient-friendly explanations.
-    
+
     SAFETY: The LLM only generates explanations for decisions already
     made by the rule-based system. It cannot override or modify decisions.
     """
-    
+
     def __init__(self, model: str = DEFAULT_MODEL, host: str = DEFAULT_HOST):
         self.model = model
         self.host = host
         self._client = None
         self._available = None
-        
+
     async def _get_client(self):
         """Lazy initialization of Ollama client."""
         if self._client is None:
             try:
                 import ollama
+
                 self._client = ollama.AsyncClient(host=self.host)
                 self._available = True
             except ImportError:
@@ -83,7 +85,7 @@ class LLMExplainer:
                 logger.error(f"Failed to initialize Ollama client: {e}")
                 self._available = False
         return self._client
-    
+
     async def is_available(self) -> bool:
         """Check if Ollama is available and model is ready."""
         try:
@@ -96,7 +98,7 @@ class LLMExplainer:
         except Exception as e:
             logger.debug(f"Ollama not available: {e}")
             return False
-    
+
     async def generate_explanation(
         self,
         drug_name: str,
@@ -107,14 +109,14 @@ class LLMExplainer:
     ) -> LLMExplanation:
         """
         Generate a patient-friendly explanation of the drug risk assessment.
-        
+
         Args:
             drug_name: Name of the drug being assessed
             risk_level: The risk level (safe, caution, high_risk, etc.)
             risk_factors: List of clinical risk factors identified
             recommendation: The clinical recommendation
             shap_factors: Optional SHAP-based feature attributions
-            
+
         Returns:
             LLMExplanation with patient-friendly text
         """
@@ -122,7 +124,7 @@ class LLMExplainer:
         prompt = self._build_prompt(
             drug_name, risk_level, risk_factors, recommendation, shap_factors
         )
-        
+
         # Try LLM first
         try:
             client = await self._get_client()
@@ -132,25 +134,25 @@ class LLMExplainer:
                         model=self.model,
                         messages=[
                             {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": prompt}
+                            {"role": "user", "content": prompt},
                         ],
-                        options={"temperature": 0.3}  # Lower temp for consistency
+                        options={"temperature": 0.3},  # Lower temp for consistency
                     ),
-                    timeout=TIMEOUT_SECONDS
+                    timeout=TIMEOUT_SECONDS,
                 )
-                
+
                 text = response["message"]["content"].strip()
                 return LLMExplanation(
                     patient_friendly_text=text,
                     model_used=self.model,
-                    was_fallback=False
+                    was_fallback=False,
                 )
-                
+
         except asyncio.TimeoutError:
             logger.warning(f"LLM generation timed out after {TIMEOUT_SECONDS}s")
         except Exception as e:
             logger.warning(f"LLM generation failed: {e}")
-        
+
         # Fallback to template-based explanation
         fallback_text = self._generate_fallback(
             drug_name, risk_level, risk_factors, recommendation
@@ -158,9 +160,9 @@ class LLMExplainer:
         return LLMExplanation(
             patient_friendly_text=fallback_text,
             model_used="template",
-            was_fallback=True
+            was_fallback=True,
         )
-    
+
     def _build_prompt(
         self,
         drug_name: str,
@@ -177,24 +179,26 @@ Risk Level: {risk_level.upper().replace('_', ' ')}
 Key Factors: {', '.join(risk_factors[:5]) if risk_factors else 'General precaution'}
 Clinical Recommendation: {recommendation}
 """
-        
+
         if shap_factors:
             factor_strs = []
             for f in shap_factors[:3]:
-                direction = "↑ risk" if f.get("direction") == "increases_risk" else "↓ risk"
+                direction = (
+                    "↑ risk" if f.get("direction") == "increases_risk" else "↓ risk"
+                )
                 factor_strs.append(f"• {f.get('description', '')}: {direction}")
             prompt += f"\nContributing Factors:\n" + "\n".join(factor_strs)
-        
+
         prompt += "\n\nExplain this in simple, reassuring language for the patient. Remind them to discuss with their doctor."
-        
+
         return prompt
-    
+
     def _generate_fallback(
         self,
         drug_name: str,
         risk_level: str,
         risk_factors: List[str],
-        recommendation: str
+        recommendation: str,
     ) -> str:
         """Generate template-based fallback explanation."""
         risk_descriptions = {
@@ -202,18 +206,20 @@ Clinical Recommendation: {recommendation}
             "caution": f"{drug_name} can be used, but requires some monitoring due to your health conditions.",
             "high_risk": f"{drug_name} carries some risks for you. Close monitoring will be needed.",
             "contraindicated": f"{drug_name} is not recommended for you due to potential serious risks.",
-            "fatal": f"{drug_name} poses serious risks that could be life-threatening for you."
+            "fatal": f"{drug_name} poses serious risks that could be life-threatening for you.",
         }
-        
-        base = risk_descriptions.get(risk_level, f"The risk level for {drug_name} is {risk_level}.")
-        
+
+        base = risk_descriptions.get(
+            risk_level, f"The risk level for {drug_name} is {risk_level}."
+        )
+
         if risk_factors:
             factors_text = f" This is because of: {', '.join(risk_factors[:3])}."
         else:
             factors_text = ""
-        
+
         closing = " Please discuss this with your healthcare provider before making any changes to your medications."
-        
+
         return base + factors_text + closing
 
 
@@ -240,7 +246,7 @@ async def check_ollama_status() -> Dict:
     """Check Ollama availability and return status info."""
     explainer = get_llm_explainer()
     available = await explainer.is_available()
-    
+
     return {
         "ollama_available": available,
         "model": explainer.model,

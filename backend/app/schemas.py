@@ -1,5 +1,6 @@
 """Pydantic schemas for API request/response validation."""
-from pydantic import BaseModel, Field, field_validator, constr
+
+from pydantic import BaseModel, Field, field_validator, constr, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -7,6 +8,7 @@ from enum import Enum
 
 class SeverityLevel(str, Enum):
     """Interaction severity levels."""
+
     MINOR = "minor"
     MODERATE = "moderate"
     MAJOR = "major"
@@ -15,6 +17,7 @@ class SeverityLevel(str, Enum):
 
 class EvidenceLevel(str, Enum):
     """Evidence levels for interactions."""
+
     ESTABLISHED = "established"
     THEORETICAL = "theoretical"
     CASE_REPORT = "case_report"
@@ -23,6 +26,7 @@ class EvidenceLevel(str, Enum):
 # Drug Schemas
 class DrugBase(BaseModel):
     """Base drug schema."""
+
     name: str
     generic_name: Optional[str] = None
     brand_names: Optional[str] = None
@@ -32,6 +36,7 @@ class DrugBase(BaseModel):
 
 class DrugCreate(DrugBase):
     """Schema for creating a drug."""
+
     drugbank_id: Optional[str] = None
     mechanism: Optional[str] = None
     indication: Optional[str] = None
@@ -39,17 +44,18 @@ class DrugCreate(DrugBase):
 
 class DrugResponse(DrugBase):
     """Schema for drug response."""
+
     id: int
     drugbank_id: Optional[str] = None
     is_approved: bool = True
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DrugSearch(BaseModel):
     """Schema for drug search."""
+
     query: str = Field(..., min_length=2, max_length=255)
     limit: int = Field(default=10, ge=1, le=100)
 
@@ -57,6 +63,7 @@ class DrugSearch(BaseModel):
 # Interaction Schemas
 class InteractionBase(BaseModel):
     """Base interaction schema."""
+
     severity: SeverityLevel
     description: Optional[str] = None
     effect: Optional[str] = None
@@ -66,6 +73,7 @@ class InteractionBase(BaseModel):
 
 class InteractionCreate(InteractionBase):
     """Schema for creating an interaction."""
+
     drug1_id: int
     drug2_id: int
     source: Optional[str] = None
@@ -75,6 +83,7 @@ class InteractionCreate(InteractionBase):
 
 class InteractionResponse(InteractionBase):
     """Schema for interaction response."""
+
     id: int
     drug1: DrugResponse
     drug2: DrugResponse
@@ -82,15 +91,19 @@ class InteractionResponse(InteractionBase):
     evidence_level: Optional[str] = None
     confidence_score: float
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InteractionCheckRequest(BaseModel):
     """Request to check interaction between two drugs."""
-    drug1_name: constr(strip_whitespace=True, min_length=2) = Field(..., description="First drug name")
-    drug2_name: constr(strip_whitespace=True, min_length=2) = Field(..., description="Second drug name")
+
+    drug1_name: constr(strip_whitespace=True, min_length=2) = Field(
+        ..., description="First drug name"
+    )
+    drug2_name: constr(strip_whitespace=True, min_length=2) = Field(
+        ..., description="Second drug name"
+    )
 
     @field_validator("drug1_name", "drug2_name")
     @classmethod
@@ -108,6 +121,7 @@ class InteractionCheckRequest(BaseModel):
 
 class InteractionCheckResponse(BaseModel):
     """Response for interaction check."""
+
     drug1: DrugResponse
     drug2: DrugResponse
     has_interaction: bool
@@ -124,6 +138,7 @@ class InteractionCheckResponse(BaseModel):
 # Alternative Drug Schemas
 class AlternativeDrug(BaseModel):
     """Alternative drug suggestion."""
+
     drug: DrugResponse
     similarity_score: float
     reason: str
@@ -132,6 +147,7 @@ class AlternativeDrug(BaseModel):
 
 class AlternativeSuggestionResponse(BaseModel):
     """Response with alternative drug suggestions."""
+
     original_drug1: DrugResponse
     original_drug2: DrugResponse
     alternatives_for_drug1: List[AlternativeDrug]
@@ -142,11 +158,13 @@ class AlternativeSuggestionResponse(BaseModel):
 # OCR Schemas
 class OCRRequest(BaseModel):
     """Request for OCR processing."""
+
     image_base64: str = Field(..., description="Base64 encoded image")
 
 
 class OCRResponse(BaseModel):
     """Response from OCR processing."""
+
     extracted_text: str
     detected_drugs: List[str]
     confidence: float
@@ -155,8 +173,8 @@ class OCRResponse(BaseModel):
 # Statistics
 class DatabaseStats(BaseModel):
     """Database statistics."""
+
     total_drugs: int
     total_interactions: int
     interactions_by_severity: dict
     last_updated: datetime
-
