@@ -1,0 +1,15 @@
+{
+  "created_at": "2025-12-10T03:53:43.138087+00:00",
+  "total_rows": 18087,
+  "train_rows": 12660,
+  "val_rows": 2713,
+  "test_rows": 2714,
+  "risk_distribution": {
+    "safe": 16773,
+    "fatal": 1050,
+    "high_risk": 117,
+    "caution": 116,
+    "contraindicated": 31
+  },
+  "source": "mimic_demo_rules_pseudo"
+}

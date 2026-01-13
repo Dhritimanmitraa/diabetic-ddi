@@ -1,0 +1,27 @@
+{
+  "created_at": "2025-12-12T05:47:25.267076",
+  "max_positives": 2000000,
+  "batch_size": 50000,
+  "negatives": 50000,
+  "total_samples": 2050000,
+  "train_samples": 1230444,
+  "val_samples": 409350,
+  "test_samples": 410206,
+  "positive_samples": 2000000,
+  "negative_samples": 50000,
+  "severity_distribution": {
+    "minor": 1772278,
+    "major": 196638,
+    "fatal": 11137,
+    "moderate": 19947
+  },
+  "matched_to_drugs_table_drug1_only": 1491793,
+  "unmatched_to_drugs_table_drug1_only": 508207,
+  "source": "TWOSIDES",
+  "split": {
+    "train": 0.6,
+    "val": 0.2,
+    "test": 0.2
+  },
+  "write_full_dataset": false
+}
