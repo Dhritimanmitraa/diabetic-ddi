@@ -29,6 +29,7 @@ from app.diabetic.explainability import get_shap_explainer, SHAPExplainer
 from app.diabetic.llm_explainer import get_llm_explainer, LLMExplainer
 from app.diabetic.llm_drug_checker import get_llm_checker
 from app.diabetic.smart_model import select_smart_model, SmartModelResult
+from app.diabetic.drug_validator import validate_drug_name, is_valid_drug
 from app.database import async_session
 
 logger = logging.getLogger(__name__)

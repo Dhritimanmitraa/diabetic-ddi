@@ -1,0 +1,48 @@
+# ===== Environment =====
+.env
+.env.local
+.env.*.local
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ===== Databases (Large files) =====
+*.db
+drug_interactions.db
+druguard.db
+chroma_db/
+
+# ===== Notebooks & Dev Files =====
+notebooks/
+*.ipynb
+.ipynb_checkpoints/
+
+# ===== Logs =====
+logs/
+*.log
+
+# ===== Models (Large trained files) =====
+models/
+
+# ===== Test & Cache =====
+.pytest_cache/
+tests/
+htmlcov/
+.coverage
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Misc =====
+py.typed

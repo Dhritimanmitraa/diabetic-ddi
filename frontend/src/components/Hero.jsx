@@ -1,5 +1,24 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Shield, Zap, Search, AlertTriangle } from 'lucide-react'
+import { Shield, Zap, Search, AlertTriangle, Database, Activity, Clock } from 'lucide-react'
+
+function AnimatedCounter({ target, suffix = '', duration = 2000 }) {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    let start = 0
+    const end = target
+    const incrementTime = duration / end
+    const timer = setInterval(() => {
+      start += 1
+      setCount(Math.min(start, end))
+      if (start >= end) clearInterval(timer)
+    }, incrementTime)
+    return () => clearInterval(timer)
+  }, [target, duration])
+
+  return <span className="counter-animate">{count.toLocaleString()}{suffix}</span>
+}
 
 function Hero() {
   return (
@@ -17,7 +36,7 @@ function Hero() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-medical-500"></span>
           </span>
           <span className="text-medical-400 text-sm font-medium">
-            Powered by AI & 100,000+ Drug Interactions Database
+            Powered by AI & 42M+ Drug Interactions Database
           </span>
         </motion.div>
 
@@ -38,11 +57,51 @@ function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-xl text-slate-400 max-w-2xl mx-auto mb-12 font-body"
+          className="text-xl text-slate-400 max-w-2xl mx-auto mb-8 font-body"
         >
           Instantly verify if your medications are safe to use together.
           Get AI-powered recommendations for safer alternatives when needed.
         </motion.p>
+
+        {/* Animated Statistics */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="flex flex-wrap justify-center gap-8 mb-12"
+        >
+          <div className="flex items-center gap-3 px-4 py-2">
+            <div className="w-10 h-10 rounded-lg bg-medical-500/10 flex items-center justify-center">
+              <Database className="w-5 h-5 text-medical-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-2xl font-bold text-white">
+                <AnimatedCounter target={42} suffix="M+" duration={1500} />
+              </div>
+              <div className="text-xs text-slate-500">Interactions</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-2">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <Activity className="w-5 h-5 text-purple-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-2xl font-bold text-white">
+                <AnimatedCounter target={100} suffix="K+" duration={1500} />
+              </div>
+              <div className="text-xs text-slate-500">Drugs Indexed</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-2">
+            <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-green-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-2xl font-bold text-white">99.9%</div>
+              <div className="text-xs text-slate-500">Uptime</div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Feature cards */}
         <motion.div

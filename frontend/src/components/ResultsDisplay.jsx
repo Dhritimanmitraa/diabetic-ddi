@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Shield, ShieldAlert, ShieldX, AlertTriangle, 
+import confetti from 'canvas-confetti'
+import {
+  Shield, ShieldAlert, ShieldX, AlertTriangle,
   CheckCircle2, XCircle, Info, ArrowRight,
-  Pill, BookOpen, Stethoscope
+  Pill, BookOpen, Stethoscope, Sparkles
 } from 'lucide-react'
 
 function ResultsDisplay({ results }) {
@@ -17,40 +19,50 @@ function ResultsDisplay({ results }) {
         color: 'text-green-400',
         bgColor: 'bg-green-500/10',
         borderColor: 'border-green-500/20',
+        glowClass: 'glow-minor',
         label: 'Minor Interaction',
-        emoji: '',
+        emoji: '✅',
+        riskPercent: 20,
       },
       moderate: {
         icon: <AlertTriangle className="w-8 h-8" />,
         color: 'text-yellow-400',
         bgColor: 'bg-yellow-500/10',
         borderColor: 'border-yellow-500/20',
+        glowClass: 'glow-moderate',
         label: 'Moderate Interaction',
-        emoji: '',
+        emoji: '⚠️',
+        riskPercent: 50,
       },
       major: {
         icon: <ShieldAlert className="w-8 h-8" />,
         color: 'text-orange-400',
         bgColor: 'bg-orange-500/10',
         borderColor: 'border-orange-500/20',
+        glowClass: 'glow-major',
         label: 'Major Interaction',
-        emoji: '',
+        emoji: '🔶',
+        riskPercent: 75,
       },
       contraindicated: {
         icon: <ShieldX className="w-8 h-8" />,
         color: 'text-red-400',
         bgColor: 'bg-red-500/10',
         borderColor: 'border-red-500/20',
+        glowClass: 'glow-danger',
         label: 'Contraindicated',
-        emoji: '',
+        emoji: '🚫',
+        riskPercent: 100,
       },
       safe: {
         icon: <Shield className="w-8 h-8" />,
         color: 'text-medical-400',
         bgColor: 'bg-medical-500/10',
         borderColor: 'border-medical-500/20',
+        glowClass: 'glow-safe celebrate',
         label: 'Safe to Use',
-        emoji: '',
+        emoji: '💚',
+        riskPercent: 0,
       },
     }
     return configs[severity] || configs.safe
@@ -59,30 +71,82 @@ function ResultsDisplay({ results }) {
   const severity = interaction?.severity || (is_safe ? 'safe' : 'moderate')
   const config = getSeverityConfig(severity)
 
+  // Celebration confetti for safe results!
+  useEffect(() => {
+    if (!has_interaction && is_safe) {
+      // Burst of confetti for safe drugs!
+      const duration = 2000
+      const end = Date.now() + duration
+
+      const colors = ['#14b89a', '#5feaca', '#22c55e', '#4ade80']
+
+      const frame = () => {
+        confetti({
+          particleCount: 3,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.7 },
+          colors: colors
+        })
+        confetti({
+          particleCount: 3,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.7 },
+          colors: colors
+        })
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame)
+        }
+      }
+      frame()
+    }
+  }, [has_interaction, is_safe])
+
   return (
     <section className="max-w-4xl mx-auto px-4 py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass rounded-3xl p-8"
+        className="glass rounded-3xl p-8 relative overflow-hidden"
       >
+        {/* Sparkle effect for safe results */}
+        {!has_interaction && is_safe && (
+          <div className="absolute inset-0 pointer-events-none">
+            <Sparkles className="absolute top-4 right-4 w-6 h-6 text-medical-400 animate-pulse" />
+            <Sparkles className="absolute top-12 right-16 w-4 h-4 text-medical-300 animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <Sparkles className="absolute bottom-8 left-8 w-5 h-5 text-medical-400 animate-pulse" style={{ animationDelay: '1s' }} />
+          </div>
+        )}
+
         {/* Header with status */}
         <div className="flex flex-col md:flex-row items-center gap-6 mb-8">
-          {/* Status icon */}
+          {/* Status icon with glow */}
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', delay: 0.2 }}
-            className={`w-20 h-20 rounded-2xl ${config.bgColor} ${config.borderColor} border flex items-center justify-center ${config.color}`}
+            className={`w-20 h-20 rounded-2xl ${config.bgColor} ${config.borderColor} border flex items-center justify-center ${config.color} ${config.glowClass}`}
           >
             {config.icon}
           </motion.div>
 
-          {/* Status text */}
+          {/* Status text with badge */}
           <div className="text-center md:text-left flex-1">
-            <h2 className={`font-display text-2xl font-bold ${config.color} mb-2`}>
-              {config.emoji} {config.label}
-            </h2>
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+              <h2 className={`font-display text-2xl font-bold ${config.color}`}>
+                {config.label}
+              </h2>
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', delay: 0.4 }}
+                className={`px-3 py-1 rounded-full text-sm font-semibold ${config.bgColor} ${config.borderColor} border badge-pulse`}
+              >
+                {config.emoji} {severity?.toUpperCase()}
+              </motion.span>
+            </div>
             <p className="text-slate-400">{safety_message}</p>
           </div>
         </div>
@@ -175,14 +239,50 @@ function ResultsDisplay({ results }) {
             <span className="text-slate-500">Data confidence</span>
             <div className="flex items-center gap-2">
               <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${interaction.confidence_score * 100}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
                   className="h-full bg-medical-400 rounded-full"
-                  style={{ width: `${interaction.confidence_score * 100}%` }}
                 />
               </div>
               <span className="text-slate-400">{Math.round(interaction.confidence_score * 100)}%</span>
             </div>
           </div>
+        )}
+
+        {/* Risk Level Gauge */}
+        {has_interaction && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-6 p-4 bg-slate-800/30 rounded-xl"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm text-slate-400 font-medium">Risk Level</span>
+              <span className={`text-sm font-bold ${config.color}`}>{config.label}</span>
+            </div>
+            <div className="relative">
+              <div className="risk-meter w-full" />
+              <motion.div
+                initial={{ left: '0%' }}
+                animate={{ left: `${config.riskPercent}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut', delay: 0.3 }}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                style={{ left: `${config.riskPercent}%` }}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white shadow-lg border-2 ${config.borderColor}`} />
+              </motion.div>
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-slate-500">
+              <span>Safe</span>
+              <span>Minor</span>
+              <span>Moderate</span>
+              <span>Major</span>
+              <span>Danger</span>
+            </div>
+          </motion.div>
         )}
       </motion.div>
     </section>

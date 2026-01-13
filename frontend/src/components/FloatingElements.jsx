@@ -3,86 +3,118 @@ import { motion } from 'framer-motion'
 function FloatingElements() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-      {/* Gradient orbs */}
+      {/* Animated gradient mesh background */}
+      <div className="absolute inset-0 bg-gradient-mesh opacity-30" />
+
+      {/* Large gradient orbs with enhanced animations */}
       <motion.div
         animate={{
-          y: [0, -30, 0],
-          x: [0, 20, 0],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-        className="absolute top-1/4 -left-32 w-96 h-96 bg-medical-500/10 rounded-full blur-3xl"
-      />
-      <motion.div
-        animate={{
-          y: [0, 40, 0],
-          x: [0, -30, 0],
+          y: [0, -50, 0],
+          x: [0, 30, 0],
           scale: [1, 1.2, 1],
+          opacity: [0.1, 0.15, 0.1],
         }}
         transition={{
           duration: 10,
           repeat: Infinity,
           ease: 'easeInOut',
-          delay: 1,
         }}
-        className="absolute top-1/2 -right-32 w-80 h-80 bg-medical-600/10 rounded-full blur-3xl"
+        className="absolute top-1/4 -left-32 w-[500px] h-[500px] bg-gradient-to-br from-medical-500/20 to-teal-500/10 rounded-full blur-3xl"
       />
       <motion.div
         animate={{
-          y: [0, -20, 0],
-          scale: [1, 1.15, 1],
+          y: [0, 60, 0],
+          x: [0, -40, 0],
+          scale: [1, 1.3, 1],
+          opacity: [0.1, 0.2, 0.1],
         }}
         transition={{
-          duration: 7,
+          duration: 12,
           repeat: Infinity,
           ease: 'easeInOut',
           delay: 2,
         }}
-        className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-medical-400/5 rounded-full blur-3xl"
+        className="absolute top-1/2 -right-32 w-[400px] h-[400px] bg-gradient-to-br from-purple-500/15 to-medical-600/10 rounded-full blur-3xl"
+      />
+      <motion.div
+        animate={{
+          y: [0, -30, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: 'easeInOut',
+          delay: 4,
+        }}
+        className="absolute bottom-1/4 left-1/3 w-[300px] h-[300px] bg-gradient-to-br from-cyan-400/10 to-medical-400/5 rounded-full blur-3xl"
       />
 
-      {/* Floating pills/shapes */}
+      {/* Floating pill particles */}
+      {[...Array(8)].map((_, i) => (
+        <motion.div
+          key={i}
+          animate={{
+            y: [0, Math.random() * -60 - 20, 0],
+            x: [0, Math.random() * 40 - 20, 0],
+            rotate: [0, Math.random() * 30 - 15, 0],
+            opacity: [0.1, 0.3, 0.1],
+          }}
+          transition={{
+            duration: 5 + Math.random() * 5,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            delay: i * 0.5,
+          }}
+          className="absolute rounded-full"
+          style={{
+            top: `${10 + Math.random() * 80}%`,
+            left: `${5 + Math.random() * 90}%`,
+            width: `${8 + Math.random() * 8}px`,
+            height: `${16 + Math.random() * 16}px`,
+            background: `rgba(20, 184, 154, ${0.1 + Math.random() * 0.15})`,
+          }}
+        />
+      ))}
+
+      {/* Twinkling stars */}
+      {[...Array(15)].map((_, i) => (
+        <motion.div
+          key={`star-${i}`}
+          animate={{
+            opacity: [0, 0.8, 0],
+            scale: [0.5, 1, 0.5],
+          }}
+          transition={{
+            duration: 2 + Math.random() * 2,
+            repeat: Infinity,
+            ease: 'easeInOut',
+            delay: Math.random() * 3,
+          }}
+          className="absolute rounded-full bg-white"
+          style={{
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            width: `${2 + Math.random() * 2}px`,
+            height: `${2 + Math.random() * 2}px`,
+          }}
+        />
+      ))}
+
+      {/* Shooting star effect */}
       <motion.div
         animate={{
-          y: [0, -40, 0],
-          rotate: [0, 10, 0],
+          x: ['-100%', '200%'],
+          y: ['0%', '100%'],
+          opacity: [0, 1, 0],
         }}
         transition={{
-          duration: 6,
+          duration: 3,
           repeat: Infinity,
-          ease: 'easeInOut',
+          ease: 'easeIn',
+          repeatDelay: 8,
         }}
-        className="absolute top-1/3 right-1/4 w-4 h-8 bg-medical-500/20 rounded-full"
-      />
-      <motion.div
-        animate={{
-          y: [0, 30, 0],
-          rotate: [0, -15, 0],
-        }}
-        transition={{
-          duration: 5,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 1,
-        }}
-        className="absolute top-2/3 left-1/4 w-3 h-6 bg-medical-400/15 rounded-full"
-      />
-      <motion.div
-        animate={{
-          y: [0, -25, 0],
-          x: [0, 10, 0],
-        }}
-        transition={{
-          duration: 7,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 2,
-        }}
-        className="absolute bottom-1/3 right-1/3 w-2 h-4 bg-medical-300/10 rounded-full"
+        className="absolute top-20 left-0 w-32 h-0.5 bg-gradient-to-r from-transparent via-medical-400 to-transparent rounded-full"
       />
 
       {/* Grid lines */}
@@ -115,4 +147,3 @@ function FloatingElements() {
 }
 
 export default FloatingElements
-

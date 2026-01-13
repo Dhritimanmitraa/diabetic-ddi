@@ -2,27 +2,27 @@
  * API Service for Drug Interaction Checker
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 /**
  * Make API request with error handling
  */
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
-  
+
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
     },
   }
-  
+
   const response = await fetch(url, { ...defaultOptions, ...options })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'An error occurred' }))
     throw new Error(error.detail || `HTTP error! status: ${response.status}`)
   }
-  
+
   return response.json()
 }
 
@@ -181,6 +181,129 @@ export async function getHistoryStats() {
   return apiRequest('/history/stats')
 }
 
+// ============== Prescription RAG Endpoints ==============
+
+/**
+ * Upload a prescription image or PDF for extraction
+ * @param {File} file - The prescription file
+ * @returns {Promise<Object>} Extraction result with medicines
+ */
+export async function uploadPrescription(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  const response = await fetch(`${API_BASE_URL}/prescription/upload`, {
+    method: 'POST',
+    body: formData,
+  })
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
+    throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+  }
+  
+  return response.json()
+}
+
+/**
+ * Upload a prescription as base64 encoded image
+ * @param {string} imageBase64 - Base64 encoded image
+ * @param {string} filename - Original filename
+ * @returns {Promise<Object>} Extraction result with medicines
+ */
+export async function uploadPrescriptionBase64(imageBase64, filename = 'prescription.jpg') {
+  const formData = new FormData()
+  formData.append('image_base64', imageBase64)
+  formData.append('filename', filename)
+  
+  const response = await fetch(`${API_BASE_URL}/prescription/upload/base64`, {
+    method: 'POST',
+    body: formData,
+  })
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
+    throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+  }
+  
+  return response.json()
+}
+
+/**
+ * Get prescription by ID
+ * @param {number} prescriptionId - Prescription ID
+ * @returns {Promise<Object>} Prescription details
+ */
+export async function getPrescription(prescriptionId) {
+  return apiRequest(`/prescription/${prescriptionId}`)
+}
+
+/**
+ * List all prescriptions with pagination
+ * @param {number} limit - Maximum results
+ * @param {number} offset - Offset for pagination
+ * @returns {Promise<Object>} List of prescriptions
+ */
+export async function getPrescriptionHistory(limit = 20, offset = 0) {
+  return apiRequest(`/prescription/history?limit=${limit}&offset=${offset}`)
+}
+
+/**
+ * Delete a prescription
+ * @param {number} prescriptionId - Prescription ID
+ * @returns {Promise<Object>} Deletion confirmation
+ */
+export async function deletePrescription(prescriptionId) {
+  return apiRequest(`/prescription/${prescriptionId}`, {
+    method: 'DELETE',
+  })
+}
+
+/**
+ * Chat with a prescription using RAG
+ * @param {number} prescriptionId - Prescription ID
+ * @param {string} message - User's question
+ * @returns {Promise<Object>} Chat response
+ */
+export async function chatWithPrescription(prescriptionId, message) {
+  return apiRequest('/prescription/chat', {
+    method: 'POST',
+    body: JSON.stringify({
+      prescription_id: prescriptionId,
+      message: message,
+    }),
+  })
+}
+
+/**
+ * Get chat history for a prescription
+ * @param {number} prescriptionId - Prescription ID
+ * @returns {Promise<Object>} Chat history
+ */
+export async function getPrescriptionChatHistory(prescriptionId) {
+  return apiRequest(`/prescription/${prescriptionId}/chat-history`)
+}
+
+/**
+ * Check prescription module health
+ * @returns {Promise<Object>} Health status
+ */
+export async function getPrescriptionHealth() {
+  return apiRequest('/prescription/health/status')
+}
+
+/**
+ * Check drug interactions between prescription medicines
+ * @param {Array<string>} drugNames - List of drug names to check
+ * @returns {Promise<Object>} Interaction results
+ */
+export async function checkPrescriptionInteractions(drugNames) {
+  return apiRequest('/prescription/check-interactions', {
+    method: 'POST',
+    body: JSON.stringify({ drug_names: drugNames }),
+  })
+}
+
 export default {
   searchDrugs,
   getDrugById,
@@ -196,5 +319,15 @@ export default {
   getMLComparison,
   getHistory,
   getHistoryStats,
+  // Prescription RAG
+  uploadPrescription,
+  uploadPrescriptionBase64,
+  getPrescription,
+  getPrescriptionHistory,
+  deletePrescription,
+  chatWithPrescription,
+  getPrescriptionChatHistory,
+  getPrescriptionHealth,
+  checkPrescriptionInteractions,
 }
 

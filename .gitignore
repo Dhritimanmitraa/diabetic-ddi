@@ -38,10 +38,14 @@ venv.bak/
 *~
 .DS_Store
 
-# Environment variables
+# Environment variables - NEVER commit these!
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+*.env
+!.env.example
 
 # Database
 *.db
@@ -113,6 +117,7 @@ dmypy.json
 
 # Helper scripts (local use only)
 *.bat
+!run_app.bat
 *.ps1
 *.sh
 

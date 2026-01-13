@@ -1,0 +1,714 @@
+{
+    "drugs": [
+        {
+            "name": "Biopan",
+            "generic_name": "Pantoprazole",
+            "drug_class": "Proton Pump Inhibitor (PPI)",
+            "uses": "Used to treat gastroesophageal reflux disease (GERD), stomach ulcers, and conditions where the stomach produces too much acid.",
+            "mechanism": "Works by blocking the hydrogen-potassium ATPase enzyme system (proton pump) in the stomach lining, reducing acid secretion.",
+            "side_effects": "Headache, diarrhea, nausea, abdominal pain, flatulence. Long-term use may affect vitamin B12 and magnesium levels.",
+            "dosage": "Usually 40mg once daily, taken before meals.",
+            "precautions": "Tell your doctor if you have liver problems. May interact with certain medications like methotrexate."
+        },
+        {
+            "name": "Dynapan",
+            "generic_name": "Pantoprazole + Domperidone",
+            "drug_class": "Proton Pump Inhibitor + Prokinetic",
+            "uses": "Combination drug used for acid reflux, GERD, heartburn, and gastric motility disorders.",
+            "mechanism": "Pantoprazole reduces acid, while domperidone blocks dopamine receptors to enhance gastric motility and reduce nausea.",
+            "side_effects": "Headache, dry mouth, diarrhea, dizziness. Domperidone may rarely cause heart rhythm issues.",
+            "dosage": "Usually one tablet before meals, once or twice daily as directed.",
+            "precautions": "Avoid in patients with heart conditions."
+        },
+        {
+            "name": "Dynapan B",
+            "generic_name": "Pantoprazole + Domperidone",
+            "drug_class": "Proton Pump Inhibitor + Prokinetic",
+            "uses": "Used for treating acid reflux, GERD, gastritis, and peptic ulcers.",
+            "mechanism": "Dual action - reduces stomach acid production and improves stomach motility.",
+            "side_effects": "Headache, dry mouth, abdominal pain, diarrhea.",
+            "dosage": "Take as directed by your physician, typically before meals.",
+            "precautions": "Not recommended in patients with cardiac conditions."
+        },
+        {
+            "name": "Paracetamol",
+            "generic_name": "Acetaminophen",
+            "drug_class": "Analgesic and Antipyretic",
+            "uses": "Used for pain relief and fever reduction. Treats headaches, muscle aches, arthritis, backaches, toothaches, colds, and fevers.",
+            "mechanism": "Inhibits prostaglandin synthesis in the central nervous system and works on heat-regulating centers.",
+            "side_effects": "Generally safe at recommended doses. Overdose can cause severe liver damage.",
+            "dosage": "Adults: 500-1000mg every 4-6 hours. Maximum 4g per day.",
+            "precautions": "Avoid alcohol. Do not exceed maximum daily dose. Use caution in liver disease."
+        },
+        {
+            "name": "Ibuprofen",
+            "generic_name": "Ibuprofen",
+            "drug_class": "Non-Steroidal Anti-Inflammatory Drug (NSAID)",
+            "uses": "Treats pain, fever, and inflammation. Used for headaches, dental pain, menstrual cramps, muscle aches, arthritis.",
+            "mechanism": "Inhibits cyclooxygenase enzymes (COX-1 and COX-2), reducing prostaglandin synthesis.",
+            "side_effects": "Stomach upset, nausea, dizziness, headache. May cause stomach bleeding with long-term use.",
+            "dosage": "200-400mg every 4-6 hours. Maximum 1200mg/day for OTC use.",
+            "precautions": "Take with food. Avoid if you have stomach ulcers or kidney disease."
+        },
+        {
+            "name": "Aspirin",
+            "generic_name": "Acetylsalicylic acid",
+            "drug_class": "NSAID / Antiplatelet",
+            "uses": "Pain relief, fever reduction, anti-inflammatory. Low doses used to prevent heart attacks and strokes.",
+            "mechanism": "Irreversibly inhibits COX enzymes and prevents platelet aggregation.",
+            "side_effects": "Stomach upset, bleeding, tinnitus at high doses.",
+            "dosage": "325-650mg for pain. 75-100mg daily for heart protection.",
+            "precautions": "Avoid in children under 16 (Reye's syndrome). Not for those with bleeding disorders."
+        },
+        {
+            "name": "Metformin",
+            "generic_name": "Metformin hydrochloride",
+            "drug_class": "Biguanide Antidiabetic",
+            "uses": "First-line treatment for type 2 diabetes. Helps control blood sugar levels.",
+            "mechanism": "Decreases liver glucose production, decreases intestinal glucose absorption, and improves insulin sensitivity.",
+            "side_effects": "Nausea, diarrhea, stomach upset, metallic taste. Rare risk of lactic acidosis.",
+            "dosage": "Usually starts at 500mg twice daily with meals, may increase gradually.",
+            "precautions": "Avoid in kidney disease. Stop before contrast imaging procedures."
+        },
+        {
+            "name": "Glimepiride",
+            "generic_name": "Glimepiride",
+            "drug_class": "Sulfonylurea Antidiabetic",
+            "uses": "Used to control blood sugar in type 2 diabetes.",
+            "mechanism": "Stimulates insulin release from pancreatic beta cells.",
+            "side_effects": "Hypoglycemia, weight gain, dizziness, nausea.",
+            "dosage": "1-4mg once daily with breakfast.",
+            "precautions": "Monitor blood sugar regularly. May cause low blood sugar."
+        },
+        {
+            "name": "Insulin",
+            "generic_name": "Various (Regular, NPH, Lispro, Glargine)",
+            "drug_class": "Hormone",
+            "uses": "Essential for type 1 diabetes, also used in type 2 diabetes when oral medications are insufficient.",
+            "mechanism": "Facilitates glucose uptake by cells, lowers blood sugar levels.",
+            "side_effects": "Hypoglycemia, weight gain, injection site reactions.",
+            "dosage": "Highly individualized based on blood sugar levels.",
+            "precautions": "Monitor blood sugar closely. Store properly. Rotate injection sites."
+        },
+        {
+            "name": "Amoxicillin",
+            "generic_name": "Amoxicillin trihydrate",
+            "drug_class": "Penicillin-type Antibiotic",
+            "uses": "Treats bacterial infections including ear infections, pneumonia, skin infections, urinary tract infections.",
+            "mechanism": "Inhibits bacterial cell wall synthesis.",
+            "side_effects": "Diarrhea, nausea, skin rash. Can cause allergic reactions.",
+            "dosage": "250-500mg every 8 hours depending on infection.",
+            "precautions": "Do not use if allergic to penicillins."
+        },
+        {
+            "name": "Azithromycin",
+            "generic_name": "Azithromycin dihydrate",
+            "drug_class": "Macrolide Antibiotic",
+            "uses": "Treats respiratory infections, skin infections, ear infections, sexually transmitted infections.",
+            "mechanism": "Inhibits bacterial protein synthesis by binding to 50S ribosomal subunit.",
+            "side_effects": "Nausea, diarrhea, abdominal pain, headache.",
+            "dosage": "Usually 500mg on day 1, then 250mg daily for 4 days. Or 500mg daily for 3 days.",
+            "precautions": "May prolong QT interval. Use caution in liver disease."
+        },
+        {
+            "name": "Ciprofloxacin",
+            "generic_name": "Ciprofloxacin hydrochloride",
+            "drug_class": "Fluoroquinolone Antibiotic",
+            "uses": "Treats urinary tract infections, respiratory infections, bone infections, anthrax.",
+            "mechanism": "Inhibits bacterial DNA gyrase and topoisomerase IV.",
+            "side_effects": "Nausea, diarrhea, dizziness. Risk of tendon rupture.",
+            "dosage": "250-750mg twice daily depending on infection.",
+            "precautions": "Avoid in pregnancy. May cause photosensitivity."
+        },
+        {
+            "name": "Ceftriaxone",
+            "generic_name": "Ceftriaxone sodium",
+            "drug_class": "Third-generation Cephalosporin",
+            "uses": "Treats serious bacterial infections: meningitis, pneumonia, sepsis, gonorrhea.",
+            "mechanism": "Inhibits bacterial cell wall synthesis.",
+            "side_effects": "Diarrhea, injection site pain, rash.",
+            "dosage": "1-2g IV/IM once or twice daily.",
+            "precautions": "Not for use with calcium-containing IV solutions in neonates."
+        },
+        {
+            "name": "Doxycycline",
+            "generic_name": "Doxycycline hyclate",
+            "drug_class": "Tetracycline Antibiotic",
+            "uses": "Treats acne, respiratory infections, Lyme disease, malaria prevention, chlamydia.",
+            "mechanism": "Inhibits bacterial protein synthesis.",
+            "side_effects": "Nausea, photosensitivity, esophageal irritation.",
+            "dosage": "100mg twice daily or 200mg once daily.",
+            "precautions": "Avoid sun exposure. Not for children under 8 or pregnant women."
+        },
+        {
+            "name": "Omeprazole",
+            "generic_name": "Omeprazole magnesium",
+            "drug_class": "Proton Pump Inhibitor (PPI)",
+            "uses": "Treats GERD, stomach ulcers, Zollinger-Ellison syndrome.",
+            "mechanism": "Irreversibly blocks hydrogen/potassium ATPase in gastric parietal cells.",
+            "side_effects": "Headache, abdominal pain, diarrhea, nausea.",
+            "dosage": "20-40mg once daily before breakfast.",
+            "precautions": "May interact with clopidogrel. Long-term use requires monitoring."
+        },
+        {
+            "name": "Ranitidine",
+            "generic_name": "Ranitidine hydrochloride",
+            "drug_class": "H2 Receptor Antagonist",
+            "uses": "Treats peptic ulcers, GERD, Zollinger-Ellison syndrome.",
+            "mechanism": "Blocks histamine H2 receptors, reducing stomach acid secretion.",
+            "side_effects": "Headache, constipation, diarrhea.",
+            "dosage": "150mg twice daily or 300mg at bedtime.",
+            "precautions": "Note: Withdrawn in many countries due to NDMA contamination concerns."
+        },
+        {
+            "name": "Atorvastatin",
+            "generic_name": "Atorvastatin calcium",
+            "drug_class": "HMG-CoA Reductase Inhibitor (Statin)",
+            "uses": "Lowers cholesterol and triglycerides, reduces risk of heart attack and stroke.",
+            "mechanism": "Inhibits HMG-CoA reductase enzyme, reducing cholesterol synthesis in the liver.",
+            "side_effects": "Muscle pain, joint pain, diarrhea. Rare risk of rhabdomyolysis.",
+            "dosage": "10-80mg once daily, usually in the evening.",
+            "precautions": "Avoid grapefruit. Report unexplained muscle pain."
+        },
+        {
+            "name": "Rosuvastatin",
+            "generic_name": "Rosuvastatin calcium",
+            "drug_class": "Statin",
+            "uses": "Lowers LDL cholesterol and triglycerides, raises HDL cholesterol.",
+            "mechanism": "Inhibits HMG-CoA reductase.",
+            "side_effects": "Headache, muscle pain, nausea, constipation.",
+            "dosage": "5-40mg once daily.",
+            "precautions": "Monitor liver function. Avoid in pregnancy."
+        },
+        {
+            "name": "Amlodipine",
+            "generic_name": "Amlodipine besylate",
+            "drug_class": "Calcium Channel Blocker",
+            "uses": "Treats high blood pressure and chest pain (angina).",
+            "mechanism": "Blocks calcium channels in blood vessel walls, causing relaxation.",
+            "side_effects": "Ankle swelling, flushing, headache, dizziness.",
+            "dosage": "5-10mg once daily.",
+            "precautions": "Avoid grapefruit."
+        },
+        {
+            "name": "Losartan",
+            "generic_name": "Losartan potassium",
+            "drug_class": "Angiotensin II Receptor Blocker (ARB)",
+            "uses": "Treats high blood pressure, protects kidneys in diabetics.",
+            "mechanism": "Blocks angiotensin II receptors, causing blood vessel relaxation.",
+            "side_effects": "Dizziness, back pain, fatigue, hyperkalemia.",
+            "dosage": "25-100mg daily in one or two doses.",
+            "precautions": "Avoid in pregnancy. Monitor potassium levels."
+        },
+        {
+            "name": "Lisinopril",
+            "generic_name": "Lisinopril",
+            "drug_class": "ACE Inhibitor",
+            "uses": "Treats high blood pressure, heart failure, improves survival after heart attack.",
+            "mechanism": "Inhibits angiotensin-converting enzyme, reducing blood pressure.",
+            "side_effects": "Dry cough, dizziness, headache, hyperkalemia.",
+            "dosage": "5-40mg once daily.",
+            "precautions": "Avoid in pregnancy. May cause angioedema."
+        },
+        {
+            "name": "Enalapril",
+            "generic_name": "Enalapril maleate",
+            "drug_class": "ACE Inhibitor",
+            "uses": "Treats hypertension, heart failure, prevents kidney damage in diabetics.",
+            "mechanism": "Inhibits ACE, lowering blood pressure and reducing heart workload.",
+            "side_effects": "Cough, dizziness, fatigue, rash.",
+            "dosage": "5-40mg daily in one or two doses.",
+            "precautions": "Avoid in pregnancy."
+        },
+        {
+            "name": "Metoprolol",
+            "generic_name": "Metoprolol tartrate/succinate",
+            "drug_class": "Beta Blocker",
+            "uses": "Treats high blood pressure, angina, heart failure, prevents heart attacks.",
+            "mechanism": "Blocks beta-adrenergic receptors, slowing heart rate and reducing blood pressure.",
+            "side_effects": "Fatigue, dizziness, cold extremities, bradycardia.",
+            "dosage": "25-200mg daily in divided doses.",
+            "precautions": "Do not stop suddenly. Use caution in asthma."
+        },
+        {
+            "name": "Atenolol",
+            "generic_name": "Atenolol",
+            "drug_class": "Beta Blocker",
+            "uses": "Treats hypertension, angina, arrhythmias.",
+            "mechanism": "Selective beta-1 adrenergic blocker.",
+            "side_effects": "Fatigue, cold hands/feet, slow heartbeat.",
+            "dosage": "25-100mg once daily.",
+            "precautions": "Do not stop abruptly."
+        },
+        {
+            "name": "Hydrochlorothiazide",
+            "generic_name": "Hydrochlorothiazide",
+            "drug_class": "Thiazide Diuretic",
+            "uses": "Treats high blood pressure and edema.",
+            "mechanism": "Increases urine output by inhibiting sodium reabsorption in kidneys.",
+            "side_effects": "Increased urination, dizziness, low potassium.",
+            "dosage": "12.5-50mg once daily.",
+            "precautions": "Monitor electrolytes. May increase blood sugar."
+        },
+        {
+            "name": "Furosemide",
+            "generic_name": "Furosemide",
+            "drug_class": "Loop Diuretic",
+            "uses": "Treats edema from heart failure, liver or kidney disease. Also used for hypertension.",
+            "mechanism": "Inhibits sodium-potassium-chloride cotransporter in loop of Henle.",
+            "side_effects": "Dehydration, low potassium, dizziness, hearing problems.",
+            "dosage": "20-80mg once or twice daily.",
+            "precautions": "Monitor electrolytes and kidney function."
+        },
+        {
+            "name": "Prednisone",
+            "generic_name": "Prednisone",
+            "drug_class": "Corticosteroid",
+            "uses": "Treats inflammation, allergies, asthma, autoimmune conditions.",
+            "mechanism": "Suppresses immune system and reduces inflammation.",
+            "side_effects": "Weight gain, mood changes, increased blood sugar, bone loss with long-term use.",
+            "dosage": "5-60mg daily depending on condition.",
+            "precautions": "Do not stop suddenly after long-term use. Increases infection risk."
+        },
+        {
+            "name": "Prednisolone",
+            "generic_name": "Prednisolone",
+            "drug_class": "Corticosteroid",
+            "uses": "Similar to prednisone - treats inflammation, allergies, autoimmune disorders.",
+            "mechanism": "Active form of prednisone, reduces inflammation and immune responses.",
+            "side_effects": "Same as prednisone - weight gain, mood changes, increased appetite.",
+            "dosage": "5-60mg daily.",
+            "precautions": "Taper dose when discontinuing."
+        },
+        {
+            "name": "Cetirizine",
+            "generic_name": "Cetirizine hydrochloride",
+            "drug_class": "Antihistamine",
+            "uses": "Treats allergies, hay fever, hives.",
+            "mechanism": "Blocks H1 histamine receptors, reducing allergic symptoms.",
+            "side_effects": "Drowsiness, dry mouth, headache.",
+            "dosage": "5-10mg once daily.",
+            "precautions": "May cause drowsiness. Avoid alcohol."
+        },
+        {
+            "name": "Loratadine",
+            "generic_name": "Loratadine",
+            "drug_class": "Non-sedating Antihistamine",
+            "uses": "Treats allergic rhinitis, chronic urticaria (hives).",
+            "mechanism": "Blocks peripheral H1 receptors without crossing blood-brain barrier.",
+            "side_effects": "Headache, dry mouth, fatigue. Less sedating than older antihistamines.",
+            "dosage": "10mg once daily.",
+            "precautions": "Generally well tolerated."
+        },
+        {
+            "name": "Montelukast",
+            "generic_name": "Montelukast sodium",
+            "drug_class": "Leukotriene Receptor Antagonist",
+            "uses": "Prevents asthma attacks, treats allergic rhinitis.",
+            "mechanism": "Blocks leukotrienes that cause inflammation and bronchoconstriction.",
+            "side_effects": "Headache, stomach pain. Rare neuropsychiatric effects.",
+            "dosage": "10mg once daily in evening.",
+            "precautions": "Not for acute asthma attacks. Watch for mood changes."
+        },
+        {
+            "name": "Salbutamol",
+            "generic_name": "Albuterol",
+            "drug_class": "Short-acting Beta-2 Agonist (SABA)",
+            "uses": "Relieves acute asthma symptoms and bronchospasm.",
+            "mechanism": "Relaxes smooth muscles in airways by stimulating beta-2 receptors.",
+            "side_effects": "Tremor, palpitations, headache, nervousness.",
+            "dosage": "2 puffs every 4-6 hours as needed.",
+            "precautions": "If needing more than 2-3 times per week, see doctor for better control."
+        },
+        {
+            "name": "Fluticasone",
+            "generic_name": "Fluticasone propionate",
+            "drug_class": "Inhaled Corticosteroid",
+            "uses": "Prevents asthma attacks, treats allergic rhinitis.",
+            "mechanism": "Reduces airway inflammation.",
+            "side_effects": "Oral thrush, hoarseness, sore throat.",
+            "dosage": "100-500mcg twice daily for asthma.",
+            "precautions": "Rinse mouth after use. Not for acute attacks."
+        },
+        {
+            "name": "Levothyroxine",
+            "generic_name": "Levothyroxine sodium",
+            "drug_class": "Thyroid Hormone",
+            "uses": "Treats hypothyroidism (underactive thyroid).",
+            "mechanism": "Replaces or supplements the thyroid hormone T4.",
+            "side_effects": "Weight loss, tremor, palpitations if dose too high.",
+            "dosage": "25-200mcg once daily on empty stomach.",
+            "precautions": "Take 30-60 minutes before breakfast. Many drug interactions."
+        },
+        {
+            "name": "Sertraline",
+            "generic_name": "Sertraline hydrochloride",
+            "drug_class": "Selective Serotonin Reuptake Inhibitor (SSRI)",
+            "uses": "Treats depression, anxiety, panic disorder, OCD, PTSD.",
+            "mechanism": "Blocks serotonin reuptake, increasing serotonin levels in brain.",
+            "side_effects": "Nausea, diarrhea, insomnia, sexual dysfunction.",
+            "dosage": "50-200mg once daily.",
+            "precautions": "May increase suicidal thoughts in young adults. Do not stop suddenly."
+        },
+        {
+            "name": "Fluoxetine",
+            "generic_name": "Fluoxetine hydrochloride",
+            "drug_class": "SSRI Antidepressant",
+            "uses": "Treats depression, OCD, panic disorder, bulimia.",
+            "mechanism": "Inhibits serotonin reuptake in the brain.",
+            "side_effects": "Nausea, nervousness, insomnia, sexual side effects.",
+            "dosage": "20-80mg once daily.",
+            "precautions": "Long half-life. Many drug interactions."
+        },
+        {
+            "name": "Escitalopram",
+            "generic_name": "Escitalopram oxalate",
+            "drug_class": "SSRI Antidepressant",
+            "uses": "Treats depression and generalized anxiety disorder.",
+            "mechanism": "Selective serotonin reuptake inhibitor.",
+            "side_effects": "Nausea, insomnia, drowsiness, sexual dysfunction.",
+            "dosage": "10-20mg once daily.",
+            "precautions": "May prolong QT interval at high doses."
+        },
+        {
+            "name": "Alprazolam",
+            "generic_name": "Alprazolam",
+            "drug_class": "Benzodiazepine",
+            "uses": "Treats anxiety and panic disorders. Short-term use only.",
+            "mechanism": "Enhances GABA effects in the brain, producing calming effect.",
+            "side_effects": "Drowsiness, dizziness, memory impairment. Risk of dependence.",
+            "dosage": "0.25-0.5mg 2-3 times daily.",
+            "precautions": "Highly addictive. Do not stop suddenly. Avoid alcohol."
+        },
+        {
+            "name": "Diazepam",
+            "generic_name": "Diazepam",
+            "drug_class": "Benzodiazepine",
+            "uses": "Treats anxiety, muscle spasms, seizures, alcohol withdrawal.",
+            "mechanism": "Enhances GABA activity in CNS.",
+            "side_effects": "Drowsiness, fatigue, muscle weakness. Dependence with long-term use.",
+            "dosage": "2-10mg 2-4 times daily.",
+            "precautions": "Avoid alcohol. Risk of dependence. Do not stop abruptly."
+        },
+        {
+            "name": "Clonazepam",
+            "generic_name": "Clonazepam",
+            "drug_class": "Benzodiazepine",
+            "uses": "Treats seizures, panic disorder.",
+            "mechanism": "Enhances GABA inhibitory effects.",
+            "side_effects": "Drowsiness, dizziness, coordination problems.",
+            "dosage": "0.5-2mg 2-3 times daily.",
+            "precautions": "May cause dependence. Taper when stopping."
+        },
+        {
+            "name": "Gabapentin",
+            "generic_name": "Gabapentin",
+            "drug_class": "Anticonvulsant/Nerve Pain Medication",
+            "uses": "Treats nerve pain (neuropathy), seizures, restless leg syndrome.",
+            "mechanism": "Binds to voltage-gated calcium channels, reducing nerve hyperactivity.",
+            "side_effects": "Drowsiness, dizziness, weight gain, edema.",
+            "dosage": "300-3600mg daily in divided doses.",
+            "precautions": "Do not stop suddenly. Dose adjustment needed in kidney disease."
+        },
+        {
+            "name": "Pregabalin",
+            "generic_name": "Pregabalin",
+            "drug_class": "Anticonvulsant/Nerve Pain Medication",
+            "uses": "Treats nerve pain, fibromyalgia, anxiety, seizures.",
+            "mechanism": "Binds to alpha-2-delta subunit of calcium channels.",
+            "side_effects": "Dizziness, drowsiness, weight gain, blurred vision.",
+            "dosage": "75-300mg twice daily.",
+            "precautions": "Controlled substance in some countries. Do not stop suddenly."
+        },
+        {
+            "name": "Tramadol",
+            "generic_name": "Tramadol hydrochloride",
+            "drug_class": "Opioid Analgesic",
+            "uses": "Treats moderate to severe pain.",
+            "mechanism": "Weak opioid agonist and inhibits serotonin/norepinephrine reuptake.",
+            "side_effects": "Nausea, dizziness, constipation, drowsiness. Risk of dependence.",
+            "dosage": "50-100mg every 4-6 hours. Maximum 400mg/day.",
+            "precautions": "Risk of seizures. Avoid with MAOIs. Dependence risk."
+        },
+        {
+            "name": "Morphine",
+            "generic_name": "Morphine sulfate",
+            "drug_class": "Opioid Analgesic",
+            "uses": "Treats severe pain.",
+            "mechanism": "Binds to mu-opioid receptors in the CNS.",
+            "side_effects": "Constipation, nausea, drowsiness, respiratory depression.",
+            "dosage": "Highly variable based on pain severity and tolerance.",
+            "precautions": "Highly addictive. Monitor for respiratory depression."
+        },
+        {
+            "name": "Warfarin",
+            "generic_name": "Warfarin sodium",
+            "drug_class": "Anticoagulant (Blood Thinner)",
+            "uses": "Prevents and treats blood clots, stroke prevention in atrial fibrillation.",
+            "mechanism": "Inhibits vitamin K-dependent clotting factors.",
+            "side_effects": "Bleeding, bruising.",
+            "dosage": "Individualized based on INR monitoring. Usually 2-10mg daily.",
+            "precautions": "Many drug and food interactions. Regular INR monitoring required."
+        },
+        {
+            "name": "Clopidogrel",
+            "generic_name": "Clopidogrel bisulfate",
+            "drug_class": "Antiplatelet Agent",
+            "uses": "Prevents heart attacks and strokes in patients with cardiovascular disease.",
+            "mechanism": "Inhibits ADP-induced platelet aggregation.",
+            "side_effects": "Bleeding, bruising, diarrhea.",
+            "dosage": "75mg once daily.",
+            "precautions": "May interact with PPIs like omeprazole."
+        },
+        {
+            "name": "Enoxaparin",
+            "generic_name": "Enoxaparin sodium",
+            "drug_class": "Low Molecular Weight Heparin (LMWH)",
+            "uses": "Prevents and treats deep vein thrombosis (DVT) and pulmonary embolism.",
+            "mechanism": "Inhibits factor Xa and thrombin.",
+            "side_effects": "Bleeding, injection site bruising.",
+            "dosage": "40mg daily for prevention, 1mg/kg twice daily for treatment.",
+            "precautions": "Inject subcutaneously. Monitor platelets."
+        },
+        {
+            "name": "Vitamin D3",
+            "generic_name": "Cholecalciferol",
+            "drug_class": "Vitamin/Supplement",
+            "uses": "Treats and prevents vitamin D deficiency, supports bone health.",
+            "mechanism": "Essential for calcium absorption and bone metabolism.",
+            "side_effects": "Usually none at normal doses. Excess can cause hypercalcemia.",
+            "dosage": "400-2000 IU daily for maintenance. Higher doses for deficiency.",
+            "precautions": "Do not exceed recommended doses without medical supervision."
+        },
+        {
+            "name": "Calcium",
+            "generic_name": "Calcium carbonate/citrate",
+            "drug_class": "Mineral Supplement",
+            "uses": "Prevents and treats calcium deficiency, osteoporosis.",
+            "mechanism": "Essential mineral for bone health, muscle function, nerve transmission.",
+            "side_effects": "Constipation, gas, bloating.",
+            "dosage": "500-1000mg daily in divided doses.",
+            "precautions": "Take with vitamin D. May interact with some medications."
+        },
+        {
+            "name": "Iron",
+            "generic_name": "Ferrous sulfate/gluconate/fumarate",
+            "drug_class": "Mineral Supplement",
+            "uses": "Treats and prevents iron deficiency anemia.",
+            "mechanism": "Essential for hemoglobin production.",
+            "side_effects": "Constipation, nausea, dark stools, stomach upset.",
+            "dosage": "60-200mg elemental iron daily in divided doses.",
+            "precautions": "Take on empty stomach with vitamin C. Avoid with antacids."
+        },
+        {
+            "name": "Folic Acid",
+            "generic_name": "Folic acid",
+            "drug_class": "B Vitamin",
+            "uses": "Prevents and treats folate deficiency, essential during pregnancy to prevent neural tube defects.",
+            "mechanism": "Essential for DNA synthesis and cell division.",
+            "side_effects": "Generally safe. Rare: nausea, loss of appetite.",
+            "dosage": "400mcg-1mg daily. 4mg for pregnancy with history of neural tube defects.",
+            "precautions": "May mask B12 deficiency symptoms."
+        },
+        {
+            "name": "Vitamin B12",
+            "generic_name": "Cyanocobalamin/Methylcobalamin",
+            "drug_class": "B Vitamin",
+            "uses": "Treats B12 deficiency, pernicious anemia, neuropathy.",
+            "mechanism": "Essential for nerve function and DNA synthesis.",
+            "side_effects": "Generally safe. Injection site reactions.",
+            "dosage": "1000mcg orally or injection depending on deficiency.",
+            "precautions": "Vegans and elderly at higher risk of deficiency."
+        },
+        {
+            "name": "Nucoxia",
+            "generic_name": "Etoricoxib",
+            "drug_class": "COX-2 Selective NSAID",
+            "uses": "Treats pain and inflammation in osteoarthritis, rheumatoid arthritis, gout.",
+            "mechanism": "Selectively inhibits cyclooxygenase-2 (COX-2).",
+            "side_effects": "Headache, dizziness, edema, hypertension.",
+            "dosage": "30-120mg once daily depending on condition.",
+            "precautions": "Not for patients with heart disease or uncontrolled hypertension."
+        },
+        {
+            "name": "Nucoxia-MR",
+            "generic_name": "Etoricoxib + Thiocolchicoside",
+            "drug_class": "COX-2 Inhibitor + Muscle Relaxant",
+            "uses": "Used for pain relief with muscle spasm, such as lower back pain, neck pain.",
+            "mechanism": "Etoricoxib reduces inflammation while thiocolchicoside relaxes muscles.",
+            "side_effects": "Nausea, dizziness, drowsiness, stomach upset.",
+            "dosage": "Usually one tablet once or twice daily.",
+            "precautions": "Avoid in pregnancy. Not for long-term use."
+        },
+        {
+            "name": "Pan 40",
+            "generic_name": "Pantoprazole 40mg",
+            "drug_class": "Proton Pump Inhibitor (PPI)",
+            "uses": "Treats acid-related conditions like GERD, peptic ulcers.",
+            "mechanism": "Reduces stomach acid by blocking the proton pump.",
+            "side_effects": "Headache, diarrhea, nausea, abdominal pain.",
+            "dosage": "40mg once daily, taken before breakfast.",
+            "precautions": "Use lowest effective dose for shortest duration."
+        },
+        {
+            "name": "Axomed",
+            "generic_name": "Aceclofenac",
+            "drug_class": "Non-Steroidal Anti-Inflammatory Drug (NSAID)",
+            "uses": "Relieves pain and inflammation in arthritis and musculoskeletal conditions.",
+            "mechanism": "Inhibits cyclooxygenase enzymes.",
+            "side_effects": "Stomach upset, nausea, diarrhea, dizziness.",
+            "dosage": "100mg twice daily, taken with food.",
+            "precautions": "Avoid in patients with peptic ulcers or kidney disease."
+        },
+        {
+            "name": "Reflex Plus",
+            "generic_name": "Aceclofenac + Paracetamol + Chlorzoxazone",
+            "drug_class": "NSAID + Analgesic + Muscle Relaxant",
+            "uses": "Used for pain relief in conditions like back pain, muscle spasms, joint pain.",
+            "mechanism": "Aceclofenac reduces inflammation, paracetamol provides pain relief, chlorzoxazone relaxes muscles.",
+            "side_effects": "Stomach upset, nausea, dizziness, drowsiness.",
+            "dosage": "Usually one tablet 2-3 times daily after meals.",
+            "precautions": "Avoid alcohol. Not recommended for liver/kidney disease."
+        },
+        {
+            "name": "Lineoult",
+            "generic_name": "Linaclotide",
+            "drug_class": "Guanylate Cyclase-C Agonist",
+            "uses": "Used to treat irritable bowel syndrome with constipation (IBS-C).",
+            "mechanism": "Activates guanylate cyclase-C receptors, increasing fluid secretion.",
+            "side_effects": "Diarrhea (most common), abdominal pain, bloating.",
+            "dosage": "Usually 145-290 mcg once daily on empty stomach.",
+            "precautions": "Contraindicated in children under 6 years."
+        },
+        {
+            "name": "Fixaraok",
+            "generic_name": "Cefixime",
+            "drug_class": "Third-generation Cephalosporin Antibiotic",
+            "uses": "Treats bacterial infections including respiratory, urinary tract, ear infections.",
+            "mechanism": "Inhibits bacterial cell wall synthesis.",
+            "side_effects": "Diarrhea, nausea, abdominal pain, headache.",
+            "dosage": "Usually 200-400mg daily.",
+            "precautions": "Tell your doctor if allergic to penicillins."
+        },
+        {
+            "name": "Sildenafil",
+            "generic_name": "Sildenafil citrate",
+            "drug_class": "PDE5 Inhibitor",
+            "uses": "Treats erectile dysfunction and pulmonary arterial hypertension.",
+            "mechanism": "Inhibits phosphodiesterase-5, increasing blood flow.",
+            "side_effects": "Headache, flushing, nasal congestion, vision changes.",
+            "dosage": "25-100mg as needed, 1 hour before activity.",
+            "precautions": "Do not use with nitrates. Contraindicated in severe heart disease."
+        },
+        {
+            "name": "Tadalafil",
+            "generic_name": "Tadalafil",
+            "drug_class": "PDE5 Inhibitor",
+            "uses": "Treats erectile dysfunction, BPH, pulmonary arterial hypertension.",
+            "mechanism": "Inhibits PDE5, improving blood flow.",
+            "side_effects": "Headache, indigestion, back pain, muscle aches.",
+            "dosage": "10-20mg as needed or 2.5-5mg daily.",
+            "precautions": "Do not use with nitrates."
+        },
+        {
+            "name": "Ondansetron",
+            "generic_name": "Ondansetron hydrochloride",
+            "drug_class": "5-HT3 Receptor Antagonist",
+            "uses": "Prevents nausea and vomiting from chemotherapy, radiation, surgery.",
+            "mechanism": "Blocks serotonin 5-HT3 receptors in the brain and gut.",
+            "side_effects": "Headache, constipation, dizziness.",
+            "dosage": "4-8mg every 8 hours as needed.",
+            "precautions": "May prolong QT interval."
+        },
+        {
+            "name": "Domperidone",
+            "generic_name": "Domperidone",
+            "drug_class": "Prokinetic/Antiemetic",
+            "uses": "Treats nausea, vomiting, and improves stomach emptying.",
+            "mechanism": "Blocks dopamine D2 receptors in the chemoreceptor trigger zone.",
+            "side_effects": "Dry mouth, abdominal cramps. May affect heart rhythm.",
+            "dosage": "10mg 3 times daily before meals.",
+            "precautions": "Use lowest dose for shortest time. Cardiac monitoring in some cases."
+        },
+        {
+            "name": "Metoclopramide",
+            "generic_name": "Metoclopramide hydrochloride",
+            "drug_class": "Prokinetic/Antiemetic",
+            "uses": "Treats nausea, vomiting, gastroparesis, GERD.",
+            "mechanism": "Blocks dopamine receptors and enhances gastric motility.",
+            "side_effects": "Drowsiness, restlessness. Risk of tardive dyskinesia with long use.",
+            "dosage": "10mg 3-4 times daily before meals.",
+            "precautions": "Limit use to 12 weeks maximum."
+        },
+        {
+            "name": "Loperamide",
+            "generic_name": "Loperamide hydrochloride",
+            "drug_class": "Antidiarrheal",
+            "uses": "Treats acute and chronic diarrhea.",
+            "mechanism": "Slows intestinal motility by acting on opioid receptors in the gut.",
+            "side_effects": "Constipation, dizziness, nausea.",
+            "dosage": "4mg initially, then 2mg after each loose stool. Max 16mg/day.",
+            "precautions": "Not for bloody diarrhea or fever. Do not exceed recommended dose."
+        },
+        {
+            "name": "Lactulose",
+            "generic_name": "Lactulose",
+            "drug_class": "Osmotic Laxative",
+            "uses": "Treats constipation and hepatic encephalopathy.",
+            "mechanism": "Draws water into the colon and promotes bowel movements.",
+            "side_effects": "Bloating, gas, abdominal cramps, diarrhea.",
+            "dosage": "15-30ml daily for constipation.",
+            "precautions": "May take 24-48 hours to work."
+        },
+        {
+            "name": "Bisacodyl",
+            "generic_name": "Bisacodyl",
+            "drug_class": "Stimulant Laxative",
+            "uses": "Short-term treatment of constipation, bowel preparation.",
+            "mechanism": "Stimulates intestinal contractions.",
+            "side_effects": "Abdominal cramps, diarrhea.",
+            "dosage": "5-10mg at bedtime.",
+            "precautions": "Not for regular use. Do not chew enteric-coated tablets."
+        },
+        {
+            "name": "Tamsulosin",
+            "generic_name": "Tamsulosin hydrochloride",
+            "drug_class": "Alpha-1 Adrenergic Blocker",
+            "uses": "Treats benign prostatic hyperplasia (BPH) symptoms.",
+            "mechanism": "Relaxes smooth muscle in prostate and bladder neck.",
+            "side_effects": "Dizziness, retrograde ejaculation, stuffy nose.",
+            "dosage": "0.4mg once daily after a meal.",
+            "precautions": "May cause first-dose hypotension. Stand up slowly."
+        },
+        {
+            "name": "Finasteride",
+            "generic_name": "Finasteride",
+            "drug_class": "5-Alpha Reductase Inhibitor",
+            "uses": "Treats BPH and male pattern baldness.",
+            "mechanism": "Inhibits conversion of testosterone to dihydrotestosterone (DHT).",
+            "side_effects": "Sexual dysfunction, decreased libido, gynecomastia.",
+            "dosage": "5mg daily for BPH, 1mg daily for hair loss.",
+            "precautions": "Women who are or may become pregnant should not handle crushed tablets."
+        },
+        {
+            "name": "Allopurinol",
+            "generic_name": "Allopurinol",
+            "drug_class": "Xanthine Oxidase Inhibitor",
+            "uses": "Prevents gout attacks by lowering uric acid levels.",
+            "mechanism": "Inhibits xanthine oxidase, reducing uric acid production.",
+            "side_effects": "Rash (can be severe), nausea, diarrhea.",
+            "dosage": "100-300mg daily, may increase to 800mg.",
+            "precautions": "Start at low dose. May trigger gout initially."
+        },
+        {
+            "name": "Colchicine",
+            "generic_name": "Colchicine",
+            "drug_class": "Anti-gout Agent",
+            "uses": "Treats acute gout attacks and prevents recurrence.",
+            "mechanism": "Reduces inflammation by inhibiting neutrophil migration.",
+            "side_effects": "Diarrhea, nausea, vomiting, abdominal pain.",
+            "dosage": "0.5-1mg initially, then 0.5mg after 1 hour. Max 1.5mg in 1 hour.",
+            "precautions": "Narrow therapeutic index. Many drug interactions."
+        }
+    ]
+}
