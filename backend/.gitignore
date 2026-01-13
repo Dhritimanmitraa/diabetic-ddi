@@ -15,6 +15,12 @@ drug_interactions.db
 druguard.db
 chroma_db/
 
+# ===== Training Data =====
+data/diabetic/training/
+data/training/
+*_results.json
+*_comparison.json
+
 # ===== Notebooks & Dev Files =====
 notebooks/
 *.ipynb
