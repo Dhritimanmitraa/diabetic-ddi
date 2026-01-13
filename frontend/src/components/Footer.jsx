@@ -17,11 +17,11 @@ function Footer() {
               </h3>
             </div>
             <p className="text-slate-400 mb-4 max-w-md">
-              An AI-powered drug interaction checker designed to help you stay safe 
+              An AI-powered drug interaction checker designed to help you stay safe
               by identifying potential medication conflicts before they become problems.
             </p>
             <div className="flex items-center gap-4">
-              <SocialLink href="https://github.com" icon={<Github className="w-5 h-5" />} />
+              <SocialLink href="https://github.com/Dhritimanmitraa/diabetic-ddi" icon={<Github className="w-5 h-5" />} />
               <SocialLink href="mailto:contact@drugguard.ai" icon={<Mail className="w-5 h-5" />} />
             </div>
           </div>
@@ -53,11 +53,11 @@ function Footer() {
         <div className="p-4 bg-slate-800/30 rounded-xl mb-8">
           <h5 className="text-white font-medium mb-2">Medical Disclaimer</h5>
           <p className="text-slate-400 text-sm">
-            This tool is intended for informational purposes only and should not be used as a 
-            substitute for professional medical advice, diagnosis, or treatment. Always seek 
-            the advice of your physician or other qualified health provider with any questions 
-            you may have regarding a medical condition or medication interactions. Never 
-            disregard professional medical advice or delay in seeking it because of information 
+            This tool is intended for informational purposes only and should not be used as a
+            substitute for professional medical advice, diagnosis, or treatment. Always seek
+            the advice of your physician or other qualified health provider with any questions
+            you may have regarding a medical condition or medication interactions. Never
+            disregard professional medical advice or delay in seeking it because of information
             obtained from this application.
           </p>
         </div>

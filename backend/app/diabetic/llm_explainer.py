@@ -1,14 +1,14 @@
 """
 LLM-based Explanation Generator for Drug Risk Assessments.
 
-Uses Ollama for local LLM inference to generate patient-friendly
+Uses Ollama for LLM inference to generate patient-friendly
 explanations of drug risk assessments. The LLM ONLY explains —
 it NEVER makes medical decisions.
 
-Recommended models for 16GB RAM:
-- llama3.2:3b - Best balance of speed and quality (recommended)
-- mistral:7b - Good alternative (if available)
-- llama3.1:8b - Another option
+Supported Models:
+- gpt-oss:120b-cloud - Cloud-hosted model (recommended for quality)
+- llama3.1:8b - Local model (fallback)
+- mistral:7b - Alternative local model
 """
 
 import asyncio
@@ -19,10 +19,10 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
-# Default configuration
-DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
+# Default configuration - gpt-oss:120b-cloud is a cloud model for best quality
+DEFAULT_MODEL = os.environ.get("OLLAMA_MODEL", "gpt-oss:120b-cloud")
 DEFAULT_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-TIMEOUT_SECONDS = 45  # Increased timeout for larger model
+TIMEOUT_SECONDS = 120  # Increased timeout for cloud model (network latency)
 
 
 # System prompt enforcing safety - LLM explains, never decides

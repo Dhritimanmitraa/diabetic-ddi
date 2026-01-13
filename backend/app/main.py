@@ -33,6 +33,7 @@ from app.services import (
     create_comparison_logger
 )
 from app.diabetic.router import router as diabetic_router
+from app.prescription.router import router as prescription_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -113,6 +114,9 @@ app.add_middleware(
 
 # Include diabetic patient module router
 app.include_router(diabetic_router)
+
+# Include prescription RAG module router
+app.include_router(prescription_router)
 
 
 # ============== Health & Stats Endpoints ==============

@@ -32,11 +32,10 @@ const MLBadge = ({ mlRisk, mlProb, source }) => {
       </span>
       {src && (
         <span
-          className={`px-2 py-1 rounded-full border ${
-            source === 'rule_override'
-              ? 'border-red-500/50 text-red-300 bg-red-500/10'
-              : 'border-slate-700 bg-slate-800/70'
-          }`}
+          className={`px-2 py-1 rounded-full border ${source === 'rule_override'
+            ? 'border-red-500/50 text-red-300 bg-red-500/10'
+            : 'border-slate-700 bg-slate-800/70'
+            }`}
         >
           {src}
         </span>
@@ -45,19 +44,68 @@ const MLBadge = ({ mlRisk, mlProb, source }) => {
   )
 }
 
-// Patient card component
+// Health gauge component for visualizing metrics
+const HealthGauge = ({ value, min, max, label, unit, goodRange, cautionRange }) => {
+  if (value == null) return null
+  const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))
+
+  let color = 'bg-emerald-500'
+  let textColor = 'text-emerald-400'
+  if (goodRange && (value < goodRange[0] || value > goodRange[1])) {
+    if (cautionRange && value >= cautionRange[0] && value <= cautionRange[1]) {
+      color = 'bg-amber-500'
+      textColor = 'text-amber-400'
+    } else {
+      color = 'bg-red-500'
+      textColor = 'text-red-400'
+    }
+  }
+
+  return (
+    <div className="flex-1 min-w-[80px]">
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-slate-400">{label}</span>
+        <span className={`font-medium ${textColor}`}>{value}{unit}</span>
+      </div>
+      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+        <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${percentage}%` }} />
+      </div>
+    </div>
+  )
+}
+
+// Skeleton loader for LLM analysis
+const LLMSkeleton = () => (
+  <div className="mt-4 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg animate-pulse">
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-4 h-4 bg-purple-500/30 rounded" />
+      <div className="h-4 w-24 bg-purple-500/20 rounded" />
+      <div className="h-5 w-16 bg-purple-500/10 rounded-full" />
+    </div>
+    <div className="space-y-2">
+      <div className="h-3 bg-slate-700/50 rounded w-full" />
+      <div className="h-3 bg-slate-700/50 rounded w-4/5" />
+      <div className="h-3 bg-slate-700/50 rounded w-3/5" />
+    </div>
+    <div className="flex gap-2 mt-3">
+      <div className="h-6 w-20 bg-purple-500/10 rounded-full" />
+      <div className="h-6 w-24 bg-purple-500/10 rounded-full" />
+    </div>
+  </div>
+)
+
+// Patient card component with health gauges
 const PatientCard = ({ patient, onSelect, isSelected }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     onClick={() => onSelect(patient)}
-    className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
-      isSelected 
-        ? 'bg-medical-500/20 border-2 border-medical-500' 
-        : 'bg-slate-800/50 border border-slate-700/50 hover:border-medical-500/50'
-    }`}
+    className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${isSelected
+      ? 'bg-medical-500/20 border-2 border-medical-500'
+      : 'bg-slate-800/50 border border-slate-700/50 hover:border-medical-500/50'
+      }`}
   >
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between mb-3">
       <div>
         <h4 className="font-semibold text-white">{patient.name || patient.patient_id}</h4>
         <p className="text-sm text-slate-400">
@@ -65,15 +113,40 @@ const PatientCard = ({ patient, onSelect, isSelected }) => (
         </p>
       </div>
       <div className="text-right">
-        <div className="text-medical-400 font-medium">HbA1c: {patient.hba1c || 'N/A'}%</div>
-        <div className="text-xs text-slate-500">eGFR: {patient.egfr || 'N/A'}</div>
+        <div className={`font-medium ${patient.hba1c && patient.hba1c < 7 ? 'text-emerald-400' :
+          patient.hba1c && patient.hba1c < 8 ? 'text-amber-400' : 'text-red-400'
+          }`}>HbA1c: {patient.hba1c || 'N/A'}%</div>
+        <div className={`text-xs ${patient.egfr && patient.egfr >= 60 ? 'text-emerald-400' :
+          patient.egfr && patient.egfr >= 30 ? 'text-amber-400' : 'text-red-400'
+          }`}>eGFR: {patient.egfr || 'N/A'}</div>
       </div>
     </div>
+
+    {/* Health Gauges */}
+    {(patient.hba1c || patient.egfr) && (
+      <div className="flex gap-3 mb-2">
+        <HealthGauge
+          value={patient.hba1c}
+          min={4} max={14}
+          label="HbA1c" unit="%"
+          goodRange={[4, 7]}
+          cautionRange={[7, 8.5]}
+        />
+        <HealthGauge
+          value={patient.egfr}
+          min={0} max={120}
+          label="eGFR" unit=""
+          goodRange={[60, 120]}
+          cautionRange={[30, 60]}
+        />
+      </div>
+    )}
+
     {(patient.has_nephropathy || patient.has_cardiovascular || patient.has_neuropathy) && (
-      <div className="mt-2 flex gap-2">
-        {patient.has_nephropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Nephropathy</span>}
-        {patient.has_cardiovascular && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Cardiovascular</span>}
-        {patient.has_neuropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded">Neuropathy</span>}
+      <div className="flex gap-2 flex-wrap">
+        {patient.has_nephropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">🫀 Nephropathy</span>}
+        {patient.has_cardiovascular && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">❤️ Cardiovascular</span>}
+        {patient.has_neuropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">🧠 Neuropathy</span>}
       </div>
     )}
   </motion.div>
@@ -100,15 +173,14 @@ const DrugRiskCard = ({ assessment }) => (
     <div className="mb-3">
       <MLBadge mlRisk={assessment.ml_risk_level} mlProb={assessment.ml_probability} source={assessment.ml_decision_source} />
     </div>
-    
+
     <div className="mb-3">
       <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-        <div 
-          className={`h-full transition-all ${
-            assessment.risk_score < 20 ? 'bg-emerald-500' :
+        <div
+          className={`h-full transition-all ${assessment.risk_score < 20 ? 'bg-emerald-500' :
             assessment.risk_score < 40 ? 'bg-amber-500' :
-            assessment.risk_score < 60 ? 'bg-orange-500' : 'bg-red-500'
-          }`}
+              assessment.risk_score < 60 ? 'bg-orange-500' : 'bg-red-500'
+            }`}
           style={{ width: `${assessment.risk_score}%` }}
         />
       </div>
@@ -203,7 +275,7 @@ const DrugRiskCard = ({ assessment }) => (
             {assessment.llm_analysis.model_used || 'AI'}
           </span>
         </div>
-        
+
         <div className="mb-2">
           <div className="flex items-center gap-2 mb-1">
             <RiskBadge level={assessment.llm_analysis.risk_level} />
@@ -247,12 +319,7 @@ const DrugRiskCard = ({ assessment }) => (
         )}
       </div>
     ) : (
-      <div className="mt-4 p-3 bg-slate-800/30 border border-slate-700/50 rounded-lg">
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <div className="w-4 h-4 border-2 border-purple-500/50 border-t-transparent rounded-full animate-spin"></div>
-          <span>LLM analysis loading...</span>
-        </div>
-      </div>
+      <LLMSkeleton />
     )}
   </motion.div>
 )
@@ -266,7 +333,7 @@ export default function DiabetesManager() {
   const [loading, setLoading] = useState(false)
   const [activeSection, setActiveSection] = useState('patients') // patients, check, report
   const [modelInfo, setModelInfo] = useState(null)
-  
+
   // New patient form
   const [showNewPatient, setShowNewPatient] = useState(false)
   const [newPatient, setNewPatient] = useState({
@@ -281,20 +348,34 @@ export default function DiabetesManager() {
     has_cardiovascular: false,
     has_neuropathy: false,
   })
-  
+
   // Drug check
   const [drugToCheck, setDrugToCheck] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState(null)
-  
+
   // Browse all drugs
   const [showDrugBrowser, setShowDrugBrowser] = useState(false)
   const [allDrugs, setAllDrugs] = useState([])
   const [drugsLoading, setDrugsLoading] = useState(false)
   const [drugBrowserPage, setDrugBrowserPage] = useState(0)
   const [drugBrowserSearch, setDrugBrowserSearch] = useState('')
+
+  // Recent drug searches (persisted in localStorage)
+  const [recentDrugs, setRecentDrugs] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('recentDrugs') || '[]')
+    } catch { return [] }
+  })
+
+  // Add drug to recent history
+  const addToRecentDrugs = (drugName) => {
+    const updated = [drugName, ...recentDrugs.filter(d => d.toLowerCase() !== drugName.toLowerCase())].slice(0, 8)
+    setRecentDrugs(updated)
+    localStorage.setItem('recentDrugs', JSON.stringify(updated))
+  }
 
   // Fetch patients on mount
   useEffect(() => {
@@ -499,7 +580,8 @@ export default function DiabetesManager() {
         setCheckResult(data)
         setActiveSection('check')
         setLoading(false) // Show results immediately
-        
+        addToRecentDrugs(drugToCheck.trim()) // Save to recent history
+
         // Step 2: Fetch LLM analysis in background (slow - 10-20 seconds)
         // This updates the UI when LLM is ready
         fetch(`${API_URL}/diabetic/risk-check/llm`, {
@@ -510,21 +592,21 @@ export default function DiabetesManager() {
             drug_name: drugToCheck.trim()
           })
         })
-        .then(async (llmRes) => {
-          if (llmRes.ok) {
-            const llmData = await llmRes.json()
-            // Update the existing result with LLM analysis
-            setCheckResult(prev => ({
-              ...prev,
-              llm_analysis: llmData.llm_analysis
-            }))
-            toast.success('LLM analysis complete', { duration: 2000 })
-          }
-        })
-        .catch((err) => {
-          console.error('LLM analysis failed:', err)
-          // Don't show error toast - LLM is optional
-        })
+          .then(async (llmRes) => {
+            if (llmRes.ok) {
+              const llmData = await llmRes.json()
+              // Update the existing result with LLM analysis
+              setCheckResult(prev => ({
+                ...prev,
+                llm_analysis: llmData.llm_analysis
+              }))
+              toast.success('LLM analysis complete', { duration: 2000 })
+            }
+          })
+          .catch((err) => {
+            console.error('LLM analysis failed:', err)
+            // Don't show error toast - LLM is optional
+          })
       } else {
         const err = await res.json()
         toast.error(err.detail || 'Failed to check drug')
@@ -662,7 +744,7 @@ export default function DiabetesManager() {
                       type="text"
                       placeholder="Patient ID *"
                       value={newPatient.patient_id}
-                      onChange={(e) => setNewPatient({...newPatient, patient_id: e.target.value})}
+                      onChange={(e) => setNewPatient({ ...newPatient, patient_id: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
                       required
                     />
@@ -670,7 +752,7 @@ export default function DiabetesManager() {
                       type="text"
                       placeholder="Name"
                       value={newPatient.name}
-                      onChange={(e) => setNewPatient({...newPatient, name: e.target.value})}
+                      onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
                     />
                     <div className="grid grid-cols-2 gap-2">
@@ -678,12 +760,12 @@ export default function DiabetesManager() {
                         type="number"
                         placeholder="Age"
                         value={newPatient.age}
-                        onChange={(e) => setNewPatient({...newPatient, age: e.target.value})}
+                        onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
                         className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
                       />
                       <select
                         value={newPatient.diabetes_type}
-                        onChange={(e) => setNewPatient({...newPatient, diabetes_type: e.target.value})}
+                        onChange={(e) => setNewPatient({ ...newPatient, diabetes_type: e.target.value })}
                         className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
                       >
                         <option value="type_1">Type 1</option>
@@ -698,14 +780,14 @@ export default function DiabetesManager() {
                         step="0.1"
                         placeholder="HbA1c %"
                         value={newPatient.hba1c}
-                        onChange={(e) => setNewPatient({...newPatient, hba1c: e.target.value})}
+                        onChange={(e) => setNewPatient({ ...newPatient, hba1c: e.target.value })}
                         className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
                       />
                       <input
                         type="number"
                         placeholder="eGFR"
                         value={newPatient.egfr}
-                        onChange={(e) => setNewPatient({...newPatient, egfr: e.target.value})}
+                        onChange={(e) => setNewPatient({ ...newPatient, egfr: e.target.value })}
                         className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
                       />
                       <input
@@ -713,7 +795,7 @@ export default function DiabetesManager() {
                         step="0.1"
                         placeholder="K+ mEq/L"
                         value={newPatient.potassium}
-                        onChange={(e) => setNewPatient({...newPatient, potassium: e.target.value})}
+                        onChange={(e) => setNewPatient({ ...newPatient, potassium: e.target.value })}
                         className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
                       />
                     </div>
@@ -725,7 +807,7 @@ export default function DiabetesManager() {
                             <input
                               type="checkbox"
                               checked={newPatient[`has_${comp}`]}
-                              onChange={(e) => setNewPatient({...newPatient, [`has_${comp}`]: e.target.checked})}
+                              onChange={(e) => setNewPatient({ ...newPatient, [`has_${comp}`]: e.target.checked })}
                               className="rounded bg-slate-800 border-slate-600"
                             />
                             {comp.charAt(0).toUpperCase() + comp.slice(1)}
@@ -778,7 +860,7 @@ export default function DiabetesManager() {
                     <div>
                       <h2 className="text-2xl font-bold text-white">{selectedPatient.name || selectedPatient.patient_id}</h2>
                       <p className="text-slate-400">
-                        {selectedPatient.diabetes_type.replace('_', ' ')} diabetes • 
+                        {selectedPatient.diabetes_type.replace('_', ' ')} diabetes •
                         {selectedPatient.age ? ` ${selectedPatient.age} years old` : ''} •
                         HbA1c: {selectedPatient.hba1c || 'N/A'}% •
                         eGFR: {selectedPatient.egfr || 'N/A'} •
@@ -887,6 +969,43 @@ export default function DiabetesManager() {
                     ))}
                   </div>
 
+                  {/* Recent Drug Searches */}
+                  {recentDrugs.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Recent Searches
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {recentDrugs.map((drug, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setDrugToCheck(drug)
+                              setSearchQuery(drug)
+                              setSearchResults([])
+                            }}
+                            className="px-3 py-1 rounded-full text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:border-indigo-400 transition-colors flex items-center gap-1"
+                          >
+                            <span>{drug}</span>
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => {
+                            setRecentDrugs([])
+                            localStorage.removeItem('recentDrugs')
+                          }}
+                          className="px-2 py-1 rounded-full text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                          title="Clear history"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Current Medications */}
                   <div>
                     <h4 className="text-sm font-medium text-slate-400 mb-2">Current Medications ({medications.length})</h4>
@@ -946,7 +1065,7 @@ export default function DiabetesManager() {
                         <h3 className="text-xl font-bold text-white">Medication List Assessment</h3>
                         <RiskBadge level={checkResult.overall_risk_level} />
                       </div>
-                      
+
                       {/* Summary */}
                       <div className="grid grid-cols-5 gap-2 mb-4">
                         {[
@@ -1002,10 +1121,9 @@ export default function DiabetesManager() {
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-xl font-bold text-white">Full DDI Report</h3>
                         <div className="text-right">
-                          <div className={`text-3xl font-bold ${
-                            report.overall_safety_score > 70 ? 'text-emerald-400' :
+                          <div className={`text-3xl font-bold ${report.overall_safety_score > 70 ? 'text-emerald-400' :
                             report.overall_safety_score > 40 ? 'text-amber-400' : 'text-red-400'
-                          }`}>
+                            }`}>
                             {report.overall_safety_score}%
                           </div>
                           <div className="text-xs text-slate-400">Safety Score</div>

@@ -23,6 +23,7 @@ class RiskLevelEnum(str, Enum):
     HIGH_RISK = "high_risk"
     CONTRAINDICATED = "contraindicated"
     FATAL = "fatal"
+    UNKNOWN = "unknown"  # For invalid/unrecognized drug names
 
 
 # Patient Schemas
@@ -185,6 +186,9 @@ class DrugRiskCheckResponse(BaseModel):
     alternatives: List[str]
     monitoring: List[str]
     interactions: List[Dict]
+    
+    # Validation
+    validation_error: Optional[str] = None  # Set if drug name is invalid
     
     # Visual indicators
     is_safe: bool

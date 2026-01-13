@@ -12,6 +12,7 @@ import AlternativesDisplay from './components/AlternativesDisplay'
 import MLPrediction from './components/MLPrediction'
 import ModelDashboard from './components/ModelDashboard'
 import DiabetesManager from './components/DiabetesManager'
+import PrescriptionRAG from './components/PrescriptionRAG'
 import Footer from './components/Footer'
 import FloatingElements from './components/FloatingElements'
 
@@ -28,7 +29,7 @@ function App() {
       <div className="min-h-screen animated-gradient grid-bg relative overflow-hidden">
         {/* Floating background elements */}
         <FloatingElements />
-        
+
         {/* Toast notifications */}
         <Toaster
           position="top-right"
@@ -65,17 +66,16 @@ function App() {
               element={
                 <>
                   <Hero />
-                  
+
                   {/* Tab switcher */}
                   <section className="max-w-4xl mx-auto px-4 py-8">
                     <div className="flex justify-center gap-4 mb-8">
                       <button
                         onClick={() => setActiveTab('text')}
-                        className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                          activeTab === 'text'
+                        className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${activeTab === 'text'
                             ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
                             : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
-                        }`}
+                          }`}
                       >
                         <span className="flex items-center gap-2">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,11 +86,10 @@ function App() {
                       </button>
                       <button
                         onClick={() => setActiveTab('camera')}
-                        className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                          activeTab === 'camera'
+                        className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 ${activeTab === 'camera'
                             ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
                             : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
-                        }`}
+                          }`}
                       >
                         <span className="flex items-center gap-2">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,8 +149,28 @@ function App() {
                         className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center"
                       >
                         <div className="text-center">
-                          <div className="spinner mx-auto mb-4"></div>
-                          <p className="text-medical-400 font-medium">Analyzing drug interactions...</p>
+                          <div className="flex flex-col items-center gap-4">
+                            {/* Animated pills */}
+                            <div className="flex gap-3">
+                              <motion.div
+                                animate={{ y: [0, -15, 0] }}
+                                transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                                className="pill-loader"
+                              />
+                              <motion.div
+                                animate={{ y: [0, -15, 0] }}
+                                transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                                className="pill-loader"
+                              />
+                              <motion.div
+                                animate={{ y: [0, -15, 0] }}
+                                transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
+                                className="pill-loader"
+                              />
+                            </div>
+                            <p className="text-medical-400 font-medium">Analyzing drug interactions...</p>
+                            <p className="text-slate-500 text-sm">Checking 42M+ interactions database</p>
+                          </div>
                         </div>
                       </motion.div>
                     )}
@@ -167,7 +186,7 @@ function App() {
                         transition={{ duration: 0.5 }}
                       >
                         <ResultsDisplay results={results} />
-                        
+
                         {/* ML Prediction */}
                         <section className="max-w-4xl mx-auto px-4 py-4">
                           <MLPrediction prediction={mlPrediction} isLoading={mlLoading} />
@@ -192,17 +211,23 @@ function App() {
                 </>
               }
             />
-            
+
             {/* ML Dashboard Route */}
             <Route
               path="/ml-dashboard"
               element={<ModelDashboard />}
             />
-            
+
             {/* Diabetic Patient DDI Route */}
             <Route
               path="/diabetes"
               element={<DiabetesManager />}
+            />
+
+            {/* Prescription RAG Route */}
+            <Route
+              path="/prescription"
+              element={<PrescriptionRAG />}
             />
           </Routes>
         </main>

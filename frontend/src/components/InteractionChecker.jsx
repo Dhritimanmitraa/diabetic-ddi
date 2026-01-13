@@ -64,6 +64,19 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
     debouncedSearch2(drug2)
   }, [drug2, debouncedSearch2])
 
+  // Keyboard shortcut: Ctrl+Enter to check interaction
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (drug1.trim() && drug2.trim()) {
+          document.getElementById('check-interaction-btn')?.click()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [drug1, drug2])
+
   const handleSelectDrug1 = (drug) => {
     setDrug1(drug.name)
     setShowSuggestions1(false)
@@ -76,7 +89,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!drug1.trim() || !drug2.trim()) {
       toast.error('Please enter both drug names')
       return
@@ -189,7 +202,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
               </button>
             )}
           </div>
-          
+
           {/* Suggestions dropdown */}
           <AnimatePresence>
             {showSuggestions1 && suggestions1.length > 0 && (
@@ -217,11 +230,22 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
           </AnimatePresence>
         </div>
 
-        {/* Arrow between inputs */}
+        {/* Swap button between inputs */}
         <div className="flex justify-center">
-          <div className="w-10 h-10 rounded-full bg-slate-800/50 flex items-center justify-center">
-            <ArrowRight className="w-5 h-5 text-medical-400 rotate-90" />
-          </div>
+          <motion.button
+            type="button"
+            onClick={() => {
+              const temp = drug1
+              setDrug1(drug2)
+              setDrug2(temp)
+            }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-12 h-12 rounded-full bg-slate-800/50 hover:bg-medical-500/20 border border-slate-700/50 hover:border-medical-500/50 flex items-center justify-center transition-colors swap-rotate group"
+            title="Swap drugs"
+          >
+            <ArrowRight className="w-5 h-5 text-slate-400 group-hover:text-medical-400 rotate-90 transition-colors" />
+          </motion.button>
         </div>
 
         {/* Drug 2 Input */}
@@ -254,7 +278,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
               </button>
             )}
           </div>
-          
+
           {/* Suggestions dropdown */}
           <AnimatePresence>
             {showSuggestions2 && suggestions2.length > 0 && (
@@ -284,12 +308,16 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
 
         {/* Submit button */}
         <motion.button
+          id="check-interaction-btn"
           type="submit"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="w-full py-4 bg-gradient-to-r from-medical-500 to-medical-600 hover:from-medical-400 hover:to-medical-500 text-white font-semibold rounded-xl shadow-lg shadow-medical-500/25 transition-all btn-hover"
+          className="w-full py-4 bg-gradient-to-r from-medical-500 to-medical-600 hover:from-medical-400 hover:to-medical-500 text-white font-semibold rounded-xl shadow-lg shadow-medical-500/25 transition-all btn-hover relative group"
         >
-          Check Interaction
+          <span>Check Interaction</span>
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/50 hidden md:inline group-hover:text-white/70 transition-colors">
+            Ctrl + ↵
+          </span>
         </motion.button>
       </form>
 
@@ -298,20 +326,25 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
         <p className="text-sm text-slate-500 mb-3">Quick examples:</p>
         <div className="flex flex-wrap gap-2">
           {[
-            { drug1: 'Aspirin', drug2: 'Warfarin' },
-            { drug1: 'Simvastatin', drug2: 'Clarithromycin' },
-            { drug1: 'Metformin', drug2: 'Lisinopril' },
+            { drug1: 'Aspirin', drug2: 'Warfarin', severity: 'major', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
+            { drug1: 'Simvastatin', drug2: 'Clarithromycin', severity: 'major', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
+            { drug1: 'Metformin', drug2: 'Lisinopril', severity: 'safe', color: 'text-medical-400 bg-medical-500/10 border-medical-500/30' },
           ].map((example, index) => (
-            <button
+            <motion.button
               key={index}
               onClick={() => {
                 setDrug1(example.drug1)
                 setDrug2(example.drug2)
               }}
-              className="px-3 py-1.5 text-xs bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white rounded-full transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-3 py-2 text-xs bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 rounded-xl transition-colors flex items-center gap-2 border border-slate-700/50 hover:border-slate-600/50"
             >
-              {example.drug1} + {example.drug2}
-            </button>
+              <span>{example.drug1} + {example.drug2}</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium uppercase border ${example.color}`}>
+                {example.severity}
+              </span>
+            </motion.button>
           ))}
         </div>
       </div>

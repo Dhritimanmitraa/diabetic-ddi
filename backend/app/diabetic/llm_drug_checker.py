@@ -5,11 +5,10 @@ Uses Ollama to analyze drug risks for diabetic patients. This runs alongside
 the ML model to provide complementary insights. The LLM provides reasoning
 and context-aware analysis, while ML provides statistical predictions.
 
-Recommended models for RTX 3050 4GB + 16GB RAM:
-- llama3.1:8b - Best quality (current default)
-- llama3.2:3b - Faster, good balance
-- phi3:mini - Very efficient
-- qwen2.5:3b - Good reasoning
+Supported Models:
+- gpt-oss:120b-cloud - Cloud model (best quality, recommended)
+- llama3.1:8b - Local model (fallback)
+- phi3:mini - Very efficient local model
 """
 
 import asyncio
@@ -19,16 +18,22 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 import json
 
+from app.diabetic.drug_validator import validate_drug_name, is_valid_drug
+
 logger = logging.getLogger(__name__)
 
-# Configuration
+# Configuration - llama3.1:8b for reliable local inference
 DEFAULT_MODEL = os.environ.get("OLLAMA_DRUG_CHECK_MODEL", "llama3.1:8b")
 DEFAULT_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-TIMEOUT_SECONDS = 60  # Increased timeout for larger model
-MAX_CONCURRENT_REQUESTS = 2  # Reduced for 8B model to avoid OOM
+TIMEOUT_SECONDS = 60  # 60s timeout for local model
+MAX_CONCURRENT_REQUESTS = 3  # Limit concurrent requests
 
 # System prompt for drug risk analysis (optimized for 8B model - better reasoning)
 SYSTEM_PROMPT = """You are an expert clinical pharmacist specializing in diabetes care. Analyze drug risks for diabetic patients with deep clinical reasoning.
+
+Your Response Should Include:
+1. A brief patient health summary (diabetes type, HbA1c control, kidney function/eGFR, complications)
+2. Drug-specific risk assessment based on patient's health profile
 
 Assessment Framework:
 1. Diabetes-specific risks: hypoglycemia/hyperglycemia, weight effects, CV impact
@@ -44,13 +49,13 @@ Risk Level Guidelines:
 - contraindicated: Should generally be avoided (e.g., eGFR <30 with certain drugs)
 - fatal: Life-threatening interaction or contraindication
 
-Be thorough but concise. Provide specific, actionable concerns.
+Be thorough but concise. Include patient health context in your reasoning.
 
 Output ONLY valid JSON (no markdown, no extra text):
 {
   "risk_level": "safe|caution|high_risk|contraindicated|fatal",
   "risk_score": 0-100,
-  "reasoning": "2-3 sentence clinical explanation",
+  "reasoning": "Patient health summary and drug-specific assessment",
   "key_concerns": ["specific concern 1", "specific concern 2"],
   "monitoring_needed": ["specific test 1", "specific test 2"]
 }"""
@@ -93,20 +98,26 @@ class LLMDrugChecker:
         self._client = None
         self._available = None
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+        self._init_attempted = False
         
     async def _get_client(self):
         """Lazy initialization of Ollama client."""
-        if self._client is None:
+        if self._client is None and not self._init_attempted:
+            self._init_attempted = True
             try:
+                # Import ollama at function level but don't cache failure
                 import ollama
                 self._client = ollama.AsyncClient(host=self.host)
                 self._available = True
-            except ImportError:
-                logger.warning("Ollama not installed. Run: pip install ollama")
+                logger.info(f"Ollama client initialized: {self.model}")
+            except ImportError as e:
+                logger.warning(f"Ollama package not found: {e}. Run: pip install ollama")
                 self._available = False
             except Exception as e:
                 logger.error(f"Failed to initialize Ollama client: {e}")
                 self._available = False
+                # Reset so we can retry
+                self._init_attempted = False
         return self._client
     
     async def is_available(self) -> bool:
@@ -139,6 +150,7 @@ class LLMDrugChecker:
         Returns:
             LLMDrugRiskResult with risk assessment
         """
+        # Let the LLM analyze any input - it can determine if something is a valid drug
         prompt = self._build_prompt(drug_name, patient_context, current_medications)
         
         # Use semaphore to limit concurrent requests
@@ -154,9 +166,9 @@ class LLMDrugChecker:
                                 {"role": "user", "content": prompt}
                             ],
                             options={
-                                "temperature": 0.2,  # Slightly higher for better reasoning with 8B model
+                                "temperature": 0.2,  # Low for consistent output
                                 "top_p": 0.9,  # More diverse reasoning
-                                "num_predict": 400,  # Allow more detailed analysis with larger model
+                                "num_predict": 1024,  # Increased for cloud model to complete full responses
                             }
                         ),
                         timeout=TIMEOUT_SECONDS
@@ -249,8 +261,10 @@ class LLMDrugChecker:
     def _parse_response(self, text: str) -> LLMDrugRiskResult:
         """Parse LLM response into structured result."""
         try:
-            # Extract JSON from response
+            # Extract JSON from response - handle multiple formats
             text = text.strip()
+            
+            # Try to find JSON in code blocks first
             if "```json" in text:
                 start = text.find("```json") + 7
                 end = text.find("```", start)
@@ -260,13 +274,26 @@ class LLMDrugChecker:
                 end = text.find("```", start)
                 text = text[start:end].strip()
             
+            # Also try to find JSON by looking for { and }
+            if not text.startswith("{"):
+                # Try to find first { and last }
+                start_brace = text.find("{")
+                end_brace = text.rfind("}")
+                if start_brace != -1 and end_brace != -1 and end_brace > start_brace:
+                    text = text[start_brace:end_brace + 1]
+            
             # Parse JSON
             data = json.loads(text)
+            
+            # Extract reasoning - handle truncated responses
+            reasoning = data.get("reasoning", "LLM analysis completed")
+            if isinstance(reasoning, str) and len(reasoning) > 500:
+                reasoning = reasoning[:500] + "..."
             
             return LLMDrugRiskResult(
                 risk_level=data.get("risk_level", "caution").lower(),
                 risk_score=float(data.get("risk_score", 50)),
-                reasoning=data.get("reasoning", "LLM analysis completed"),
+                reasoning=reasoning,
                 key_concerns=data.get("key_concerns", []),
                 monitoring_needed=data.get("monitoring_needed", []),
                 model_used=self.model,
@@ -278,20 +305,31 @@ class LLMDrugChecker:
             risk_level = "caution"
             if "fatal" in text.lower() or "contraindicated" in text.lower():
                 risk_level = "contraindicated"
-            elif "high risk" in text.lower():
+            elif "high risk" in text.lower() or "high_risk" in text.lower():
                 risk_level = "high_risk"
             elif "safe" in text.lower():
                 risk_level = "safe"
             
+            # Try to extract reasoning from the text even if JSON parsing failed
+            reasoning = text[:300] if len(text) > 300 else text
+            # Clean up any JSON artifacts
+            reasoning = reasoning.replace("{", "").replace("}", "").replace('"', '').strip()
+            if reasoning.startswith("risk_level"):
+                # Try to find actual reasoning
+                if "reasoning" in text.lower():
+                    idx = text.lower().find("reasoning")
+                    reasoning = text[idx + 12:idx + 312].replace('"', '').replace(',', '')
+            
             return LLMDrugRiskResult(
                 risk_level=risk_level,
                 risk_score=50.0,
-                reasoning=text[:200],
+                reasoning=reasoning if reasoning else "Analysis completed with parsing issues.",
                 key_concerns=[],
                 monitoring_needed=[],
                 model_used=self.model,
                 was_fallback=True
             )
+
     
     def _generate_fallback(
         self,
