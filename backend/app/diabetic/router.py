@@ -408,7 +408,8 @@ async def search_diabetic_drugs(
                 brands = json.loads(d.brand_names)
                 if isinstance(brands, list):
                     names.extend(brands)
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
+                # brand_names might be malformed or not valid JSON
                 pass
         names_l = [n.lower() for n in names if n]
 

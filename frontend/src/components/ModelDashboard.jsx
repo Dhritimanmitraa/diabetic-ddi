@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Brain, BarChart3, TrendingUp, Zap, Clock, 
-  CheckCircle2, XCircle, RefreshCw, Award
+import {
+  Brain, BarChart3, TrendingUp,
+  RefreshCw, Award
 } from 'lucide-react'
 
 /**
@@ -24,7 +24,7 @@ function ModelDashboard() {
   const fetchData = async () => {
     setLoading(true)
     setError(null)
-    
+
     try {
       // Fetch model info
       const infoRes = await fetch('http://localhost:8000/ml/model-info')
@@ -103,9 +103,9 @@ function ModelDashboard() {
         className="grid grid-cols-1 md:grid-cols-3 gap-4"
       >
         {Object.entries(models).map(([modelName, metrics], index) => (
-          <ModelCard 
-            key={modelName} 
-            name={modelName} 
+          <ModelCard
+            key={modelName}
+            name={modelName}
             metrics={metrics}
             delay={0.1 + index * 0.1}
           />
@@ -168,7 +168,7 @@ function ModelDashboard() {
             <BarChart3 className="w-6 h-6 text-purple-400" />
             Feature Importance
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {Object.entries(modelInfo.feature_importance).slice(0, 2).map(([model, features]) => (
               <FeatureImportanceChart key={model} model={model} features={features} />
@@ -268,15 +268,14 @@ function ComparisonRow({ data }) {
     <div className="p-4 bg-slate-800/30 rounded-xl">
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-white font-medium capitalize">{data.model}</h4>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          summary.winner === 'bayesian' 
-            ? 'bg-purple-500/20 text-purple-400' 
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${summary.winner === 'bayesian'
+            ? 'bg-purple-500/20 text-purple-400'
             : 'bg-slate-600/20 text-slate-400'
-        }`}>
+          }`}>
           Winner: {summary.winner || 'N/A'}
         </span>
       </div>
-      
+
       <div className="grid grid-cols-3 gap-4 text-sm">
         {['bayesian', 'random_search', 'grid_search'].map(method => {
           const methodData = methods[method] || {}

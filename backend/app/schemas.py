@@ -42,7 +42,7 @@ class DrugResponse(DrugBase):
     id: int
     drugbank_id: Optional[str] = None
     is_approved: bool = True
-    created_at: datetime
+    created_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True
@@ -81,7 +81,7 @@ class InteractionResponse(InteractionBase):
     source: Optional[str] = None
     evidence_level: Optional[str] = None
     confidence_score: float
-    created_at: datetime
+    created_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True

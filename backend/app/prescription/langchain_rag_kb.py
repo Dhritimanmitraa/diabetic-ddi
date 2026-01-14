@@ -399,6 +399,7 @@ Precautions and Warnings:
         Synchronously fetch drug info from web and cache it.
         
         Called when a drug is not in the knowledge base.
+        Tries drugs.com first, then falls back to RxNorm API.
         
         Args:
             drug_name: Name of the drug to fetch
@@ -413,23 +414,32 @@ Precautions and Warnings:
         drug_name_lower = drug_name.lower().strip()
         drug_slug = drug_name_lower.replace(' ', '-').replace('_', '-')
         
+        # Better headers to bypass blocking
+        HEADERS = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+        }
+        
         # Try multiple URL patterns
         urls_to_try = [
             f"https://www.drugs.com/{drug_slug}.html",
             f"https://www.drugs.com/mtm/{drug_slug}.html",
             f"https://www.drugs.com/cdi/{drug_slug}.html",
+            f"https://medlineplus.gov/druginfo/meds/{drug_slug}.html",
         ]
         
         for url in urls_to_try:
             try:
-                logger.info(f"Fetching new drug info from: {url}")
+                logger.info(f"Fetching drug info from: {url}")
                 
                 response = httpx.get(
                     url,
-                    timeout=10.0,
-                    headers={
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"
-                    },
+                    timeout=15.0,
+                    headers=HEADERS,
                     follow_redirects=True
                 )
                 
@@ -461,30 +471,112 @@ Precautions and Warnings:
                     
                     if content_parts:
                         full_content = "\n\n".join(content_parts)
-                        
-                        # Cache in ChromaDB
-                        if self.vectorstore:
-                            doc_id = f"fetched_{hashlib.md5(drug_name.encode()).hexdigest()}"
-                            
-                            self.vectorstore.upsert(
-                                documents=[full_content],
-                                metadatas=[{
-                                    "drug_name": drug_name,
-                                    "source": "web_fetched",
-                                    "url": url
-                                }],
-                                ids=[doc_id]
-                            )
-                            
-                            logger.info(f"Cached new drug info for: {drug_name}")
-                        
+                        self._cache_drug_content(drug_name, full_content, url)
                         return full_content
                         
             except Exception as e:
                 logger.warning(f"Failed to fetch from {url}: {e}")
                 continue
         
+        # Fallback to RxNorm NIH API (free, no blocking)
+        logger.info(f"Trying RxNorm API for: {drug_name}")
+        rxnorm_content = self._fetch_from_rxnorm(drug_name)
+        if rxnorm_content:
+            return rxnorm_content
+        
+        logger.warning(f"Could not fetch info for: {drug_name}")
         return None
+    
+    def _fetch_from_rxnorm(self, drug_name: str) -> Optional[str]:
+        """Fetch drug info from NIH RxNorm API (always available, free)."""
+        import httpx
+        import hashlib
+        
+        try:
+            # Search for drug in RxNorm
+            search_url = f"https://rxnav.nlm.nih.gov/REST/drugs.json?name={drug_name}"
+            logger.info(f"Querying RxNorm API: {search_url}")
+            
+            response = httpx.get(search_url, timeout=10.0)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                concepts = data.get('drugGroup', {}).get('conceptGroup', [])
+                
+                content_parts = [f"Drug Name: {drug_name.title()}"]
+                
+                for group in concepts:
+                    concept_type = group.get('tty', '')
+                    concept_props = group.get('conceptProperties', [])
+                    
+                    if concept_props:
+                        for prop in concept_props[:3]:  # Limit to 3
+                            name = prop.get('name', '')
+                            synonym = prop.get('synonym', '')
+                            rxcui = prop.get('rxcui', '')
+                            
+                            if name:
+                                content_parts.append(f"RxNorm Name: {name}")
+                            if synonym:
+                                content_parts.append(f"Synonym: {synonym}")
+                            if rxcui:
+                                # Fetch additional info
+                                properties = self._fetch_rxnorm_properties(rxcui)
+                                if properties:
+                                    content_parts.extend(properties)
+                
+                if len(content_parts) > 1:
+                    full_content = "\n".join(content_parts)
+                    self._cache_drug_content(drug_name, full_content, "RxNorm API")
+                    logger.info(f"✓ RxNorm: Found info for {drug_name}")
+                    return full_content
+                    
+        except Exception as e:
+            logger.warning(f"RxNorm API error: {e}")
+        
+        return None
+    
+    def _fetch_rxnorm_properties(self, rxcui: str) -> List[str]:
+        """Fetch additional drug properties from RxNorm."""
+        import httpx
+        
+        properties = []
+        try:
+            # Get drug class
+            class_url = f"https://rxnav.nlm.nih.gov/REST/rxclass/class/byRxcui.json?rxcui={rxcui}"
+            resp = httpx.get(class_url, timeout=5.0)
+            if resp.status_code == 200:
+                classes = resp.json().get('rxclassDrugInfoList', {}).get('rxclassDrugInfo', [])
+                for cls in classes[:2]:
+                    class_name = cls.get('rxclassMinConceptItem', {}).get('className', '')
+                    if class_name:
+                        properties.append(f"Drug Class: {class_name}")
+        except:
+            pass
+        
+        return properties
+    
+    def _cache_drug_content(self, drug_name: str, content: str, source: str):
+        """Cache drug content in ChromaDB."""
+        import hashlib
+        
+        if self.vectorstore:
+            try:
+                doc_id = f"fetched_{hashlib.md5(drug_name.encode()).hexdigest()}"
+                
+                self.vectorstore.upsert(
+                    documents=[content],
+                    metadatas=[{
+                        "drug_name": drug_name,
+                        "source": source,
+                    }],
+                    ids=[doc_id]
+                )
+                
+                logger.info(f"Cached drug info for: {drug_name} (from {source})")
+            except Exception as e:
+                logger.warning(f"Failed to cache drug info: {e}")
     
     def get_context_for_question(self, question: str, medicines_to_check: List[str] = None) -> str:
         """

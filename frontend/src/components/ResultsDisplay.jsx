@@ -8,9 +8,45 @@ import {
 } from 'lucide-react'
 
 function ResultsDisplay({ results }) {
+  const has_interaction = results?.has_interaction
+  const is_safe = results?.is_safe
+
+  // Celebration confetti for safe results! (must be called before early return)
+  useEffect(() => {
+    if (!results || has_interaction || !is_safe) return
+
+    // Burst of confetti for safe drugs!
+    const duration = 2000
+    const end = Date.now() + duration
+
+    const colors = ['#14b89a', '#5feaca', '#22c55e', '#4ade80']
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.7 },
+        colors: colors
+      })
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.7 },
+        colors: colors
+      })
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame)
+      }
+    }
+    frame()
+  }, [results, has_interaction, is_safe])
+
   if (!results) return null
 
-  const { has_interaction, is_safe, interaction, safety_message, recommendations, drug1, drug2 } = results
+  const { interaction, safety_message, recommendations, drug1, drug2 } = results
 
   const getSeverityConfig = (severity) => {
     const configs = {
@@ -70,39 +106,6 @@ function ResultsDisplay({ results }) {
 
   const severity = interaction?.severity || (is_safe ? 'safe' : 'moderate')
   const config = getSeverityConfig(severity)
-
-  // Celebration confetti for safe results!
-  useEffect(() => {
-    if (!has_interaction && is_safe) {
-      // Burst of confetti for safe drugs!
-      const duration = 2000
-      const end = Date.now() + duration
-
-      const colors = ['#14b89a', '#5feaca', '#22c55e', '#4ade80']
-
-      const frame = () => {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0, y: 0.7 },
-          colors: colors
-        })
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1, y: 0.7 },
-          colors: colors
-        })
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame)
-        }
-      }
-      frame()
-    }
-  }, [has_interaction, is_safe])
 
   return (
     <section className="max-w-4xl mx-auto px-4 py-8">

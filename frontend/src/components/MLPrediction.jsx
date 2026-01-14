@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Brain, Sparkles, AlertTriangle, CheckCircle2, 
-  BarChart3, Zap, TrendingUp, Info
+import {
+  Brain, Sparkles, AlertTriangle, CheckCircle2,
+  BarChart3, Zap, Info
 } from 'lucide-react'
 
 /**
@@ -86,7 +86,7 @@ function MLPrediction({ prediction, isLoading }) {
             <p className="text-slate-400 text-sm">Bayesian-optimized ensemble model</p>
           </div>
         </div>
-        
+
         <button
           onClick={() => setShowDetails(!showDetails)}
           className="text-slate-400 hover:text-white transition-colors text-sm flex items-center gap-1"
@@ -111,11 +111,10 @@ function MLPrediction({ prediction, isLoading }) {
               initial={{ width: 0 }}
               animate={{ width: `${probabilityPercent}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
-              className={`h-full rounded-full ${
-                interaction_probability >= 0.7 ? 'bg-red-500' :
-                interaction_probability >= 0.4 ? 'bg-orange-500' :
-                interaction_probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
-              }`}
+              className={`h-full rounded-full ${interaction_probability >= 0.7 ? 'bg-red-500' :
+                  interaction_probability >= 0.4 ? 'bg-orange-500' :
+                    interaction_probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
+                }`}
             />
           </div>
         </div>
@@ -164,13 +163,13 @@ function MLPrediction({ prediction, isLoading }) {
                 <BarChart3 className="w-4 h-4 text-purple-400" />
                 Individual Model Predictions
               </h4>
-              
+
               <div className="space-y-3">
                 {Object.entries(model_predictions).map(([model, prob]) => (
-                  <ModelBar 
-                    key={model} 
-                    name={model} 
-                    probability={prob} 
+                  <ModelBar
+                    key={model}
+                    name={model}
+                    probability={prob}
                   />
                 ))}
               </div>
@@ -193,7 +192,7 @@ function MLPrediction({ prediction, isLoading }) {
       {/* Disclaimer */}
       <div className="mt-4 pt-4 border-t border-slate-700/50">
         <p className="text-slate-500 text-xs">
-          <span className="text-purple-400">AI Prediction:</span> This is a machine learning prediction 
+          <span className="text-purple-400">AI Prediction:</span> This is a machine learning prediction
           based on drug properties. Always verify with healthcare professionals.
         </p>
       </div>
@@ -225,11 +224,10 @@ function ModelBar({ name, probability }) {
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          className={`h-full rounded-full ${
-            probability >= 0.7 ? 'bg-red-500' :
-            probability >= 0.4 ? 'bg-orange-500' :
-            probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
-          }`}
+          className={`h-full rounded-full ${probability >= 0.7 ? 'bg-red-500' :
+              probability >= 0.4 ? 'bg-orange-500' :
+                probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
+            }`}
         />
       </div>
       <span className="w-12 text-right text-sm font-mono text-white">{percent}%</span>

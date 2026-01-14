@@ -2,7 +2,10 @@
  * API Service for Drug Interaction Checker
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { getApiBaseUrl } from '../utils/platform'
+
+const API_BASE_URL = getApiBaseUrl()
+
 
 /**
  * Make API request with error handling
@@ -191,17 +194,17 @@ export async function getHistoryStats() {
 export async function uploadPrescription(file) {
   const formData = new FormData()
   formData.append('file', file)
-  
+
   const response = await fetch(`${API_BASE_URL}/prescription/upload`, {
     method: 'POST',
     body: formData,
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
     throw new Error(error.detail || `HTTP error! status: ${response.status}`)
   }
-  
+
   return response.json()
 }
 
@@ -215,17 +218,17 @@ export async function uploadPrescriptionBase64(imageBase64, filename = 'prescrip
   const formData = new FormData()
   formData.append('image_base64', imageBase64)
   formData.append('filename', filename)
-  
+
   const response = await fetch(`${API_BASE_URL}/prescription/upload/base64`, {
     method: 'POST',
     body: formData,
   })
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
     throw new Error(error.detail || `HTTP error! status: ${response.status}`)
   }
-  
+
   return response.json()
 }
 
