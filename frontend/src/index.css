@@ -566,6 +566,53 @@ textarea:focus {
   }
 }
 
+/* Safe area insets for notched Android devices */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Fixed header spacing */
+  header,
+  nav,
+  .navbar {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Fixed footer spacing */
+  footer,
+  .footer {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Capacitor/Mobile App specific styles */
+.capacitor-mobile {
+  /* Disable text selection on interactive elements */
+  -webkit-user-select: none;
+  user-select: none;
+
+  /* Disable tap highlight */
+  -webkit-tap-highlight-color: transparent;
+
+  /* Smooth scrolling momentum on mobile */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Status bar overlay - dark theme */
+.status-bar-overlay {
+  background-color: #0d1321;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top, 24px);
+  z-index: 9999;
+}
+
 /* Swap button animation */
 .swap-rotate {
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);

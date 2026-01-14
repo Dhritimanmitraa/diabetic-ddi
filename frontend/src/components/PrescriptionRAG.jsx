@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Upload, FileText, Pill, Clock, Calendar, AlertCircle,
+  Upload, FileText, Pill, AlertCircle,
   MessageSquare, Send, Trash2, ChevronDown, ChevronUp,
-  Sun, Moon, Sunset, Loader2, Check, X, Image as ImageIcon,
+  Sun, Moon, Sunset, Loader2, Check, Image as ImageIcon,
   Mic, MicOff, AlertTriangle, Shield, Camera, SwitchCamera, XCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -445,10 +445,10 @@ function PrescriptionRAG() {
               onClick={() => setActiveSection(tab)}
               disabled={tab === 'result' && !prescription}
               className={`px-5 py-2.5 rounded-xl font-medium capitalize transition-all ${activeSection === tab
-                  ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
-                  : tab === 'result' && !prescription
-                    ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
-                    : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
+                ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
+                : tab === 'result' && !prescription
+                  ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
+                  : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
             >
               {tab === 'upload' && <Upload className="w-4 h-4 inline mr-2" />}
@@ -546,8 +546,8 @@ function PrescriptionRAG() {
                       onDrop={handleDrop}
                       onDragOver={handleDragOver}
                       className={`glass rounded-2xl p-8 text-center cursor-pointer border-2 border-transparent transition-all ${isUploading
-                          ? 'opacity-50 cursor-not-allowed'
-                          : 'hover:bg-slate-800/50 hover:border-medical-500/30'
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'hover:bg-slate-800/50 hover:border-medical-500/30'
                         }`}
                     >
                       <input
@@ -638,7 +638,7 @@ function PrescriptionRAG() {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-400">Extraction Confidence</span>
                       <span className={`font-medium ${prescription.extraction_confidence > 0.7 ? 'text-green-400' :
-                          prescription.extraction_confidence > 0.4 ? 'text-amber-400' : 'text-red-400'
+                        prescription.extraction_confidence > 0.4 ? 'text-amber-400' : 'text-red-400'
                         }`}>
                         {Math.round(prescription.extraction_confidence * 100)}%
                       </span>
@@ -665,25 +665,25 @@ function PrescriptionRAG() {
                           <div
                             key={idx}
                             className={`p-3 rounded-lg text-sm ${interaction.severity === 'contraindicated' ? 'bg-red-500/10 border border-red-500/30' :
-                                interaction.severity === 'major' ? 'bg-orange-500/10 border border-orange-500/30' :
-                                  interaction.severity === 'moderate' ? 'bg-amber-500/10 border border-amber-500/30' :
-                                    'bg-slate-700/30 border border-slate-600/30'
+                              interaction.severity === 'major' ? 'bg-orange-500/10 border border-orange-500/30' :
+                                interaction.severity === 'moderate' ? 'bg-amber-500/10 border border-amber-500/30' :
+                                  'bg-slate-700/30 border border-slate-600/30'
                               }`}
                           >
                             <div className="flex items-start gap-2">
                               <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${interaction.severity === 'contraindicated' ? 'text-red-400' :
-                                  interaction.severity === 'major' ? 'text-orange-400' :
-                                    interaction.severity === 'moderate' ? 'text-amber-400' :
-                                      'text-slate-400'
+                                interaction.severity === 'major' ? 'text-orange-400' :
+                                  interaction.severity === 'moderate' ? 'text-amber-400' :
+                                    'text-slate-400'
                                 }`} />
                               <div>
                                 <p className="font-medium text-white">
                                   {interaction.drug1} + {interaction.drug2}
                                 </p>
                                 <p className={`text-xs capitalize ${interaction.severity === 'contraindicated' ? 'text-red-400' :
-                                    interaction.severity === 'major' ? 'text-orange-400' :
-                                      interaction.severity === 'moderate' ? 'text-amber-400' :
-                                        'text-slate-400'
+                                  interaction.severity === 'major' ? 'text-orange-400' :
+                                    interaction.severity === 'moderate' ? 'text-amber-400' :
+                                      'text-slate-400'
                                   }`}>
                                   {interaction.severity} interaction
                                 </p>
@@ -751,10 +751,10 @@ function PrescriptionRAG() {
                         className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
                         <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl ${msg.role === 'user'
-                            ? 'bg-medical-500 text-white rounded-br-md'
-                            : msg.error
-                              ? 'bg-red-500/10 text-red-300 rounded-bl-md'
-                              : 'bg-slate-800 text-slate-200 rounded-bl-md'
+                          ? 'bg-medical-500 text-white rounded-br-md'
+                          : msg.error
+                            ? 'bg-red-500/10 text-red-300 rounded-bl-md'
+                            : 'bg-slate-800 text-slate-200 rounded-bl-md'
                           }`}>
                           <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                           {msg.model_used && (
@@ -783,8 +783,8 @@ function PrescriptionRAG() {
                     onKeyPress={handleKeyPress}
                     placeholder={isListening ? "Listening..." : "Ask about your prescription..."}
                     className={`flex-1 px-4 py-3 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500 focus:outline-none transition-all ${isListening
-                        ? 'border-red-500/50 animate-pulse'
-                        : 'border-slate-700/50 focus:border-medical-500/50'
+                      ? 'border-red-500/50 animate-pulse'
+                      : 'border-slate-700/50 focus:border-medical-500/50'
                       }`}
                     disabled={isChatLoading}
                   />
@@ -793,8 +793,8 @@ function PrescriptionRAG() {
                       onClick={toggleVoiceInput}
                       disabled={isChatLoading}
                       className={`px-4 py-3 rounded-xl transition-all ${isListening
-                          ? 'bg-red-500 hover:bg-red-400 text-white animate-pulse'
-                          : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                        ? 'bg-red-500 hover:bg-red-400 text-white animate-pulse'
+                        : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
                         }`}
                       title={isListening ? "Stop listening" : "Voice input"}
                     >
@@ -855,10 +855,10 @@ function PrescriptionRAG() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`text-xs px-2 py-1 rounded-full ${item.status === 'completed'
-                              ? 'bg-green-500/20 text-green-400'
-                              : item.status === 'failed'
-                                ? 'bg-red-500/20 text-red-400'
-                                : 'bg-amber-500/20 text-amber-400'
+                            ? 'bg-green-500/20 text-green-400'
+                            : item.status === 'failed'
+                              ? 'bg-red-500/20 text-red-400'
+                              : 'bg-amber-500/20 text-amber-400'
                             }`}>
                             {item.status}
                           </span>

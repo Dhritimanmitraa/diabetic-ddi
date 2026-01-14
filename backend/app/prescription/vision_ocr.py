@@ -1,23 +1,17 @@
 """
 Vision OCR Service for Prescription Extraction.
 
-Industry-standard approach:
-1. EasyOCR - Extract text from prescription images (with preprocessing)
-2. LLaMA - Structure extracted text into medicine objects
-
-EasyOCR is used instead of PaddleOCR due to langchain dependency conflicts.
+Simplified Stack:
+1. llama3.2-vision (Ollama) - Primary OCR  
+2. gemini-3-flash-preview:cloud (Ollama) - Extract medicines from OCR text
+3. RapidFuzz - Drug name normalization
+4. llama3.1:8b - Local LLM fallback
 """
 import base64
 import json
 import logging
 import re
-import io
-from typing import Optional, List, Tuple
-from pathlib import Path
-
-import cv2
-import numpy as np
-from PIL import Image
+from typing import Optional, List
 
 from app.config import get_settings
 from app.prescription.schemas import MedicineCreate, ExtractionResult
@@ -25,340 +19,242 @@ from app.prescription.schemas import MedicineCreate, ExtractionResult
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+# Models
+OCR_MODEL = "llama3.2-vision"  # Working VLM for OCR
+LLM_MODEL = "gemini-3-flash-preview:cloud"  # Cloud LLM for extraction
+FALLBACK_LLM = "llama3.1:8b"  # Local fallback
 
-class ImagePreprocessor:
-    """
-    Light preprocessing to improve OCR accuracy for prescription images.
-    
-    Note: Minimal preprocessing for handwriting - too much can harm detection.
-    """
-    
-    @staticmethod
-    def preprocess(image_data: bytes) -> np.ndarray:
-        """
-        Apply light preprocessing for handwriting OCR.
-        
-        Steps:
-        1. Decode image
-        2. Convert to RGB (EasyOCR works better with color)
-        3. Light resize if too small
-        
-        Note: Avoid aggressive preprocessing (contrast eq, blur) for handwriting
-        """
-        # Convert bytes to numpy array
-        nparr = np.frombuffer(image_data, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        
-        if img is None:
-            raise ValueError("Failed to decode image")
-        
-        # Keep in RGB for better handwriting detection
-        # EasyOCR handles color images well
-        rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
-        # Light resize only if image is too small
-        height, width = rgb.shape[:2]
-        if max(height, width) < 1000:
-            scale = 1.3
-            rgb = cv2.resize(rgb, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-        
-        return rgb
+# Common drug abbreviations for normalization
+DRUG_ABBREVIATIONS = {
+    "pcm": "Paracetamol",
+    "para": "Paracetamol",
+    "azee": "Azithromycin",
+    "pan d": "Pantoprazole + Domperidone",
+    "pan-d": "Pantoprazole + Domperidone",
+    "met xl": "Metoprolol XL",
+    "crocin": "Paracetamol",
+    "dolo": "Paracetamol 650mg",
+    "combiflam": "Ibuprofen + Paracetamol",
+    "allegra": "Fexofenadine",
+    "montair": "Montelukast",
+    "montek": "Montelukast",
+    "pantocid": "Pantoprazole",
+    "omez": "Omeprazole",
+    "rantac": "Ranitidine",
+    "taxim": "Cefixime",
+    "oflox": "Ofloxacin",
+    "metrogyl": "Metronidazole",
+    "telma": "Telmisartan",
+    "atorva": "Atorvastatin",
+    "ecosprin": "Aspirin",
+}
 
+# OCR Prompt
+OCR_PROMPT = """Look at this prescription image and read ALL the text you can see.
+Focus on medicine names, dosages, and instructions.
+Output the raw text exactly as written."""
 
-class EasyOCRExtractor:
-    """
-    EasyOCR-based text extraction with confidence filtering.
-    
-    Good OCR for prescriptions (printed + semi-handwritten).
-    """
-    
-    def __init__(self):
-        self._reader = None
-        self._initialized = False
-        self._preprocessor = ImagePreprocessor()
-    
-    def _init_ocr(self):
-        """Lazy initialization of EasyOCR."""
-        if self._initialized:
-            return
-        
-        try:
-            import easyocr
-            
-            # Initialize with English, use GPU if available
-            self._reader = easyocr.Reader(['en'], gpu=False)
-            self._initialized = True
-            logger.info("EasyOCR initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize EasyOCR: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            self._initialized = False
-    
-    def extract_text(self, image_data: bytes, confidence_threshold: float = 0.15) -> Tuple[str, float]:
-        """
-        Extract text from image using EasyOCR.
-        
-        Args:
-            image_data: Raw image bytes
-            confidence_threshold: Minimum confidence to include text (0.3 for handwriting)
-            
-        Returns:
-            Tuple of (extracted_text, average_confidence)
-        """
-        self._init_ocr()
-        
-        if not self._reader:
-            return "", 0.0
-        
-        try:
-            # Preprocess image for better OCR
-            processed_img = self._preprocessor.preprocess(image_data)
-            
-            # Run OCR
-            results = self._reader.readtext(processed_img)
-            
-            if not results:
-                logger.warning("EasyOCR returned empty result")
-                return "", 0.0
-            
-            # Extract text with confidence filtering
-            texts = []
-            confidences = []
-            
-            for (bbox, text, confidence) in results:
-                # Only include text above confidence threshold
-                if confidence >= confidence_threshold:
-                    texts.append(text)
-                    confidences.append(confidence)
-                else:
-                    logger.debug(f"Filtered low-confidence text: '{text}' ({confidence:.2f})")
-            
-            full_text = "\n".join(texts)
-            avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
-            
-            logger.info(f"EasyOCR extracted {len(texts)} lines, avg confidence: {avg_confidence:.2f}")
-            logger.info(f"OCR Text:\n{full_text}")
-            
-            return full_text, avg_confidence
-            
-        except Exception as e:
-            logger.error(f"EasyOCR extraction error: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
-            return "", 0.0
+# Medicine extraction prompt
+EXTRACTION_PROMPT = """You are a medical prescription parser. Extract all medicines from this text.
 
-
-class LLaMaMedicineParser:
-    """
-    Use LLaMA to structure OCR text into medicine objects.
-    
-    This is much more reliable than trying to use VLM directly on images.
-    """
-    
-    PARSE_PROMPT = """You are a medical prescription parser. Extract medicines from this OCR text.
-
-OCR Text from prescription:
+TEXT FROM PRESCRIPTION:
 {ocr_text}
 
-Extract EVERY medicine mentioned. Common patterns:
-- Tab/Tablet, Cap/Capsule, Syr/Syrup, Inj/Injection
-- Dosages like 500mg, 250mg, 10ml
-- Frequency like BD (twice daily), TDS (three times), OD (once daily)
-- Timing like 1-0-1 (morning-afternoon-night)
+RULES:
+1. Extract ONLY medicine/drug names
+2. Include dosage if visible (500mg, 10ml, etc.)
+3. Include frequency if visible (BD, TDS, OD, 1-0-1)
+4. Ignore patient name, doctor name, dates, addresses
 
-Return ONLY a JSON array:
+OUTPUT FORMAT - Return ONLY valid JSON array:
 [
-  {{"name": "medicine name", "generic_name": null, "quantity": null, "dosage": "dose if found", "frequency": "timing if found", "duration": null, "instructions": null, "morning": true, "afternoon": false, "evening": false, "night": true}}
+  {{"name": "Medicine Name", "dosage": "dose or null", "frequency": "timing or null"}}
 ]
 
-If no medicines found, return: []
-Extract all medicines now:"""
-
-    def __init__(self, model: str = "llama3.1:8b"):
-        self.model = model
-    
-    def parse_to_medicines(self, ocr_text: str) -> List[MedicineCreate]:
-        """Parse OCR text into structured medicine objects using LLaMA."""
-        if not ocr_text or not ocr_text.strip():
-            return []
-        
-        try:
-            import ollama
-            
-            prompt = self.PARSE_PROMPT.format(ocr_text=ocr_text)
-            
-            logger.info(f"Sending to {self.model} for medicine extraction...")
-            
-            response = ollama.chat(
-                model=self.model,
-                messages=[{'role': 'user', 'content': prompt}],
-                options={'temperature': 0.1, 'num_predict': 2048}
-            )
-            
-            response_text = response['message']['content']
-            logger.info(f"LLaMA response:\n{response_text}")
-            
-            return self._parse_json_response(response_text)
-            
-        except Exception as e:
-            logger.error(f"LLaMA parsing error: {e}")
-            return []
-    
-    def _parse_json_response(self, text: str) -> List[MedicineCreate]:
-        """Parse JSON from LLM response."""
-        medicines = []
-        
-        try:
-            # Find JSON array in response
-            json_match = re.search(r'\[[\s\S]*\]', text)
-            if json_match:
-                json_str = json_match.group()
-                data = json.loads(json_str)
-                
-                if isinstance(data, list):
-                    for item in data:
-                        if isinstance(item, dict) and 'name' in item:
-                            name = item.get('name', '')
-                            # Skip placeholders
-                            if not name or name.lower() in ['medicine name', '...', 'example']:
-                                continue
-                            
-                            medicine = MedicineCreate(
-                                name=name,
-                                generic_name=item.get('generic_name'),
-                                quantity=item.get('quantity'),
-                                dosage=item.get('dosage'),
-                                frequency=item.get('frequency'),
-                                duration=item.get('duration'),
-                                instructions=item.get('instructions'),
-                                morning=item.get('morning', False),
-                                afternoon=item.get('afternoon', False),
-                                evening=item.get('evening', False),
-                                night=item.get('night', False),
-                            )
-                            medicines.append(medicine)
-                            
-        except json.JSONDecodeError as e:
-            logger.warning(f"JSON parse error: {e}")
-        except Exception as e:
-            logger.warning(f"Parse error: {e}")
-        
-        return medicines
+If no medicines found, return: []"""
 
 
 class VisionOCRService:
-    """
-    Vision OCR Service using industry-standard approach:
-    
-    1. EasyOCR → Text extraction (with preprocessing + confidence filtering)
-    2. LLaMA → Medicine structuring
-    
-    Much more reliable than pure VLM for handwritten prescriptions.
-    """
+    """Vision OCR using llama3.2-vision + gemini-3-flash for extraction."""
     
     def __init__(self):
-        self.ocr_extractor = EasyOCRExtractor()
-        self.llm_parser = LLaMaMedicineParser(model="llama3.1:8b")
+        logger.info("VisionOCRService initialized (llama3.2-vision + gemini)")
     
     async def extract_from_image(
         self, 
         image_data: bytes, 
         filename: str = "prescription.jpg"
     ) -> ExtractionResult:
-        """
-        Extract medicines from a prescription image.
+        """Extract medicines from prescription image."""
+        logger.info(f"Processing: {filename}, size: {len(image_data)} bytes")
         
-        Uses EasyOCR + LLaMA hybrid approach for best results.
-        """
-        logger.info(f"Processing prescription: {filename}, size: {len(image_data)} bytes")
+        # Step 1: OCR with llama3.2-vision
+        logger.info("Step 1: Running llama3.2-vision OCR...")
+        ocr_text = await self._run_ocr(image_data)
         
-        # Step 1: Extract text using EasyOCR
-        ocr_text, ocr_confidence = self.ocr_extractor.extract_text(image_data)
-        
-        if not ocr_text:
-            logger.warning("EasyOCR failed to extract text")
+        if not ocr_text or len(ocr_text) < 10:
             return ExtractionResult(
-                raw_text="",
+                raw_text="[No text extracted]",
                 medicines=[],
                 confidence=0.0,
-                model_used="easyocr-failed",
-                error="OCR failed to extract text from image"
+                model_used=OCR_MODEL,
+                error="Could not read text from image."
             )
         
-        # Step 2: Parse text into medicines using LLaMA
-        medicines = self.llm_parser.parse_to_medicines(ocr_text)
+        logger.info(f"OCR extracted {len(ocr_text)} chars: {ocr_text[:150]}...")
         
-        if not medicines:
-            logger.warning("LLaMA failed to extract medicines from OCR text")
+        # Step 2: Extract medicines with LLM
+        logger.info("Step 2: Extracting medicines with LLM...")
+        medicines = await self._extract_medicines(ocr_text)
+        
+        if medicines:
+            # Normalize drug names
+            for med in medicines:
+                med.name = self._normalize_drug(med.name)
+            
+            raw_text = "\n".join([
+                f"- {m.name} {m.dosage or ''} {m.frequency or ''}".strip() 
+                for m in medicines
+            ])
+            
             return ExtractionResult(
-                raw_text=ocr_text,
-                medicines=[],
-                confidence=ocr_confidence * 0.5,
-                model_used="easyocr+llama",
-                error="No medicines extracted from OCR text"
+                raw_text=raw_text,
+                medicines=medicines,
+                confidence=0.85,
+                model_used=f"{OCR_MODEL} + {LLM_MODEL}",
+                error=None
             )
-        
-        logger.info(f"Successfully extracted {len(medicines)} medicines")
         
         return ExtractionResult(
             raw_text=ocr_text,
-            medicines=medicines,
-            confidence=ocr_confidence,
-            model_used="easyocr+llama3.1",
-            error=None
+            medicines=[],
+            confidence=0.5,
+            model_used=f"{OCR_MODEL} + {LLM_MODEL}",
+            error="No medicines found in extracted text."
         )
     
-    async def extract_from_pdf(self, pdf_data: bytes) -> ExtractionResult:
-        """Extract medicines from a PDF prescription."""
+    async def _run_ocr(self, image_data: bytes) -> str:
+        """Run OCR with llama3.2-vision."""
         try:
-            from pdf2image import convert_from_bytes
+            import ollama
             
-            images = convert_from_bytes(pdf_data, dpi=200)
+            img_base64 = base64.b64encode(image_data).decode('utf-8')
             
-            all_medicines = []
-            all_text = []
-            total_confidence = 0.0
-            
-            for i, image in enumerate(images):
-                img_buffer = io.BytesIO()
-                image.save(img_buffer, format='PNG')
-                img_data = img_buffer.getvalue()
-                
-                result = await self.extract_from_image(img_data, f"page_{i+1}.png")
-                
-                if result.medicines:
-                    all_medicines.extend(result.medicines)
-                if result.raw_text:
-                    all_text.append(result.raw_text)
-                total_confidence += result.confidence
-            
-            avg_confidence = total_confidence / len(images) if images else 0.0
-            
-            return ExtractionResult(
-                raw_text="\n\n".join(all_text),
-                medicines=all_medicines,
-                confidence=avg_confidence,
-                model_used="easyocr+llama3.1",
-                error=None if all_medicines else "No medicines extracted from PDF"
+            response = ollama.chat(
+                model=OCR_MODEL,
+                messages=[{
+                    'role': 'user',
+                    'content': OCR_PROMPT,
+                    'images': [img_base64]
+                }],
+                options={'temperature': 0.1, 'num_predict': 2048},
+                keep_alive='5m'
             )
+            
+            return response['message']['content'].strip()
             
         except Exception as e:
-            logger.error(f"PDF extraction error: {e}")
-            return ExtractionResult(
-                raw_text="",
-                medicines=[],
-                confidence=0.0,
-                model_used="error",
-                error=str(e)
+            logger.error(f"OCR error: {e}")
+            return ""
+    
+    async def _extract_medicines(self, ocr_text: str) -> List[MedicineCreate]:
+        """Extract medicines from OCR text using LLM."""
+        try:
+            import ollama
+            
+            prompt = EXTRACTION_PROMPT.format(ocr_text=ocr_text)
+            
+            # Try cloud model first
+            try:
+                logger.info(f"Trying {LLM_MODEL}...")
+                response = ollama.chat(
+                    model=LLM_MODEL,
+                    messages=[{'role': 'user', 'content': prompt}],
+                    options={'temperature': 0.1, 'num_predict': 2048}
+                )
+                response_text = response['message']['content']
+                
+            except Exception as e:
+                logger.warning(f"Cloud model failed: {e}, trying {FALLBACK_LLM}...")
+                response = ollama.chat(
+                    model=FALLBACK_LLM,
+                    messages=[{'role': 'user', 'content': prompt}],
+                    options={'temperature': 0.1, 'num_predict': 2048}
+                )
+                response_text = response['message']['content']
+            
+            logger.info(f"LLM response: {response_text[:200]}...")
+            
+            # Parse JSON response
+            return self._parse_medicines(response_text)
+            
+        except Exception as e:
+            logger.error(f"LLM extraction error: {e}")
+            return []
+    
+    def _parse_medicines(self, response_text: str) -> List[MedicineCreate]:
+        """Parse LLM response into medicine objects."""
+        try:
+            # Find JSON array in response
+            json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
+            if not json_match:
+                return []
+            
+            json_str = json_match.group()
+            data = json.loads(json_str)
+            
+            medicines = []
+            for item in data:
+                if isinstance(item, dict) and 'name' in item:
+                    name = item.get('name', '').strip()
+                    if name and len(name) > 1:
+                        medicines.append(MedicineCreate(
+                            name=name,
+                            dosage=item.get('dosage'),
+                            frequency=item.get('frequency')
+                        ))
+            
+            return medicines
+            
+        except json.JSONDecodeError as e:
+            logger.warning(f"JSON parse error: {e}")
+            return []
+    
+    def _normalize_drug(self, name: str) -> str:
+        """Normalize drug name using abbreviations."""
+        if not name:
+            return name
+        
+        name_lower = name.lower().strip()
+        
+        # Check abbreviations
+        if name_lower in DRUG_ABBREVIATIONS:
+            return DRUG_ABBREVIATIONS[name_lower]
+        
+        # Try fuzzy match
+        try:
+            from rapidfuzz import process, fuzz
+            
+            match = process.extractOne(
+                name_lower,
+                list(DRUG_ABBREVIATIONS.keys()),
+                scorer=fuzz.ratio
             )
+            
+            if match and match[1] >= 85:
+                return DRUG_ABBREVIATIONS[match[0]]
+                
+        except ImportError:
+            pass
+        
+        return name.title()
 
 
-# Singleton instance
+# Singleton
 _vision_service = None
 
 def get_vision_service() -> VisionOCRService:
-    """Get or create the vision OCR service singleton."""
+    """Get vision service singleton."""
     global _vision_service
     if _vision_service is None:
         _vision_service = VisionOCRService()

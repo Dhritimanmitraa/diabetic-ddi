@@ -32,6 +32,14 @@ from app.services import (
     create_ocr_service,
     create_comparison_logger
 )
+from app.services.cache import (
+    get_cached_drug_search,
+    cache_drug_search,
+    get_cached_db_stats,
+    cache_db_stats,
+    get_cached_model_info,
+    cache_model_info,
+)
 from app.diabetic.router import router as diabetic_router
 from app.prescription.router import router as prescription_router
 
@@ -177,7 +185,19 @@ async def readiness(db: AsyncSession = Depends(get_db)):
 
 @app.get("/stats", response_model=DatabaseStats, tags=["Statistics"])
 async def get_statistics(db: AsyncSession = Depends(get_db)):
-    """Get database statistics."""
+    """
+    Get database statistics.
+    
+    Results are cached for 5 minutes to reduce database load.
+    """
+    # Try cache first
+    cached_stats = await get_cached_db_stats()
+    if cached_stats is not None:
+        logger.debug("Cache HIT for database stats")
+        return DatabaseStats(**cached_stats)
+    
+    logger.debug("Cache MISS for database stats")
+    
     # Count drugs
     drug_count = await db.execute(select(func.count(Drug.id)))
     total_drugs = drug_count.scalar()
@@ -195,6 +215,16 @@ async def get_statistics(db: AsyncSession = Depends(get_db)):
             )
         )
         severity_counts[severity] = count.scalar()
+    
+    stats_data = {
+        "total_drugs": total_drugs,
+        "total_interactions": total_interactions,
+        "interactions_by_severity": severity_counts,
+        "last_updated": datetime.utcnow().isoformat(),
+    }
+    
+    # Cache the results
+    await cache_db_stats(stats_data)
     
     return DatabaseStats(
         total_drugs=total_drugs,
@@ -249,6 +279,7 @@ async def search_drugs(
     Search for drugs by name.
     
     Supports partial matching on drug name, generic name, and brand names.
+    Results are cached for 1 hour to improve performance.
     """
     client_ip = request.client.host if request else "unknown"
     logger.info(
@@ -260,9 +291,43 @@ async def search_drugs(
             "client_ip": client_ip,
         }
     )
+    
+    # Normalize query for cache key
+    normalized_query = query.strip().lower()
+    effective_limit = min(limit, 50)  # Cap at 50 for caching
+    
+    # Try to get from cache first
+    cached_results = await get_cached_drug_search(normalized_query, effective_limit)
+    if cached_results is not None:
+        logger.debug(f"Cache HIT for drug search: {normalized_query}")
+        return [DrugResponse.model_validate(d) for d in cached_results]
+    
+    # Cache miss - query database
+    logger.debug(f"Cache MISS for drug search: {normalized_query}")
     service = create_interaction_service(db)
-    drugs = await service.search_drugs(query, limit)
-    return [DrugResponse.model_validate(d) for d in drugs]
+    drugs = await service.search_drugs(query, effective_limit)
+    
+    # Convert to dict for caching (Pydantic models aren't directly JSON serializable)
+    drugs_data = [
+        {
+            "id": d.id,
+            "drugbank_id": d.drugbank_id,
+            "name": d.name,
+            "generic_name": d.generic_name,
+            "brand_names": d.brand_names,
+            "description": d.description,
+            "drug_class": d.drug_class,
+            "mechanism": d.mechanism,
+            "indication": d.indication,
+            "is_approved": d.is_approved,
+        }
+        for d in drugs
+    ]
+    
+    # Cache the results
+    await cache_drug_search(normalized_query, effective_limit, drugs_data)
+    
+    return [DrugResponse.model_validate(d) for d in drugs_data]
 
 
 @app.get("/drugs/{drug_id}", response_model=DrugResponse, tags=["Drugs"])
