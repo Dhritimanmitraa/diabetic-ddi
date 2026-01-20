@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
+import MedicationSchedule from './MedicationSchedule'
+import DosageCalculator from './DosageCalculator'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -358,6 +360,7 @@ export default function DiabetesManager() {
 
   // Browse all drugs
   const [showDrugBrowser, setShowDrugBrowser] = useState(false)
+  const [showDosageCalculator, setShowDosageCalculator] = useState(false)
   const [allDrugs, setAllDrugs] = useState([])
   const [drugsLoading, setDrugsLoading] = useState(false)
   const [drugBrowserPage, setDrugBrowserPage] = useState(0)
@@ -668,6 +671,37 @@ export default function DiabetesManager() {
     }
   }
 
+  const downloadPDF = async () => {
+    if (!selectedPatient) {
+      toast.error('Select a patient first')
+      return
+    }
+    setLoading(true)
+    toast.loading('Generating PDF report...', { id: 'pdf-loading' })
+    try {
+      const res = await fetch(`${API_URL}/diabetic/report/${selectedPatient.patient_id}/pdf`)
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `DrugGuard_Report_${selectedPatient.patient_id}_${new Date().toISOString().split('T')[0]}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        toast.success('PDF downloaded successfully!', { id: 'pdf-loading' })
+      } else {
+        const err = await res.json()
+        toast.error(err.detail || 'Failed to generate PDF', { id: 'pdf-loading' })
+      }
+    } catch (err) {
+      toast.error('Error downloading PDF', { id: 'pdf-loading' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const addMedication = async (drugName) => {
     if (!selectedPatient || !drugName.trim()) return
     try {
@@ -930,6 +964,18 @@ export default function DiabetesManager() {
                       Browse All Drugs
                     </button>
                     <button
+                      onClick={() => window.location.href = `/patient-prescription?patient=${selectedPatient?.patient_id}`}
+                      disabled={loading}
+                      className="px-4 py-2 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-xl hover:bg-indigo-500/30 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      title="Scan prescription for this patient"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Scan Rx
+                    </button>
+                    <button
                       onClick={checkAllMedications}
                       disabled={loading || medications.length === 0}
                       title={medications.length === 0 ? 'Add medications to patient first using + Add button below' : 'Check all patient medications'}
@@ -943,6 +989,28 @@ export default function DiabetesManager() {
                       className="px-4 py-2 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl hover:bg-blue-500/30 transition-colors disabled:opacity-50"
                     >
                       Full Report
+                    </button>
+                    <button
+                      onClick={downloadPDF}
+                      disabled={loading}
+                      className="px-4 py-2 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl hover:bg-purple-500/30 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      title="Download PDF Report"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => setShowDosageCalculator(true)}
+                      disabled={loading}
+                      className="px-4 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl hover:bg-emerald-500/30 transition-colors disabled:opacity-50 flex items-center gap-2"
+                      title="Dosage Calculator"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                      </svg>
+                      Dose Calc
                     </button>
                   </div>
 
@@ -1169,7 +1237,13 @@ export default function DiabetesManager() {
                         </div>
                       )}
 
-                      <p className="text-sm text-slate-500">
+                      {/* Medication Schedule */}
+                      <MedicationSchedule
+                        patientId={selectedPatient?.patient_id}
+                        medications={medications}
+                      />
+
+                      <p className="text-sm text-slate-500 mt-4">
                         Report generated: {new Date(report.report_generated_at).toLocaleString()}
                       </p>
                     </motion.div>
@@ -1291,6 +1365,16 @@ export default function DiabetesManager() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Dosage Calculator Modal */}
+      <AnimatePresence>
+        {showDosageCalculator && selectedPatient && (
+          <DosageCalculator
+            patient={selectedPatient}
+            onClose={() => setShowDosageCalculator(false)}
+          />
         )}
       </AnimatePresence>
     </div>
