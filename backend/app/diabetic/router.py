@@ -1,12 +1,15 @@
 """
 Diabetic DDI API Router.
 
-Provides endpoints for managing diabetic patient profiles and drug risk assessments.
+Provides endpoints for managing diabetic patient profiles, drug risk assessments,
+and PDF report generation.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional, Dict
+from datetime import datetime
 import logging
 import json
 import difflib
@@ -292,6 +295,105 @@ async def get_report(
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     return result
+
+
+@router.get("/report/{patient_id}/pdf")
+async def get_report_pdf(
+    patient_id: str,
+    include_alternatives: bool = Query(True),
+    service: DiabeticDDIService = Depends(get_service)
+):
+    """
+    Generate and download a PDF report for a diabetic patient.
+    
+    Returns a downloadable PDF file containing:
+    - Patient profile summary
+    - Current medications
+    - Risk assessments for each medication
+    - Critical warnings for dangerous drugs
+    - Overall safety score
+    """
+    from app.services.pdf_generator import generate_patient_report_pdf
+    
+    # Get the patient
+    patient = await service.get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
+    
+    # Generate report data
+    report = await service.generate_patient_report(patient_id, include_alternatives)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"Could not generate report for patient {patient_id}")
+    
+    # Get medications
+    medications = await service.get_patient_medications(patient_id)
+    meds_data = [
+        {
+            "drug_name": m.drug_name,
+            "dosage": m.dosage or "N/A",
+            "frequency": m.frequency or "N/A"
+        }
+        for m in medications
+    ]
+    
+    # Build patient data dict
+    patient_data = {
+        "patient_id": patient.patient_id,
+        "diabetes_type": patient.diabetes_type,
+        "age": patient.age,
+        "labs": {
+            "egfr": patient.egfr,
+            "hba1c": patient.hba1c,
+            "potassium": patient.potassium,
+            "creatinine": patient.creatinine,
+        },
+        "complications": []
+    }
+    if patient.has_nephropathy:
+        patient_data["complications"].append("nephropathy")
+    if patient.has_retinopathy:
+        patient_data["complications"].append("retinopathy")
+    if patient.has_neuropathy:
+        patient_data["complications"].append("neuropathy")
+    if patient.has_cardiovascular:
+        patient_data["complications"].append("cardiovascular")
+    
+    # Build risk assessments
+    risk_assessments = []
+    if report.medication_assessments:
+        for assessment in report.medication_assessments:
+            risk_assessments.append({
+                "drug_name": assessment.drug_name,
+                "risk_level": assessment.risk_level,
+                "risk_factors": assessment.risk_factors or [],
+                "recommendations": assessment.recommendations or []
+            })
+    
+    try:
+        pdf_bytes = generate_patient_report_pdf(
+            patient_data=patient_data,
+            medications=meds_data,
+            risk_assessments=risk_assessments,
+            overall_score=report.overall_safety_score or 0
+        )
+        
+        filename = f"DrugGuard_Report_{patient_id}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+    except ImportError as e:
+        raise HTTPException(
+            status_code=500,
+            detail="PDF generation requires reportlab. Install with: pip install reportlab"
+        )
+    except Exception as e:
+        logger.error(f"PDF generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
 
 
 # ==================== Quick Check Endpoints ====================

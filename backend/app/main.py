@@ -18,7 +18,7 @@ from app.services.rate_limiter import rate_limit
 from app.services.auth import require_api_key
 from app.services.tasks import enqueue_training, enqueue_data_refresh, get_job
 from app.database import init_db, get_db, engine, Base
-from app.models import Drug, DrugInteraction, Category, ComparisonLog
+from app.models import Drug, DrugInteraction, Category, ComparisonLog, OffsidesEffect
 from app.schemas import (
     DrugSearch, DrugResponse, DrugCreate,
     InteractionCheckRequest, InteractionCheckResponse,
@@ -182,6 +182,49 @@ async def readiness(db: AsyncSession = Depends(get_db)):
         "models_loaded": has_models,
     }
 
+
+@app.get("/health/apis", tags=["Health"])
+async def api_health_status():
+    """
+    Get health status of all external APIs used for drug data.
+    
+    Shows circuit breaker states, cache statistics, and API availability.
+    """
+    try:
+        from app.services.api_client import get_api_client
+        from app.services.robust_fetcher import get_robust_fetcher
+        
+        client = get_api_client()
+        status = client.get_health_status()
+        
+        # Add LLM status
+        llm_status = {
+            "ollama_configured": bool(settings.OLLAMA_HOST),
+            "gemini_configured": bool(settings.GOOGLE_API_KEY),
+            "fallback_to_templates": settings.LLM_FALLBACK_TO_TEMPLATES,
+        }
+        
+        # Add API key status (without exposing keys)
+        api_keys = {
+            "openfda_key_configured": bool(settings.OPENFDA_API_KEY),
+            "umls_key_configured": bool(settings.UMLS_API_KEY),
+        }
+        
+        return {
+            "status": "healthy",
+            "external_apis": status,
+            "llm_services": llm_status,
+            "api_keys": api_keys,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        
+    except Exception as e:
+        logger.error(f"API health check error: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
 
 @app.get("/stats", response_model=DatabaseStats, tags=["Statistics"])
 async def get_statistics(db: AsyncSession = Depends(get_db)):
@@ -352,6 +395,79 @@ async def get_drug_by_name(drug_name: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Drug not found")
     
     return DrugResponse.model_validate(drug)
+
+
+# ============== Side Effects Endpoints ==============
+
+@app.get("/drugs/{drug_name}/side-effects", tags=["Drugs"])
+async def get_drug_side_effects(
+    drug_name: str,
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get known side effects for a drug from the OffSIDES database.
+    
+    Returns adverse reactions and their severity levels for the specified drug.
+    Useful for understanding potential risks before taking a medication.
+    """
+    # Normalize drug name for matching
+    normalized_name = drug_name.strip().lower()
+    
+    # Search for side effects matching the drug name
+    result = await db.execute(
+        select(OffsidesEffect)
+        .where(func.lower(OffsidesEffect.drug_name).contains(normalized_name))
+        .limit(limit)
+    )
+    effects = result.scalars().all()
+    
+    # If no exact match, try fuzzy matching
+    if not effects:
+        # Try partial match
+        result = await db.execute(
+            select(OffsidesEffect)
+            .where(func.lower(OffsidesEffect.drug_name).like(f"%{normalized_name}%"))
+            .limit(limit)
+        )
+        effects = result.scalars().all()
+    
+    # Group effects by severity
+    effects_by_severity = {
+        "severe": [],
+        "moderate": [],
+        "mild": [],
+        "unknown": []
+    }
+    
+    for effect in effects:
+        severity_key = (effect.severity or "unknown").lower()
+        if severity_key in ["severe", "major", "serious", "fatal"]:
+            effects_by_severity["severe"].append(effect.effect)
+        elif severity_key in ["moderate", "medium"]:
+            effects_by_severity["moderate"].append(effect.effect)
+        elif severity_key in ["mild", "minor"]:
+            effects_by_severity["mild"].append(effect.effect)
+        else:
+            effects_by_severity["unknown"].append(effect.effect)
+    
+    # Deduplicate effects within each category
+    for key in effects_by_severity:
+        effects_by_severity[key] = list(set(effects_by_severity[key]))
+    
+    return {
+        "drug_name": drug_name,
+        "total_effects": len(effects),
+        "effects_by_severity": effects_by_severity,
+        "effects": [
+            {
+                "effect": e.effect,
+                "severity": e.severity,
+                "source": e.source
+            }
+            for e in effects
+        ]
+    }
 
 
 # ============== Interaction Check Endpoints ==============

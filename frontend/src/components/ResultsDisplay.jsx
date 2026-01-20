@@ -6,6 +6,7 @@ import {
   CheckCircle2, XCircle, Info, ArrowRight,
   Pill, BookOpen, Stethoscope, Sparkles
 } from 'lucide-react'
+import SideEffects from './SideEffects'
 
 function ResultsDisplay({ results }) {
   const has_interaction = results?.has_interaction
@@ -306,6 +307,10 @@ function DrugCard({ drug }) {
         <span className="inline-block mt-2 px-2 py-0.5 bg-slate-700/50 rounded-full text-xs text-slate-400">
           {drug.drug_class}
         </span>
+      )}
+      {/* Side Effects Section */}
+      {drug?.name && (
+        <SideEffects drugName={drug.name} />
       )}
     </div>
   )

@@ -13,6 +13,7 @@ import MLPrediction from './components/MLPrediction'
 import ModelDashboard from './components/ModelDashboard'
 import DiabetesManager from './components/DiabetesManager'
 import PrescriptionRAG from './components/PrescriptionRAG'
+import PatientPrescriptionScanner from './components/PatientPrescriptionScanner'
 import Footer from './components/Footer'
 import FloatingElements from './components/FloatingElements'
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary'
@@ -74,9 +75,9 @@ function App() {
 
                       {/* Tab switcher */}
                       <section className="max-w-4xl mx-auto px-4 py-8">
-                        <div 
-                          className="flex justify-center gap-4 mb-8" 
-                          role="tablist" 
+                        <div
+                          className="flex justify-center gap-4 mb-8"
+                          role="tablist"
                           aria-label="Input method selection"
                         >
                           <button
@@ -86,8 +87,8 @@ function App() {
                             aria-controls="text-panel"
                             id="text-tab"
                             className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-medical-500/50 ${activeTab === 'text'
-                                ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
-                                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
+                              ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
+                              : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
                               }`}
                           >
                             <span className="flex items-center gap-2">
@@ -104,8 +105,8 @@ function App() {
                             aria-controls="camera-panel"
                             id="camera-tab"
                             className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-medical-500/50 ${activeTab === 'camera'
-                                ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
-                                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
+                              ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
+                              : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
                               }`}
                           >
                             <span className="flex items-center gap-2">
@@ -275,6 +276,16 @@ function App() {
                 element={
                   <ErrorBoundary>
                     <PrescriptionRAG />
+                  </ErrorBoundary>
+                }
+              />
+
+              {/* Patient Prescription Scanner (Integrated) */}
+              <Route
+                path="/patient-prescription"
+                element={
+                  <ErrorBoundary>
+                    <PatientPrescriptionScanner />
                   </ErrorBoundary>
                 }
               />
