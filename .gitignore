@@ -115,12 +115,30 @@ htmlcov/
 .dmypy.json
 dmypy.json
 
-# Helper scripts (local use only)
-*.bat
-!run_app.bat
+# Helper scripts (keep essential startup scripts)
 *.ps1
-*.sh
+!start_app.bat
+!run_app.bat
+!build_all.bat
+!setup_conda.bat
+!start_app_conda.bat
 
-# Documentation (keep only README.md in repo)
-*.md
-!README.md
+# Android build artifacts
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+*.keystore
+!frontend/android/app/debug.keystore
+
+# APK files (too large)
+*.apk
+
+# PDF reports (generated)
+*.pdf
+patient_reports/
+
+# Keep only README in root
+/APPLICATION_WORKFLOW.md
+/LLM_INTEGRATION_GUIDE.md
+/PROJECT_DOCUMENTATION.md
+/STAGE5_RULE_BASED_FILES.md
