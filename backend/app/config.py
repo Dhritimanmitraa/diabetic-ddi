@@ -32,8 +32,8 @@ class Settings(BaseSettings):
     TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"  # Windows default
     
     # Prescription RAG Settings
-    GOOGLE_API_KEY: str = "AIzaSyCKERX_G1kWwA4RNSg68ZNrVNpDy4KxGLY"  # Gemini API Key
-    GEMINI_API_KEY: str = "AIzaSyCKERX_G1kWwA4RNSg68ZNrVNpDy4KxGLY"  # Alias for Gemini
+    GOOGLE_API_KEY: str = ""  # Set in .env file
+    GEMINI_API_KEY: str = ""  # Set in .env file
     CHROMA_PERSIST_DIR: str = "./chroma_db"
     OLLAMA_VISION_MODEL: str = "llava"  # Vision-capable model for OCR
     
