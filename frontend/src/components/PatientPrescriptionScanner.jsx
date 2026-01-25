@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
-    Upload, FileText, Pill, MessageSquare, Send,
-    AlertTriangle, Shield, Camera, User, Loader2, Check, XCircle
+    Upload, Pill,
+    AlertTriangle, Shield, Camera, User, Loader2, XCircle, SwitchCamera
 } from 'lucide-react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -28,7 +28,14 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
     // UI state
     const [activeView, setActiveView] = useState('select') // select, upload, results
 
+    // Camera state
+    const [showCamera, setShowCamera] = useState(false)
+    const [cameraStream, setCameraStream] = useState(null)
+    const [facingMode, setFacingMode] = useState('environment')
+
     const fileInputRef = useRef(null)
+    const videoRef = useRef(null)
+    const canvasRef = useRef(null)
 
     // Fetch patients on mount
     useEffect(() => {
@@ -68,28 +75,103 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
         setRiskAssessments([])
     }
 
-    const handleFileSelect = async (event) => {
-        const file = event.target.files?.[0]
-        if (!file) return
+    // Camera functions
+    const startCamera = useCallback(async () => {
+        try {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop())
+            }
 
-        // Validate file
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
-        if (!allowedTypes.includes(file.type)) {
-            toast.error('Please upload an image (JPEG, PNG) or PDF')
-            return
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: facingMode,
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                }
+            })
+
+            setCameraStream(stream)
+            setShowCamera(true)
+
+            setTimeout(() => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream
+                }
+            }, 100)
+        } catch (err) {
+            console.error('Camera error:', err)
+            if (err.name === 'NotAllowedError') {
+                toast.error('Camera permission denied. Please allow camera access.')
+            } else if (err.name === 'NotFoundError') {
+                toast.error('No camera found on this device')
+            } else {
+                toast.error('Could not access camera: ' + err.message)
+            }
         }
+    }, [facingMode, cameraStream])
 
-        if (file.size > 10 * 1024 * 1024) {
-            toast.error('File too large. Maximum size is 10MB')
-            return
+    const stopCamera = useCallback(() => {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop())
+            setCameraStream(null)
         }
+        setShowCamera(false)
+    }, [cameraStream])
 
+    const switchCamera = useCallback(() => {
+        setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')
+    }, [])
+
+    // Restart camera when facing mode changes
+    useEffect(() => {
+        if (showCamera && cameraStream) {
+            startCamera()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [facingMode])
+
+    // Cleanup camera on unmount
+    useEffect(() => {
+        return () => {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop())
+            }
+        }
+    }, [cameraStream])
+
+    const capturePhoto = useCallback(async () => {
+        if (!videoRef.current || !canvasRef.current) return
+
+        const video = videoRef.current
+        const canvas = canvasRef.current
+
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(video, 0, 0)
+
+        canvas.toBlob(async (blob) => {
+            if (!blob) {
+                toast.error('Failed to capture image')
+                return
+            }
+
+            const file = new File([blob], 'prescription_capture.jpg', { type: 'image/jpeg' })
+            stopCamera()
+
+            // Process the captured image
+            await processFile(file)
+        }, 'image/jpeg', 0.9)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stopCamera])
+
+    const processFile = async (file) => {
         setIsUploading(true)
         setPrescription(null)
         setRiskAssessments([])
 
         try {
-            // Upload to prescription endpoint
             const formData = new FormData()
             formData.append('file', file)
 
@@ -105,7 +187,6 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                     setActiveView('results')
                     toast.success(`Extracted ${result.medicines?.length || 0} medicine(s)!`)
 
-                    // Check risks for each medicine against the patient
                     if (selectedPatient && result.medicines?.length > 0) {
                         checkPatientRisks(result.medicines)
                     }
@@ -122,6 +203,25 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
         } finally {
             setIsUploading(false)
         }
+    }
+
+    const handleFileSelect = async (event) => {
+        const file = event.target.files?.[0]
+        if (!file) return
+
+        // Validate file
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+        if (!allowedTypes.includes(file.type)) {
+            toast.error('Please upload an image (JPEG, PNG) or PDF')
+            return
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            toast.error('File too large. Maximum size is 10MB')
+            return
+        }
+
+        await processFile(file)
     }
 
     const checkPatientRisks = async (medicines) => {
@@ -162,7 +262,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
             ).length
 
             if (highRiskCount > 0) {
-                toast.error(`⚠️ ${highRiskCount} medicine(s) have HIGH RISK for this patient!`, { duration: 5000 })
+                toast.error(`${highRiskCount} medicine(s) have HIGH RISK for this patient!`, { duration: 5000 })
             } else {
                 toast.success('Risk assessment complete', { duration: 3000 })
             }
@@ -248,10 +348,10 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                     (step.id === 'results' && !prescription)
                                 }
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${isActive
-                                        ? 'bg-medical-500 text-white'
-                                        : isPast
-                                            ? 'bg-medical-500/20 text-medical-400'
-                                            : 'bg-slate-800/50 text-slate-500'
+                                    ? 'bg-medical-500 text-white'
+                                    : isPast
+                                        ? 'bg-medical-500/20 text-medical-400'
+                                        : 'bg-slate-800/50 text-slate-500'
                                     } ${step.id !== 'select' && !selectedPatient ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -295,8 +395,8 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                         key={patient.id}
                                         onClick={() => handlePatientSelect(patient)}
                                         className={`p-4 rounded-xl text-left transition-all border ${selectedPatient?.id === patient.id
-                                                ? 'bg-medical-500/20 border-medical-500'
-                                                : 'bg-slate-800/50 border-slate-700/50 hover:border-medical-500/50'
+                                            ? 'bg-medical-500/20 border-medical-500'
+                                            : 'bg-slate-800/50 border-slate-700/50 hover:border-medical-500/50'
                                             }`}
                                     >
                                         <div className="flex items-center justify-between">
@@ -310,8 +410,8 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                             <div className="text-right text-sm">
                                                 {patient.egfr && (
                                                     <span className={`px-2 py-1 rounded-full ${patient.egfr >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
-                                                            patient.egfr >= 30 ? 'bg-amber-500/20 text-amber-400' :
-                                                                'bg-red-500/20 text-red-400'
+                                                        patient.egfr >= 30 ? 'bg-amber-500/20 text-amber-400' :
+                                                            'bg-red-500/20 text-red-400'
                                                         }`}>
                                                         eGFR: {patient.egfr}
                                                     </span>
@@ -358,42 +458,122 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                             </div>
                         )}
 
-                        {/* Upload Area */}
-                        <div
-                            onClick={() => !isUploading && fileInputRef.current?.click()}
-                            className={`glass rounded-2xl p-12 text-center cursor-pointer border-2 border-dashed transition-all ${isUploading
-                                    ? 'border-medical-500/50 opacity-50 cursor-not-allowed'
-                                    : 'border-slate-700/50 hover:border-medical-500/50 hover:bg-slate-800/30'
-                                }`}
-                        >
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp,application/pdf"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                            />
+                        {/* Camera View */}
+                        {showCamera ? (
+                            <div className="glass rounded-2xl overflow-hidden">
+                                <div className="relative bg-black aspect-[4/3]">
+                                    <video
+                                        ref={videoRef}
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <canvas ref={canvasRef} className="hidden" />
 
-                            {isUploading ? (
-                                <div>
-                                    <Loader2 className="w-12 h-12 text-medical-400 animate-spin mx-auto mb-4" />
-                                    <p className="text-medical-400 font-medium">Processing prescription...</p>
-                                    <p className="text-slate-500 text-sm mt-1">Extracting medicines with AI</p>
-                                </div>
-                            ) : (
-                                <div>
-                                    <div className="w-16 h-16 rounded-2xl bg-medical-500/10 flex items-center justify-center mx-auto mb-4">
-                                        <Upload className="w-8 h-8 text-medical-400" />
+                                    {/* Camera Controls */}
+                                    <div className="absolute top-4 right-4 flex gap-2">
+                                        <button
+                                            onClick={switchCamera}
+                                            className="p-3 bg-black/50 hover:bg-black/70 text-white rounded-full transition-colors"
+                                            title="Switch Camera"
+                                        >
+                                            <SwitchCamera className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={stopCamera}
+                                            className="p-3 bg-black/50 hover:bg-red-500/70 text-white rounded-full transition-colors"
+                                            title="Close Camera"
+                                        >
+                                            <XCircle className="w-5 h-5" />
+                                        </button>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-white mb-2">
-                                        Upload Prescription
-                                    </h3>
-                                    <p className="text-slate-400 text-sm">
-                                        Click or drag & drop an image (JPEG, PNG) or PDF
-                                    </p>
+
+                                    <div className="absolute bottom-4 left-0 right-0 text-center">
+                                        <p className="text-white/70 text-sm mb-2">Position prescription in frame</p>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+
+                                {/* Capture Button */}
+                                <div className="p-6 flex justify-center">
+                                    <button
+                                        onClick={capturePhoto}
+                                        className="w-20 h-20 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform shadow-lg"
+                                    >
+                                        <div className="w-16 h-16 rounded-full border-4 border-medical-500 flex items-center justify-center">
+                                            <Camera className="w-8 h-8 text-medical-500" />
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Upload Options */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Camera Button */}
+                                    <button
+                                        onClick={startCamera}
+                                        disabled={isUploading}
+                                        className="glass rounded-2xl p-8 text-center hover:bg-slate-800/50 transition-all border-2 border-transparent hover:border-medical-500/30 disabled:opacity-50"
+                                    >
+                                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-medical-500/10 flex items-center justify-center">
+                                            <Camera className="w-8 h-8 text-medical-400" />
+                                        </div>
+                                        <h3 className="text-lg font-semibold text-white mb-1">
+                                            Take Photo
+                                        </h3>
+                                        <p className="text-slate-500 text-sm">
+                                            Use camera to capture
+                                        </p>
+                                    </button>
+
+                                    {/* File Upload Button */}
+                                    <div
+                                        onClick={() => !isUploading && fileInputRef.current?.click()}
+                                        className={`glass rounded-2xl p-8 text-center cursor-pointer border-2 border-transparent transition-all ${isUploading
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : 'hover:bg-slate-800/50 hover:border-purple-500/30'
+                                            }`}
+                                    >
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp,application/pdf"
+                                            onChange={handleFileSelect}
+                                            className="hidden"
+                                        />
+                                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/10 flex items-center justify-center">
+                                            <Upload className="w-8 h-8 text-purple-400" />
+                                        </div>
+                                        <h3 className="text-lg font-semibold text-white mb-1">
+                                            Upload File
+                                        </h3>
+                                        <p className="text-slate-500 text-sm">
+                                            JPEG, PNG, or PDF
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Processing State */}
+                                {isUploading && (
+                                    <div className="glass rounded-2xl p-8 text-center">
+                                        <Loader2 className="w-12 h-12 text-medical-400 animate-spin mx-auto mb-4" />
+                                        <p className="text-medical-400 font-medium">Processing prescription...</p>
+                                        <p className="text-slate-500 text-sm mt-1">Extracting medicines with AI</p>
+                                    </div>
+                                )}
+
+                                {/* Tips */}
+                                <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl">
+                                    <p className="text-amber-400 text-sm font-medium mb-2">Tips for best results:</p>
+                                    <ul className="text-slate-400 text-sm space-y-1">
+                                        <li>• Ensure good lighting and clear focus</li>
+                                        <li>• Include all medicines in the frame</li>
+                                        <li>• Handwritten prescriptions work too!</li>
+                                    </ul>
+                                </div>
+                            </>
+                        )}
                     </motion.div>
                 )}
 

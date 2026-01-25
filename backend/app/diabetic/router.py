@@ -4,7 +4,7 @@ Diabetic DDI API Router.
 Provides endpoints for managing diabetic patient profiles, drug risk assessments,
 and PDF report generation.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -396,7 +396,186 @@ async def get_report_pdf(
         raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
 
 
+# ==================== Lab Report Analysis (Gemini Vision) ====================
+
+@router.post("/analyze-report")
+async def analyze_lab_report(
+    file: UploadFile = File(..., description="Lab report image (JPEG, PNG) or PDF"),
+    auto_create_patient: bool = Query(True, description="Automatically create patient from extracted data"),
+    service: DiabeticDDIService = Depends(get_service)
+):
+    """
+    Analyze a lab report image using Google Gemini Vision AI.
+    
+    Extracts:
+    - Patient demographics (name, age, gender)
+    - Glucose values (HbA1c, FBS, PPBS, mean BG)
+    - Kidney function (creatinine, eGFR)
+    - Lipid profile (cholesterol, triglycerides, HDL, LDL, VLDL)
+    - Liver function (ALT, AST)
+    - Thyroid profile (T3, T4, TSH)
+    
+    Returns extracted values and AI-generated health summary.
+    """
+    from app.diabetic.lab_report_analyzer import get_lab_report_analyzer
+    
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/jpg", "application/pdf"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid file type. Allowed: JPEG, PNG, PDF. Got: {file.content_type}"
+        )
+    
+    # Read file
+    image_data = await file.read()
+    
+    if len(image_data) > 10 * 1024 * 1024:  # 10MB limit
+        raise HTTPException(status_code=400, detail="File too large. Max size: 10MB")
+    
+    # Analyze with Gemini
+    analyzer = get_lab_report_analyzer()
+    result = await analyzer.analyze_report(image_data, file.filename or "report.jpg", file.content_type)
+    
+    if not result.success:
+        raise HTTPException(status_code=500, detail=result.error or "Failed to analyze report")
+    
+    response_data = {
+        "success": True,
+        "extracted_values": result.extracted_values.model_dump(),
+        "health_summary": result.health_summary.model_dump(),
+        "model_used": result.model_used,
+        "patient_created": False,
+        "patient_id": None
+    }
+    
+    # Auto-create patient if requested
+    if auto_create_patient and result.extracted_values.patient.name:
+        try:
+            from app.diabetic.schemas import DiabeticPatientCreate, PatientLabsBase, PatientComplicationsBase
+            import uuid
+            
+            # Generate patient ID if not found
+            patient_id = result.extracted_values.patient.patient_id or f"RPT-{uuid.uuid4().hex[:8].upper()}"
+            
+            # Build patient data from extracted values
+            labs = PatientLabsBase(
+                hba1c=result.extracted_values.glucose.hba1c,
+                fasting_glucose=result.extracted_values.glucose.fasting_glucose,
+                postprandial_glucose=result.extracted_values.glucose.postprandial_glucose,
+                mean_blood_glucose=result.extracted_values.glucose.mean_blood_glucose,
+                egfr=result.extracted_values.kidney.egfr,
+                creatinine=result.extracted_values.kidney.creatinine,
+                potassium=result.extracted_values.potassium,
+                total_cholesterol=result.extracted_values.lipid.total_cholesterol,
+                triglycerides=result.extracted_values.lipid.triglycerides,
+                hdl_cholesterol=result.extracted_values.lipid.hdl_cholesterol,
+                ldl_cholesterol=result.extracted_values.lipid.ldl_cholesterol,
+                vldl_cholesterol=result.extracted_values.lipid.vldl_cholesterol,
+                alt=result.extracted_values.liver.alt,
+                ast=result.extracted_values.liver.ast,
+            )
+            
+            # Determine diabetes type from values
+            diabetes_type = "type_2"  # Default
+            if result.extracted_values.glucose.hba1c:
+                if result.extracted_values.glucose.hba1c < 5.7:
+                    diabetes_type = "other"  # Normal
+                elif result.extracted_values.glucose.hba1c < 6.5:
+                    diabetes_type = "prediabetes"
+                else:
+                    diabetes_type = "type_2"
+            
+            patient_data = DiabeticPatientCreate(
+                patient_id=patient_id,
+                name=result.extracted_values.patient.name,
+                age=result.extracted_values.patient.age,
+                gender=result.extracted_values.patient.gender,
+                diabetes_type=diabetes_type,
+                labs=labs,
+                complications=PatientComplicationsBase()
+            )
+            
+            # Try to delete existing patient with same ID
+            await service.delete_patient(patient_id)
+            
+            # Create new patient
+            patient = await service.create_patient(patient_data)
+            response_data["patient_created"] = True
+            response_data["patient_id"] = patient.patient_id
+            
+        except Exception as e:
+            logger.warning(f"Failed to auto-create patient: {e}")
+            response_data["patient_create_error"] = str(e)
+    
+    return response_data
+
+
+@router.post("/analyze-report/personalized-ddi")
+async def get_personalized_ddi_from_report(
+    patient_id: str = Query(..., description="Patient ID to analyze"),
+    drug_name: str = Query(..., description="Drug to check"),
+    service: DiabeticDDIService = Depends(get_service)
+):
+    """
+    Get PERSONALIZED drug risk analysis based on patient's actual lab values.
+    
+    This uses AI to explain why THIS patient's specific lab values
+    affect the safety of the drug. Results are unique to each patient.
+    """
+    from app.diabetic.lab_report_analyzer import get_lab_report_analyzer
+    
+    # Get patient
+    patient = await service.get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
+    
+    # Build patient data dict
+    patient_data = {
+        "name": patient.name or patient.patient_id,
+        "age": patient.age,
+        "gender": patient.gender,
+        "diabetes_type": patient.diabetes_type,
+        "hba1c": patient.hba1c,
+        "fasting_glucose": patient.fasting_glucose,
+        "egfr": patient.egfr,
+        "creatinine": patient.creatinine,
+        "potassium": patient.potassium,
+        "total_cholesterol": getattr(patient, 'total_cholesterol', None),
+        "triglycerides": getattr(patient, 'triglycerides', None),
+    }
+    
+    # Get personalized analysis
+    analyzer = get_lab_report_analyzer()
+    result = await analyzer.get_personalized_ddi_analysis(patient_data, drug_name)
+    
+    return {
+        "patient_id": patient_id,
+        "patient_name": patient.name,
+        "drug_name": drug_name,
+        "personalized_analysis": result
+    }
+
+
+@router.get("/analyzer-status")
+async def get_analyzer_status():
+    """Check if the Gemini Vision analyzer is available."""
+    from app.diabetic.lab_report_analyzer import get_lab_report_analyzer
+    
+    analyzer = get_lab_report_analyzer()
+    return {
+        "gemini_available": analyzer.gemini_available,
+        "model": "gemini-1.5-flash",
+        "features": [
+            "lab_value_extraction",
+            "health_summary_generation",
+            "personalized_ddi_analysis"
+        ]
+    }
+
+
 # ==================== Quick Check Endpoints ====================
+
 
 @router.get("/quick-check/{patient_id}/{drug_name}", response_model=DrugRiskCheckResponse)
 async def quick_drug_check(

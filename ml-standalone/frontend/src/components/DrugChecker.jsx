@@ -90,12 +90,12 @@ function DrugChecker({ disabled = false }) {
 
   const getSourceBadge = (source, isCached) => {
     if (isCached) {
-      return { bg: 'bg-gray-100', text: 'text-gray-700', label: '📦 Cached' }
+      return { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Cached' }
     }
     const badges = {
-      ml: { bg: 'bg-purple-100', text: 'text-purple-800', label: '🤖 ML Model' },
-      llm: { bg: 'bg-blue-100', text: 'text-blue-800', label: '🧠 LLM Only' },
-      hybrid: { bg: 'bg-gradient-to-r from-purple-100 to-blue-100', text: 'text-purple-800', label: '🔬 ML + LLM Hybrid' }
+      ml: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'ML Model' },
+      llm: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'LLM Only' },
+      hybrid: { bg: 'bg-gradient-to-r from-purple-100 to-blue-100', text: 'text-purple-800', label: 'ML + LLM Hybrid' }
     }
     return badges[source] || badges.llm
   }
@@ -104,14 +104,14 @@ function DrugChecker({ disabled = false }) {
     if (!validation) return null
 
     if (!validation.is_validated) {
-      return { bg: 'bg-gray-100', text: 'text-gray-600', icon: '❓', label: 'Unvalidated' }
+      return { bg: 'bg-gray-100', text: 'text-gray-600', icon: '', label: 'Unvalidated' }
     }
 
     if (validation.is_correct) {
-      return { bg: 'bg-green-100', text: 'text-green-700', icon: '✅', label: 'Validated' }
+      return { bg: 'bg-green-100', text: 'text-green-700', icon: '', label: 'Validated' }
     }
 
-    return { bg: 'bg-orange-100', text: 'text-orange-700', icon: '⚠️', label: 'Conflicts with DB' }
+    return { bg: 'bg-orange-100', text: 'text-orange-700', icon: '', label: 'Conflicts with DB' }
   }
 
   const ConfidenceBar = ({ confidence, label, calibrated = false }) => (
@@ -126,8 +126,8 @@ function DrugChecker({ disabled = false }) {
       <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
         <div
           className={`h-3 rounded-full transition-all duration-500 ${confidence > 0.8 ? 'bg-green-500' :
-              confidence > 0.6 ? 'bg-yellow-500' :
-                confidence > 0.4 ? 'bg-orange-500' : 'bg-red-500'
+            confidence > 0.6 ? 'bg-yellow-500' :
+              confidence > 0.4 ? 'bg-orange-500' : 'bg-red-500'
             }`}
           style={{ width: `${confidence * 100}%` }}
         />
@@ -219,7 +219,7 @@ function DrugChecker({ disabled = false }) {
               </svg>
               Analyzing...
             </span>
-          ) : '🔬 Analyze with ML + AI'}
+          ) : 'Analyze with ML + AI'}
         </button>
       </form>
 
@@ -239,7 +239,7 @@ function DrugChecker({ disabled = false }) {
                 {/* Cached badge */}
                 {result.is_cached && (
                   <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
-                    📦 Cached
+                    Cached
                   </span>
                 )}
                 {/* Source badge */}
@@ -260,7 +260,7 @@ function DrugChecker({ disabled = false }) {
               <div className={`p-4 rounded-lg border-2 ${result.prediction.has_interaction ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-lg">
-                    {result.prediction.has_interaction ? '⚠️ Interaction Detected' : '✅ No Significant Interaction'}
+                    {result.prediction.has_interaction ? 'Interaction Detected' : 'No Significant Interaction'}
                   </span>
                   <span className={`px-4 py-2 rounded-full text-sm font-bold border ${getSeverityColor(result.prediction.severity)}`}>
                     {result.prediction.severity?.toUpperCase() || 'UNKNOWN'}
@@ -271,14 +271,14 @@ function DrugChecker({ disabled = false }) {
               {/* Validation Result */}
               {result.validation && (
                 <div className={`p-4 rounded-lg border ${result.validation.is_validated
-                    ? (result.validation.is_correct ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200')
-                    : 'bg-gray-50 border-gray-200'
+                  ? (result.validation.is_correct ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200')
+                  : 'bg-gray-50 border-gray-200'
                   }`}>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="font-bold">
                       {result.validation.is_validated
-                        ? (result.validation.is_correct ? '✅ Validated Against Database' : '⚠️ Prediction Conflicts with Database')
-                        : '❓ No Database Record Found'}
+                        ? (result.validation.is_correct ? 'Validated Against Database' : 'Prediction Conflicts with Database')
+                        : 'No Database Record Found'}
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">{result.validation.message}</p>
@@ -301,7 +301,7 @@ function DrugChecker({ disabled = false }) {
               {result.ml_prediction && (
                 <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-purple-600 font-bold">🤖 ML Model Prediction</span>
+                    <span className="text-purple-600 font-bold">ML Model Prediction</span>
                     {result.ml_prediction.model_version && (
                       <span className="text-xs bg-purple-200 text-purple-700 px-2 py-0.5 rounded">
                         v{result.ml_prediction.model_version}
@@ -327,14 +327,14 @@ function DrugChecker({ disabled = false }) {
 
               {/* Explanation */}
               <div>
-                <span className="font-medium block mb-1">📋 Explanation:</span>
+                <span className="font-medium block mb-1">Explanation:</span>
                 <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{result.prediction.explanation}</p>
               </div>
 
               {/* Mechanism */}
               {result.prediction.mechanism && result.prediction.mechanism !== 'Unknown' && (
                 <div>
-                  <span className="font-medium block mb-1">🔬 Mechanism:</span>
+                  <span className="font-medium block mb-1">Mechanism:</span>
                   <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{result.prediction.mechanism}</p>
                 </div>
               )}
@@ -342,7 +342,7 @@ function DrugChecker({ disabled = false }) {
               {/* Recommendations */}
               {result.prediction.recommendations && result.prediction.recommendations.length > 0 && (
                 <div>
-                  <span className="font-medium block mb-1">💡 Recommendations:</span>
+                  <span className="font-medium block mb-1">Recommendations:</span>
                   <ul className="list-disc list-inside space-y-1 text-gray-700 bg-gray-50 p-3 rounded-lg">
                     {result.prediction.recommendations.map((rec, idx) => (
                       <li key={idx}>{rec}</li>
@@ -354,7 +354,7 @@ function DrugChecker({ disabled = false }) {
               {/* TWOSIDES Context */}
               {result.twosides_context && result.twosides_context.known_interaction && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <span className="font-medium block mb-1">📊 Database Context (TWOSIDES):</span>
+                  <span className="font-medium block mb-1">Database Context (TWOSIDES):</span>
                   <p className="text-sm text-gray-700">
                     {result.twosides_context.interaction_count} interaction(s) found in database
                     {result.twosides_context.side_effects.length > 0 && (
@@ -373,9 +373,9 @@ function DrugChecker({ disabled = false }) {
                   {result.llm_model && `LLM: ${result.llm_model}`}
                   {result.ml_prediction && result.llm_model && ' • '}
                   {result.ml_prediction && `ML: v${result.ml_prediction.model_version || '1.0'}`}
-                  {result.is_cached && ' • 📦 From Cache'}
+                  {result.is_cached && ' • From Cache'}
                 </span>
-                <span>⏱️ {result.processing_time_ms}ms</span>
+                <span>{result.processing_time_ms}ms</span>
               </div>
             </div>
           </div>

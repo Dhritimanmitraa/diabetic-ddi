@@ -1,4 +1,4 @@
-    """
+"""
 Drug Knowledge Base Service.
 
 Indexes drug information in ChromaDB for RAG retrieval.

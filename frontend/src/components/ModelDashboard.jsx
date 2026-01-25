@@ -198,7 +198,7 @@ function ModelCard({ name, metrics, delay }) {
     lightgbm: { icon: '', color: 'yellow', label: 'LightGBM' },
   }
 
-  const config = modelConfig[name] || { icon: '🤖', color: 'purple', label: name }
+  const config = modelConfig[name] || { icon: '', color: 'purple', label: name }
   const aucRoc = metrics?.auc_roc || 0
   const f1Score = metrics?.f1_score || 0
 
@@ -269,8 +269,8 @@ function ComparisonRow({ data }) {
       <div className="flex items-center justify-between mb-3">
         <h4 className="text-white font-medium capitalize">{data.model}</h4>
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${summary.winner === 'bayesian'
-            ? 'bg-purple-500/20 text-purple-400'
-            : 'bg-slate-600/20 text-slate-400'
+          ? 'bg-purple-500/20 text-purple-400'
+          : 'bg-slate-600/20 text-slate-400'
           }`}>
           Winner: {summary.winner || 'N/A'}
         </span>

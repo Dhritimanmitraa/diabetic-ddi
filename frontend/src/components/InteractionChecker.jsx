@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, ArrowRight, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -8,34 +8,34 @@ import { useDebouncedSearch } from '../hooks'
 /**
  * DrugSearchInput - Reusable drug search input with autocomplete
  */
-function DrugSearchInput({ 
-  label, 
+function DrugSearchInput({
+  label,
   placeholder,
   searchState,
   onSelect,
   inputId,
 }) {
-  const { 
-    query, 
-    setQuery, 
-    results, 
-    isLoading, 
-    showResults, 
-    setShowResults, 
-    clear 
+  const {
+    query,
+    setQuery,
+    results,
+    isLoading,
+    showResults,
+    setShowResults,
+    clear
   } = searchState
 
   return (
     <div className="relative">
-      <label 
+      <label
         htmlFor={inputId}
         className="block text-sm font-medium text-slate-400 mb-2"
       >
         {label}
       </label>
       <div className="relative">
-        <Search 
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" 
+        <Search
+          className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500"
           aria-hidden="true"
         />
         <input
@@ -234,8 +234,8 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
             className="w-12 h-12 rounded-full bg-slate-800/50 hover:bg-medical-500/20 border border-slate-700/50 hover:border-medical-500/50 flex items-center justify-center transition-colors swap-rotate group"
             aria-label="Swap drug names"
           >
-            <ArrowRight 
-              className="w-5 h-5 text-slate-400 group-hover:text-medical-400 rotate-90 transition-colors" 
+            <ArrowRight
+              className="w-5 h-5 text-slate-400 group-hover:text-medical-400 rotate-90 transition-colors"
               aria-hidden="true"
             />
           </motion.button>
@@ -302,10 +302,10 @@ function showInteractionToast(result) {
   const severity = result.interaction?.severity
   switch (severity) {
     case 'minor':
-      toast('Minor interaction detected', { icon: 'ℹ️' })
+      toast('Minor interaction detected')
       break
     case 'moderate':
-      toast('Moderate interaction detected', { icon: '⚠️' })
+      toast.error('Moderate interaction detected')
       break
     case 'major':
       toast.error('Major interaction detected!')

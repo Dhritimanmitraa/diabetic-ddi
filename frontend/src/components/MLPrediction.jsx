@@ -112,8 +112,8 @@ function MLPrediction({ prediction, isLoading }) {
               animate={{ width: `${probabilityPercent}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
               className={`h-full rounded-full ${interaction_probability >= 0.7 ? 'bg-red-500' :
-                  interaction_probability >= 0.4 ? 'bg-orange-500' :
-                    interaction_probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
+                interaction_probability >= 0.4 ? 'bg-orange-500' :
+                  interaction_probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
                 }`}
             />
           </div>
@@ -217,7 +217,7 @@ function ModelBar({ name, probability }) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="w-6 text-center">{modelIcons[name] || '🤖'}</span>
+      <span className="w-6 text-center">{modelIcons[name] || ''}</span>
       <span className="w-28 text-sm text-slate-400">{modelNames[name] || name}</span>
       <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
         <motion.div
@@ -225,8 +225,8 @@ function ModelBar({ name, probability }) {
           animate={{ width: `${percent}%` }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className={`h-full rounded-full ${probability >= 0.7 ? 'bg-red-500' :
-              probability >= 0.4 ? 'bg-orange-500' :
-                probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
+            probability >= 0.4 ? 'bg-orange-500' :
+              probability >= 0.2 ? 'bg-yellow-500' : 'bg-green-500'
             }`}
         />
       </div>

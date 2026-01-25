@@ -92,7 +92,7 @@ function App() {
             {health?.ml_model_info && health.ml_model_loaded && (
               <div className="mt-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-purple-800">🤖 ML Model</span>
+                  <span className="font-medium text-purple-800">ML Model</span>
                   <span className="text-purple-600">v{health.ml_model_info.version || '1.0.0'}</span>
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-purple-700">
@@ -122,7 +122,7 @@ function App() {
             {health?.validation_stats && health.validation_enabled && (
               <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-green-800">✅ Validation Service</span>
+                  <span className="font-medium text-green-800">Validation Service</span>
                   <span className="text-green-600">{health.validation_stats.ground_truth_count?.toLocaleString()} ground truth records</span>
                 </div>
                 {health.validation_stats.total_validated > 0 && (
@@ -137,7 +137,7 @@ function App() {
             {/* LLM Model Info */}
             {health?.model_loaded && (
               <div className="mt-2 text-sm text-gray-600 flex items-center gap-2">
-                <span>🧠 LLM:</span>
+                <span>LLM:</span>
                 <span className="font-semibold">{health.model_loaded}</span>
               </div>
             )}
@@ -145,13 +145,13 @@ function App() {
             {/* Warning Messages */}
             {!health?.ml_model_loaded && (
               <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                ⚠️ ML Model not loaded. Run <code className="bg-yellow-100 px-1 rounded">python train_model.py</code>
+                ML Model not loaded. Run <code className="bg-yellow-100 px-1 rounded">python train_model.py</code>
               </div>
             )}
 
             {!health?.ollama_connected && health?.ml_model_loaded && (
               <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-                ℹ️ Ollama offline. ML predictions work, but without detailed explanations.
+                Ollama offline. ML predictions work, but without detailed explanations.
               </div>
             )}
           </div>

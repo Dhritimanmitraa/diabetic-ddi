@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 
@@ -9,7 +9,6 @@ import toast from 'react-hot-toast'
 function DosageCalculator({ patient, onClose }) {
     const [selectedDrug, setSelectedDrug] = useState('')
     const [result, setResult] = useState(null)
-    const [loading, setLoading] = useState(false)
 
     // Common diabetes drugs with dosing guidelines based on eGFR
     const dosageGuidelines = {
@@ -158,7 +157,7 @@ function DosageCalculator({ patient, onClose }) {
                 <div className="p-4 border-b border-slate-700 flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                            <span className="text-2xl">💊</span>
+                            <span className="text-2xl"></span>
                             Dosage Calculator
                         </h2>
                         <p className="text-sm text-slate-400">
@@ -181,7 +180,7 @@ function DosageCalculator({ patient, onClose }) {
                         <div>
                             <span className="text-slate-400">eGFR: </span>
                             <span className={`font-bold ${(patient?.egfr || 90) >= 60 ? 'text-emerald-400' :
-                                    (patient?.egfr || 90) >= 30 ? 'text-amber-400' : 'text-red-400'
+                                (patient?.egfr || 90) >= 30 ? 'text-amber-400' : 'text-red-400'
                                 }`}>
                                 {patient?.egfr || 'Not specified'} mL/min/1.73m²
                             </span>
@@ -243,7 +242,7 @@ function DosageCalculator({ patient, onClose }) {
                                     <h3 className="font-bold text-white text-lg">{result.drug}</h3>
                                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${riskColors[result.riskLevel].text} ${riskColors[result.riskLevel].bg} border ${riskColors[result.riskLevel].border}`}>
                                         {result.riskLevel === 'safe' ? '✓ Safe' :
-                                            result.riskLevel === 'caution' ? '⚠️ Caution' : '⛔ Contraindicated'}
+                                            result.riskLevel === 'caution' ? 'Caution' : 'Contraindicated'}
                                     </span>
                                 </div>
 
@@ -268,21 +267,21 @@ function DosageCalculator({ patient, onClose }) {
 
                                 <div className="mt-4 p-3 bg-slate-900/50 rounded-lg">
                                     <p className={`text-sm ${riskColors[result.riskLevel].text}`}>
-                                        💡 {result.note}
+                                        {result.note}
                                     </p>
                                 </div>
 
                                 {result.ageWarning && (
                                     <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                                         <p className="text-sm text-amber-400">
-                                            👴 {result.ageWarning}
+                                            {result.ageWarning}
                                         </p>
                                     </div>
                                 )}
                             </div>
 
                             <p className="text-xs text-slate-500 mt-4 text-center">
-                                ⚠️ This calculator is for reference only. Always consult prescribing information and clinical judgment.
+                                This calculator is for reference only. Always consult prescribing information and clinical judgment.
                             </p>
                         </motion.div>
                     )}

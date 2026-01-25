@@ -146,9 +146,9 @@ const PatientCard = ({ patient, onSelect, isSelected }) => (
 
     {(patient.has_nephropathy || patient.has_cardiovascular || patient.has_neuropathy) && (
       <div className="flex gap-2 flex-wrap">
-        {patient.has_nephropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">🫀 Nephropathy</span>}
-        {patient.has_cardiovascular && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">❤️ Cardiovascular</span>}
-        {patient.has_neuropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">🧠 Neuropathy</span>}
+        {patient.has_nephropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">Nephropathy</span>}
+        {patient.has_cardiovascular && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">Cardiovascular</span>}
+        {patient.has_neuropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">Neuropathy</span>}
       </div>
     )}
   </motion.div>
@@ -372,6 +372,214 @@ export default function DiabetesManager() {
       return JSON.parse(localStorage.getItem('recentDrugs') || '[]')
     } catch { return [] }
   })
+
+  // Sample patients loading state
+  const [loadingSamples, setLoadingSamples] = useState(false)
+
+  // Report upload states
+  const [showReportUpload, setShowReportUpload] = useState(false)
+  const [uploadingReport, setUploadingReport] = useState(false)
+  const [reportAnalysis, setReportAnalysis] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  // Upload and analyze lab report with Gemini Vision
+  const uploadLabReport = async (file) => {
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']
+    if (!validTypes.includes(file.type)) {
+      toast.error('Please upload a JPEG, PNG, or PDF file')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large. Max size: 10MB')
+      return
+    }
+
+    setUploadingReport(true)
+    toast.loading('Analyzing report with AI...', { id: 'report-upload' })
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch(`${API_URL}/diabetic/analyze-report?auto_create_patient=true`, {
+        method: 'POST',
+        body: formData
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setReportAnalysis(data)
+
+        if (data.patient_created) {
+          toast.success(`Patient "${data.extracted_values.patient.name}" created from report!`, { id: 'report-upload' })
+          fetchPatients() // Refresh patient list
+        } else {
+          toast.success('Report analyzed successfully!', { id: 'report-upload' })
+        }
+      } else {
+        const err = await res.json()
+        toast.error(err.detail || 'Failed to analyze report', { id: 'report-upload' })
+      }
+    } catch (err) {
+      toast.error('Error analyzing report', { id: 'report-upload' })
+      console.error(err)
+    } finally {
+      setUploadingReport(false)
+    }
+  }
+
+  // Handle drag and drop
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) uploadLabReport(file)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  const handleDragLeave = () => setDragOver(false)
+
+  // Handle file input
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0]
+    if (file) uploadLabReport(file)
+  }
+
+  // Load sample patients from real lab reports
+  const loadSamplePatients = async () => {
+    setLoadingSamples(true)
+    toast.loading('Loading sample patients from lab reports...', { id: 'loading-samples' })
+    try {
+      // Sample patients data extracted from real lab reports - ALL PARAMETERS INCLUDED
+      const samplePatients = [
+        {
+          patient_id: "PAT001",
+          name: "Ch. Jagadesh Kumar",
+          age: 41,
+          gender: "M",
+          diabetes_type: "prediabetes",
+          labs: {
+            hba1c: 6.2,
+            mean_blood_glucose: 131.8,  // Mean BG from HbA1c report
+            egfr: 95.6,
+            creatinine: 1.0
+          },
+          complications: { has_nephropathy: false, has_cardiovascular: false, has_neuropathy: false }
+        },
+        {
+          patient_id: "PAT002",
+          name: "D Demullu",
+          age: 64,
+          gender: "M",
+          diabetes_type: "prediabetes",
+          labs: {
+            fasting_glucose: 102,
+            postprandial_glucose: 124,  // PPBS from report
+            creatinine: 1.3,
+            // Full Lipid Profile
+            total_cholesterol: 146,
+            triglycerides: 136,
+            hdl_cholesterol: 45,
+            ldl_cholesterol: 74,
+            vldl_cholesterol: 27
+          },
+          complications: { has_nephropathy: false, has_hyperlipidemia: false }
+        },
+        {
+          patient_id: "PAT003",
+          name: "Ch. Yaryyamma",
+          age: 61,
+          gender: "F",
+          diabetes_type: "type_2",
+          years_with_diabetes: 5,
+          labs: { hba1c: 7.2, fasting_glucose: 140, egfr: 85, creatinine: 1.1 },
+          complications: { has_hypertension: true }
+        },
+        {
+          patient_id: "PAT004",
+          name: "Test - Well Controlled",
+          age: 55,
+          gender: "M",
+          diabetes_type: "type_2",
+          years_with_diabetes: 8,
+          labs: {
+            hba1c: 6.8,
+            fasting_glucose: 110,
+            postprandial_glucose: 135,
+            egfr: 92,
+            creatinine: 0.9,
+            potassium: 4.2,
+            alt: 25,
+            ast: 22,
+            total_cholesterol: 180,
+            triglycerides: 120,
+            hdl_cholesterol: 50,
+            ldl_cholesterol: 100,
+            vldl_cholesterol: 24
+          },
+          complications: { has_hyperlipidemia: true }
+        },
+        {
+          patient_id: "PAT005",
+          name: "Test - High Risk",
+          age: 68,
+          gender: "M",
+          diabetes_type: "type_2",
+          years_with_diabetes: 15,
+          labs: {
+            hba1c: 8.5,
+            fasting_glucose: 180,
+            postprandial_glucose: 250,
+            mean_blood_glucose: 200,
+            egfr: 35,
+            creatinine: 2.5,
+            potassium: 5.2,
+            alt: 45,
+            ast: 40,
+            total_cholesterol: 260,
+            triglycerides: 220,
+            hdl_cholesterol: 35,
+            ldl_cholesterol: 170,
+            vldl_cholesterol: 44
+          },
+          complications: { has_nephropathy: true, has_retinopathy: true, has_neuropathy: true, has_cardiovascular: true, has_hypertension: true, has_hyperlipidemia: true, has_obesity: true }
+        }
+      ]
+
+      let successCount = 0
+      for (const patient of samplePatients) {
+        try {
+          // Try to delete first (in case exists)
+          await fetch(`${API_URL}/diabetic/patients/${patient.patient_id}`, { method: 'DELETE' })
+          // Create patient
+          const res = await fetch(`${API_URL}/diabetic/patients`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patient)
+          })
+          if (res.ok || res.status === 201) successCount++
+        } catch (e) {
+          console.error(`Failed to create ${patient.patient_id}:`, e)
+        }
+      }
+
+      toast.success(`Loaded ${successCount}/${samplePatients.length} sample patients!`, { id: 'loading-samples' })
+      fetchPatients() // Refresh the list
+    } catch (err) {
+      toast.error('Failed to load sample patients', { id: 'loading-samples' })
+      console.error(err)
+    } finally {
+      setLoadingSamples(false)
+    }
+  }
 
   // Add drug to recent history
   const addToRecentDrugs = (drugName) => {
@@ -754,14 +962,54 @@ export default function DiabetesManager() {
             <div className="glass-card p-6 rounded-2xl">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-white">Patients</h2>
-                <button
-                  onClick={() => setShowNewPatient(!showNewPatient)}
-                  className="p-2 rounded-lg bg-medical-500/20 text-medical-400 hover:bg-medical-500/30 transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
+                <div className="flex gap-2">
+                  {/* Upload Report Button */}
+                  <button
+                    onClick={() => setShowReportUpload(!showReportUpload)}
+                    disabled={uploadingReport}
+                    className="px-3 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors text-xs font-medium disabled:opacity-50 flex items-center gap-1"
+                    title="Upload lab report for AI analysis"
+                  >
+                    {uploadingReport ? (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                    Upload Report
+                  </button>
+                  <button
+                    onClick={loadSamplePatients}
+                    disabled={loadingSamples}
+                    className="px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors text-xs font-medium disabled:opacity-50 flex items-center gap-1"
+                    title="Load 5 sample patients from real lab reports"
+                  >
+                    {loadingSamples ? (
+                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                    )}
+                    Samples
+                  </button>
+                  <button
+                    onClick={() => setShowNewPatient(!showNewPatient)}
+                    className="p-2 rounded-lg bg-medical-500/20 text-medical-400 hover:bg-medical-500/30 transition-colors"
+                    title="Add new patient"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* New Patient Form */}
@@ -857,6 +1105,166 @@ export default function DiabetesManager() {
                       {loading ? 'Creating...' : 'Create Patient'}
                     </button>
                   </motion.form>
+                )}
+              </AnimatePresence>
+
+              {/* Report Upload Section */}
+              <AnimatePresence>
+                {showReportUpload && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-4"
+                  >
+                    <div className="p-4 bg-gradient-to-br from-purple-900/30 to-slate-800/50 rounded-xl border border-purple-500/30">
+                      <h3 className="text-sm font-medium text-purple-400 mb-3 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        AI Report Analysis (Gemini Vision)
+                      </h3>
+
+                      {/* Drop Zone */}
+                      <div
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${dragOver
+                          ? 'border-purple-400 bg-purple-500/20'
+                          : 'border-slate-600 hover:border-purple-500/50 bg-slate-900/30'
+                          }`}
+                      >
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,application/pdf"
+                          onChange={handleFileSelect}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        {uploadingReport ? (
+                          <div className="flex flex-col items-center">
+                            <svg className="w-8 h-8 animate-spin text-purple-400 mb-2" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            <p className="text-purple-400 text-sm">Analyzing with Gemini...</p>
+                          </div>
+                        ) : (
+                          <>
+                            <svg className="w-10 h-10 text-slate-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <p className="text-slate-400 text-sm">Drop lab report here or click to upload</p>
+                            <p className="text-slate-500 text-xs mt-1">JPEG, PNG, or PDF • Max 10MB</p>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Extracted Results */}
+                      {reportAnalysis && (
+                        <div className="mt-4 space-y-3">
+                          {/* Patient Info */}
+                          {reportAnalysis.extracted_values?.patient?.name && (
+                            <div className="p-3 bg-slate-800/50 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <span className="text-white font-medium">
+                                  {reportAnalysis.extracted_values.patient.name}
+                                </span>
+                                <span className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
+                                  {reportAnalysis.patient_created ? 'Patient Created' : 'Extracted'}
+                                </span>
+                              </div>
+                              <p className="text-slate-400 text-xs mt-1">
+                                {reportAnalysis.extracted_values.patient.age && `Age: ${reportAnalysis.extracted_values.patient.age}`}
+                                {reportAnalysis.extracted_values.patient.gender && ` • ${reportAnalysis.extracted_values.patient.gender}`}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Lab Values Grid */}
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            {reportAnalysis.extracted_values?.glucose?.hba1c && (
+                              <div className="p-2 bg-slate-800/50 rounded">
+                                <span className="text-slate-400">HbA1c:</span>
+                                <span className="text-white ml-1">{reportAnalysis.extracted_values.glucose.hba1c}%</span>
+                              </div>
+                            )}
+                            {reportAnalysis.extracted_values?.glucose?.fasting_glucose && (
+                              <div className="p-2 bg-slate-800/50 rounded">
+                                <span className="text-slate-400">FBS:</span>
+                                <span className="text-white ml-1">{reportAnalysis.extracted_values.glucose.fasting_glucose}</span>
+                              </div>
+                            )}
+                            {reportAnalysis.extracted_values?.kidney?.egfr && (
+                              <div className="p-2 bg-slate-800/50 rounded">
+                                <span className="text-slate-400">eGFR:</span>
+                                <span className="text-white ml-1">{reportAnalysis.extracted_values.kidney.egfr}</span>
+                              </div>
+                            )}
+                            {reportAnalysis.extracted_values?.kidney?.creatinine && (
+                              <div className="p-2 bg-slate-800/50 rounded">
+                                <span className="text-slate-400">Creat:</span>
+                                <span className="text-white ml-1">{reportAnalysis.extracted_values.kidney.creatinine}</span>
+                              </div>
+                            )}
+                            {reportAnalysis.extracted_values?.lipid?.total_cholesterol && (
+                              <div className="p-2 bg-slate-800/50 rounded">
+                                <span className="text-slate-400">Chol:</span>
+                                <span className="text-white ml-1">{reportAnalysis.extracted_values.lipid.total_cholesterol}</span>
+                              </div>
+                            )}
+                            {reportAnalysis.extracted_values?.lipid?.triglycerides && (
+                              <div className="p-2 bg-slate-800/50 rounded">
+                                <span className="text-slate-400">TG:</span>
+                                <span className="text-white ml-1">{reportAnalysis.extracted_values.lipid.triglycerides}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* AI Health Summary */}
+                          {reportAnalysis.health_summary?.overall_status && (
+                            <div className={`p-3 rounded-lg ${reportAnalysis.health_summary.overall_status === 'good' ? 'bg-emerald-500/10 border border-emerald-500/30' :
+                              reportAnalysis.health_summary.overall_status === 'moderate' ? 'bg-amber-500/10 border border-amber-500/30' :
+                                'bg-red-500/10 border border-red-500/30'
+                              }`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={`text-sm font-medium ${reportAnalysis.health_summary.overall_status === 'good' ? 'text-emerald-400' :
+                                  reportAnalysis.health_summary.overall_status === 'moderate' ? 'text-amber-400' :
+                                    'text-red-400'
+                                  }`}>
+                                  AI Assessment: {reportAnalysis.health_summary.overall_status.toUpperCase()}
+                                </span>
+                              </div>
+                              {reportAnalysis.health_summary.key_findings?.length > 0 && (
+                                <ul className="text-xs text-slate-300 space-y-1">
+                                  {reportAnalysis.health_summary.key_findings.slice(0, 3).map((f, i) => (
+                                    <li key={i}>• {f}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Use Patient Button */}
+                          {reportAnalysis.patient_id && (
+                            <button
+                              onClick={() => {
+                                const patient = patients.find(p => p.patient_id === reportAnalysis.patient_id)
+                                if (patient) {
+                                  setSelectedPatient(patient)
+                                  setShowReportUpload(false)
+                                  toast.success('Patient selected! Now check drug risks.')
+                                }
+                              }}
+                              className="w-full py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
+                            >
+                              Use This Patient for DDI Check
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
                 )}
               </AnimatePresence>
 
@@ -1228,7 +1636,7 @@ export default function DiabetesManager() {
                       {/* Monitoring Plan */}
                       {report.monitoring_plan?.length > 0 && (
                         <div className="mb-4">
-                          <h4 className="text-sm font-medium text-slate-400 mb-2">📋 Monitoring Plan</h4>
+                          <h4 className="text-sm font-medium text-slate-400 mb-2">Monitoring Plan</h4>
                           <div className="flex flex-wrap gap-2">
                             {report.monitoring_plan.map((item, i) => (
                               <span key={i} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">{item}</span>

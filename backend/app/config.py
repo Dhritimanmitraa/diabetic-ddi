@@ -17,16 +17,23 @@ class Settings(BaseSettings):
     
     # API Keys (optional - for enhanced data sources)
     OPENFDA_API_KEY: str = ""
+    UMLS_API_KEY: str = ""  # Free registration at https://uts.nlm.nih.gov/uts/signup-login
     API_KEY: str = ""
     
     # Rate limiting
     RATE_LIMIT_REQUESTS_PER_MIN: int = 60
     
+    # API Reliability Settings
+    API_RETRY_ATTEMPTS: int = 3
+    API_BACKOFF_BASE: float = 1.0
+    API_CACHE_TTL_SECONDS: int = 3600  # 1 hour
+    
     # OCR Settings
     TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"  # Windows default
     
     # Prescription RAG Settings
-    GOOGLE_API_KEY: str = ""  # For Gemini Vision (set in .env)
+    GOOGLE_API_KEY: str = "AIzaSyCKERX_G1kWwA4RNSg68ZNrVNpDy4KxGLY"  # Gemini API Key
+    GEMINI_API_KEY: str = "AIzaSyCKERX_G1kWwA4RNSg68ZNrVNpDy4KxGLY"  # Alias for Gemini
     CHROMA_PERSIST_DIR: str = "./chroma_db"
     OLLAMA_VISION_MODEL: str = "llava"  # Vision-capable model for OCR
     
@@ -34,6 +41,7 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "gpt-oss:120b-cloud"  # Main LLM model
     OLLAMA_DRUG_CHECK_MODEL: str = "gpt-oss:120b-cloud"  # Drug checker model
     OLLAMA_HOST: str = "http://localhost:11434"  # Ollama server URL
+    LLM_FALLBACK_TO_TEMPLATES: bool = True  # Use templates if LLM unavailable
     
     # File paths
     DATA_DIR: str = "./data"
