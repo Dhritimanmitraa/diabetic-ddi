@@ -16,8 +16,8 @@ import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { 
-      hasError: false, 
+    this.state = {
+      hasError: false,
       error: null,
       errorInfo: null,
     }
@@ -31,12 +31,12 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     // Log the error to console for debugging
     console.error('ErrorBoundary caught an error:', error, errorInfo)
-    
+
     this.setState({
       error,
       errorInfo,
     })
-    
+
     // You could also log to an error reporting service here
     // logErrorToService(error, errorInfo)
   }
@@ -62,7 +62,7 @@ class ErrorBoundary extends React.Component {
 
       // Default error UI
       return (
-        <div 
+        <div
           className="min-h-[400px] flex items-center justify-center p-8"
           role="alert"
           aria-live="assertive"
@@ -71,11 +71,11 @@ class ErrorBoundary extends React.Component {
             <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-6">
               <AlertTriangle className="w-8 h-8 text-red-400" aria-hidden="true" />
             </div>
-            
+
             <h2 className="text-xl font-semibold text-white mb-2">
               Something went wrong
             </h2>
-            
+
             <p className="text-slate-400 mb-6">
               We encountered an unexpected error. Please try again or return to the home page.
             </p>
@@ -102,7 +102,7 @@ class ErrorBoundary extends React.Component {
                 <RefreshCw className="w-4 h-4" aria-hidden="true" />
                 Try Again
               </button>
-              
+
               <button
                 onClick={this.handleGoHome}
                 className="flex-1 py-3 px-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-slate-500"
@@ -129,7 +129,7 @@ class RouteErrorBoundary extends ErrorBoundary {
   render() {
     if (this.state.hasError) {
       return (
-        <div 
+        <div
           className="min-h-screen animated-gradient grid-bg flex items-center justify-center p-8"
           role="alert"
           aria-live="assertive"
@@ -138,13 +138,13 @@ class RouteErrorBoundary extends ErrorBoundary {
             <div className="w-20 h-20 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-6">
               <AlertTriangle className="w-10 h-10 text-red-400" aria-hidden="true" />
             </div>
-            
+
             <h1 className="text-2xl font-bold text-white mb-3">
               Oops! Something went wrong
             </h1>
-            
+
             <p className="text-slate-400 mb-8 leading-relaxed">
-              We're sorry, but this page encountered an error. 
+              We&apos;re sorry, but this page encountered an error.
               Our team has been notified and is working on a fix.
             </p>
 
@@ -166,7 +166,7 @@ class RouteErrorBoundary extends ErrorBoundary {
                 <RefreshCw className="w-5 h-5" aria-hidden="true" />
                 Reload Page
               </button>
-              
+
               <button
                 onClick={this.handleGoHome}
                 className="flex-1 py-4 px-6 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-xl transition-colors flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-slate-500"
@@ -209,5 +209,6 @@ function withErrorBoundary(Component, errorBoundaryProps = {}) {
   }
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { ErrorBoundary, RouteErrorBoundary, withErrorBoundary }
 export default ErrorBoundary

@@ -42,25 +42,25 @@ function SideEffects({ drugName }) {
         severe: {
             label: 'Severe',
             color: 'bg-red-500/20 text-red-400 border-red-500/30',
-            icon: '⚠️',
+            icon: '',
             bgColor: 'bg-red-950/20'
         },
         moderate: {
             label: 'Moderate',
             color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-            icon: '⚡',
+            icon: '',
             bgColor: 'bg-amber-950/20'
         },
         mild: {
             label: 'Mild',
             color: 'bg-green-500/20 text-green-400 border-green-500/30',
-            icon: '💊',
+            icon: '',
             bgColor: 'bg-green-950/20'
         },
         unknown: {
             label: 'Other',
             color: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
-            icon: '📋',
+            icon: '',
             bgColor: 'bg-slate-900/40'
         }
     }
@@ -98,7 +98,7 @@ function SideEffects({ drugName }) {
                     >
                         <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                             <h4 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
-                                <span className="text-lg">💊</span>
+                                <span className="text-lg"></span>
                                 Known Side Effects for {drugName}
                             </h4>
 

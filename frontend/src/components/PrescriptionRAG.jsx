@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Upload, FileText, Pill, AlertCircle,
   MessageSquare, Send, Trash2, ChevronDown, ChevronUp,
-  Sun, Moon, Sunset, Loader2, Check, Image as ImageIcon,
+  Sun, Moon, Sunset, Loader2, Check,
   Mic, MicOff, AlertTriangle, Shield, Camera, SwitchCamera, XCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -35,6 +35,9 @@ function PrescriptionRAG() {
   // Drug warnings state
   const [drugWarnings, setDrugWarnings] = useState(null)
   const [isCheckingWarnings, setIsCheckingWarnings] = useState(false)
+
+  // Uploaded image preview state
+  const [uploadedImageUrl, setUploadedImageUrl] = useState(null)
 
   // Camera capture state
   const [showCamera, setShowCamera] = useState(false)
@@ -142,9 +145,9 @@ function PrescriptionRAG() {
         ).length
 
         if (severeCount > 0) {
-          toast.error(`⚠️ Found ${severeCount} serious drug interaction(s)!`, { duration: 5000 })
+          toast.error(`Found ${severeCount} serious drug interaction(s)!`, { duration: 5000 })
         } else {
-          toast('Found drug interactions', { icon: '⚠️', duration: 3000 })
+          toast('Found drug interactions', { duration: 3000 })
         }
       }
     } catch (err) {
@@ -209,6 +212,7 @@ function PrescriptionRAG() {
     if (showCamera && cameraStream) {
       startCamera()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [facingMode])
 
   // Cleanup camera on unmount
@@ -252,6 +256,10 @@ function PrescriptionRAG() {
       setPrescription(null)
       setChatMessages([])
       setDrugWarnings(null)
+
+      // Create preview URL for the captured image
+      const previewUrl = URL.createObjectURL(blob)
+      setUploadedImageUrl(previewUrl)
 
       try {
         const result = await uploadPrescription(file)
@@ -298,6 +306,14 @@ function PrescriptionRAG() {
     setPrescription(null)
     setChatMessages([])
     setDrugWarnings(null)
+
+    // Create preview URL for the uploaded image
+    if (file.type.startsWith('image/')) {
+      const previewUrl = URL.createObjectURL(file)
+      setUploadedImageUrl(previewUrl)
+    } else {
+      setUploadedImageUrl(null) // PDF doesn't have image preview
+    }
 
     try {
       const result = await uploadPrescription(file)
@@ -583,7 +599,7 @@ function PrescriptionRAG() {
               {/* Tips */}
               {!showCamera && (
                 <div className="mt-6 p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl">
-                  <p className="text-amber-400 text-sm font-medium mb-2">📷 Tips for best results:</p>
+                  <p className="text-amber-400 text-sm font-medium mb-2">Tips for best results:</p>
                   <ul className="text-slate-400 text-sm space-y-1">
                     <li>• Ensure good lighting and clear focus</li>
                     <li>• Include all medicines in the frame</li>
@@ -605,6 +621,19 @@ function PrescriptionRAG() {
             >
               {/* Medicines Panel */}
               <div className="glass rounded-2xl p-6">
+                {/* Uploaded Prescription Image Preview */}
+                {uploadedImageUrl && (
+                  <div className="mb-4">
+                    <div className="rounded-xl overflow-hidden border border-slate-700/50 bg-slate-800/30">
+                      <img
+                        src={uploadedImageUrl}
+                        alt="Uploaded prescription"
+                        className="w-full h-auto max-h-48 object-contain"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                     <Pill className="w-5 h-5 text-medical-400" />

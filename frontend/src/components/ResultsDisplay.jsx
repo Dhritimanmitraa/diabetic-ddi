@@ -58,7 +58,7 @@ function ResultsDisplay({ results }) {
         borderColor: 'border-green-500/20',
         glowClass: 'glow-minor',
         label: 'Minor Interaction',
-        emoji: '✅',
+        emoji: '',
         riskPercent: 20,
       },
       moderate: {
@@ -68,7 +68,7 @@ function ResultsDisplay({ results }) {
         borderColor: 'border-yellow-500/20',
         glowClass: 'glow-moderate',
         label: 'Moderate Interaction',
-        emoji: '⚠️',
+        emoji: '',
         riskPercent: 50,
       },
       major: {
@@ -78,7 +78,7 @@ function ResultsDisplay({ results }) {
         borderColor: 'border-orange-500/20',
         glowClass: 'glow-major',
         label: 'Major Interaction',
-        emoji: '🔶',
+        emoji: '',
         riskPercent: 75,
       },
       contraindicated: {
@@ -88,7 +88,7 @@ function ResultsDisplay({ results }) {
         borderColor: 'border-red-500/20',
         glowClass: 'glow-danger',
         label: 'Contraindicated',
-        emoji: '🚫',
+        emoji: '',
         riskPercent: 100,
       },
       safe: {
@@ -98,7 +98,7 @@ function ResultsDisplay({ results }) {
         borderColor: 'border-medical-500/20',
         glowClass: 'glow-safe celebrate',
         label: 'Safe to Use',
-        emoji: '💚',
+        emoji: '',
         riskPercent: 0,
       },
     }

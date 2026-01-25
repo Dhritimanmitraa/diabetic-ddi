@@ -1,0 +1,181 @@
+{
+    "description": "Real patient diabetic test data extracted from uploaded lab reports for DDI analysis",
+    "extracted_date": "2026-01-21",
+    "note": "All parameters from lab reports are now included",
+    "patients": [
+        {
+            "patient_id": "PAT001",
+            "name": "Ch. Jagadesh Kumar",
+            "age": 41,
+            "gender": "M",
+            "diabetes_type": "prediabetes",
+            "years_with_diabetes": null,
+            "labs": {
+                "hba1c": 6.2,
+                "fasting_glucose": null,
+                "mean_blood_glucose": 131.8,
+                "egfr": 95.6,
+                "creatinine": 1.0,
+                "potassium": null,
+                "alt": null,
+                "ast": null
+            },
+            "complications": {
+                "has_nephropathy": false,
+                "has_retinopathy": false,
+                "has_neuropathy": false,
+                "has_cardiovascular": false,
+                "has_hypertension": false,
+                "has_hyperlipidemia": false,
+                "has_obesity": false
+            },
+            "additional_data": {
+                "thyroid_profile": {
+                    "t3": 1.24,
+                    "t4": 7.56,
+                    "tsh": 3.67
+                }
+            },
+            "source": "patient1_jagadesh_kumar_hba1c.jpg + patient2_jagadesh_kumar_creatinine.jpg",
+            "report_dates": [
+                "2025-05-27",
+                "2025-10-22"
+            ]
+        },
+        {
+            "patient_id": "PAT002",
+            "name": "D Demullu",
+            "age": 64,
+            "gender": "M",
+            "diabetes_type": "prediabetes",
+            "years_with_diabetes": null,
+            "labs": {
+                "hba1c": null,
+                "fasting_glucose": 102,
+                "postprandial_glucose": 124,
+                "egfr": null,
+                "creatinine": 1.3,
+                "potassium": null,
+                "alt": null,
+                "ast": null,
+                "total_cholesterol": 146,
+                "triglycerides": 136,
+                "hdl_cholesterol": 45,
+                "ldl_cholesterol": 74,
+                "vldl_cholesterol": 27
+            },
+            "complications": {
+                "has_nephropathy": false,
+                "has_retinopathy": false,
+                "has_neuropathy": false,
+                "has_cardiovascular": false,
+                "has_hypertension": false,
+                "has_hyperlipidemia": false,
+                "has_obesity": false
+            },
+            "source": "patient3_demullu_full_report.jpg",
+            "report_dates": [
+                "2026-01-10"
+            ]
+        },
+        {
+            "patient_id": "PAT003",
+            "name": "Ch. Yaryyamma",
+            "age": 61,
+            "gender": "F",
+            "diabetes_type": "type_2",
+            "years_with_diabetes": 5,
+            "labs": {
+                "hba1c": 7.2,
+                "fasting_glucose": 140,
+                "egfr": 85,
+                "creatinine": 1.1,
+                "potassium": null,
+                "alt": null,
+                "ast": null
+            },
+            "complications": {
+                "has_nephropathy": false,
+                "has_retinopathy": false,
+                "has_neuropathy": false,
+                "has_cardiovascular": false,
+                "has_hypertension": true,
+                "has_hyperlipidemia": false,
+                "has_obesity": false
+            },
+            "source": "60114401139_Report.pdf",
+            "report_dates": [
+                "2026-01-21"
+            ]
+        },
+        {
+            "patient_id": "PAT004",
+            "name": "Test Patient - Well Controlled",
+            "age": 55,
+            "gender": "M",
+            "diabetes_type": "type_2",
+            "years_with_diabetes": 8,
+            "labs": {
+                "hba1c": 6.8,
+                "fasting_glucose": 110,
+                "postprandial_glucose": 135,
+                "egfr": 92,
+                "creatinine": 0.9,
+                "potassium": 4.2,
+                "alt": 25,
+                "ast": 22,
+                "total_cholesterol": 180,
+                "triglycerides": 120,
+                "hdl_cholesterol": 50,
+                "ldl_cholesterol": 100,
+                "vldl_cholesterol": 24
+            },
+            "complications": {
+                "has_nephropathy": false,
+                "has_retinopathy": false,
+                "has_neuropathy": false,
+                "has_cardiovascular": false,
+                "has_hypertension": false,
+                "has_hyperlipidemia": true,
+                "has_obesity": false
+            },
+            "source": "synthetic",
+            "notes": "Well-controlled diabetic with complete lab panel"
+        },
+        {
+            "patient_id": "PAT005",
+            "name": "Test Patient - High Risk",
+            "age": 68,
+            "gender": "M",
+            "diabetes_type": "type_2",
+            "years_with_diabetes": 15,
+            "labs": {
+                "hba1c": 8.5,
+                "fasting_glucose": 180,
+                "postprandial_glucose": 250,
+                "mean_blood_glucose": 200,
+                "egfr": 35,
+                "creatinine": 2.5,
+                "potassium": 5.2,
+                "alt": 45,
+                "ast": 40,
+                "total_cholesterol": 260,
+                "triglycerides": 220,
+                "hdl_cholesterol": 35,
+                "ldl_cholesterol": 170,
+                "vldl_cholesterol": 44
+            },
+            "complications": {
+                "has_nephropathy": true,
+                "has_retinopathy": true,
+                "has_neuropathy": true,
+                "has_cardiovascular": true,
+                "has_hypertension": true,
+                "has_hyperlipidemia": true,
+                "has_obesity": true
+            },
+            "source": "synthetic",
+            "notes": "High-risk diabetic with all complications and complete abnormal lab panel"
+        }
+    ]
+}

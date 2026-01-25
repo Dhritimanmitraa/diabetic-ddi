@@ -29,13 +29,27 @@ class RiskLevelEnum(str, Enum):
 # Patient Schemas
 class PatientLabsBase(BaseModel):
     """Lab values for a diabetic patient."""
+    # Glucose values
     hba1c: Optional[float] = Field(None, description="HbA1c percentage (e.g., 7.5)")
     fasting_glucose: Optional[float] = Field(None, description="Fasting glucose mg/dL")
+    postprandial_glucose: Optional[float] = Field(None, description="Post-meal glucose mg/dL (PPBS)")
+    mean_blood_glucose: Optional[float] = Field(None, description="Mean blood glucose mg/dL")
+    
+    # Kidney function
     egfr: Optional[float] = Field(None, description="eGFR mL/min/1.73m²")
     creatinine: Optional[float] = Field(None, description="Creatinine mg/dL")
     potassium: Optional[float] = Field(None, description="Potassium mEq/L")
+    
+    # Liver function
     alt: Optional[float] = Field(None, description="ALT U/L")
     ast: Optional[float] = Field(None, description="AST U/L")
+    
+    # Lipid Profile
+    total_cholesterol: Optional[float] = Field(None, description="Total Cholesterol mg/dL")
+    triglycerides: Optional[float] = Field(None, description="Triglycerides mg/dL")
+    hdl_cholesterol: Optional[float] = Field(None, description="HDL Cholesterol mg/dL")
+    ldl_cholesterol: Optional[float] = Field(None, description="LDL Cholesterol mg/dL")
+    vldl_cholesterol: Optional[float] = Field(None, description="VLDL Cholesterol mg/dL")
 
 
 class PatientComplicationsBase(BaseModel):
@@ -103,15 +117,28 @@ class DiabeticPatientResponse(BaseModel):
     diabetes_type: str
     years_with_diabetes: Optional[int]
     
-    # Labs
+    # Labs - Glucose
     hba1c: Optional[float]
     fasting_glucose: Optional[float]
+    postprandial_glucose: Optional[float]
+    mean_blood_glucose: Optional[float]
+    
+    # Labs - Kidney
     egfr: Optional[float]
     kidney_stage: Optional[str]
     creatinine: Optional[float]
     potassium: Optional[float]
+    
+    # Labs - Liver
     alt: Optional[float]
     ast: Optional[float]
+    
+    # Labs - Lipid Profile
+    total_cholesterol: Optional[float]
+    triglycerides: Optional[float]
+    hdl_cholesterol: Optional[float]
+    ldl_cholesterol: Optional[float]
+    vldl_cholesterol: Optional[float]
     
     # Complications
     has_nephropathy: bool

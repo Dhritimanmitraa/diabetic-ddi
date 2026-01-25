@@ -259,7 +259,7 @@ class PrescriptionLLMService:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=api_key)
-                self.gemini_client = genai.GenerativeModel("gemini-1.5-flash")
+                self.gemini_client = genai.GenerativeModel("gemini-2.0-flash")
                 self.gemini_available = True
                 logger.info("Gemini LLM initialized for chat")
             except Exception as e:
@@ -269,7 +269,8 @@ class PrescriptionLLMService:
         self, 
         question: str, 
         context: str,
-        chat_history: Optional[List[Dict[str, str]]] = None
+        chat_history: Optional[List[Dict[str, str]]] = None,
+        use_llm: bool = True
     ) -> tuple[str, str]:
         """
         Answer a question about a prescription.
@@ -278,6 +279,7 @@ class PrescriptionLLMService:
             question: User's question
             context: Retrieved context from RAG
             chat_history: Previous chat messages
+            use_llm: Whether to use LLM (if False, uses templates)
             
         Returns:
             Tuple of (answer, model_used)
@@ -299,6 +301,10 @@ Answer the user's question based ONLY on the above context."""
 
         full_prompt = system_prompt.format(context=context if context else "No prescription context available.")
         
+        # If LLM is disabled or fallback mode, use templates
+        if not use_llm or (settings.LLM_FALLBACK_TO_TEMPLATES and not self.gemini_available):
+            return self._answer_with_templates(question, context)
+        
         # Try Gemini first
         if self.gemini_available:
             try:
@@ -306,12 +312,66 @@ Answer the user's question based ONLY on the above context."""
             except Exception as e:
                 logger.warning(f"Gemini chat error: {e}")
         
-        # Fallback to Ollama
+        # Try Ollama
         try:
             return await self._answer_with_ollama(question, full_prompt, chat_history)
         except Exception as e:
-            logger.error(f"Ollama chat error: {e}")
+            logger.warning(f"Ollama chat error: {e}")
+            
+            # Final fallback to templates
+            if settings.LLM_FALLBACK_TO_TEMPLATES:
+                logger.info("Using template-based answer as LLM fallback")
+                return self._answer_with_templates(question, context)
+            
             return "I'm sorry, I couldn't process your question. Please try again.", "error"
+    
+    def _answer_with_templates(
+        self,
+        question: str,
+        context: str
+    ) -> tuple[str, str]:
+        """Answer using template engine when LLM is unavailable."""
+        try:
+            from app.prescription.answer_templates import get_template_engine
+            
+            engine = get_template_engine()
+            
+            # Parse context into structured format for templates
+            rag_documents = []
+            if context:
+                # Simple parsing of context
+                parts = context.split("---")
+                for part in parts:
+                    if part.strip():
+                        rag_documents.append({
+                            "content": part.strip(),
+                            "metadata": {"source": "prescription"}
+                        })
+            
+            answer = engine.generate_from_rag_context(question, rag_documents)
+            return answer, "template_engine"
+            
+        except Exception as e:
+            logger.error(f"Template engine error: {e}")
+            return self._generate_basic_answer(question, context), "basic_fallback"
+    
+    def _generate_basic_answer(self, question: str, context: str) -> str:
+        """Generate a very basic answer when everything else fails."""
+        if not context:
+            return f"""## Your Question: {question}
+
+I couldn't find specific information about this in your prescription.
+
+Please consult your healthcare provider for accurate information about your medications."""
+        
+        return f"""## Your Question: {question}
+
+Based on your prescription, here's the relevant information:
+
+{context[:1000]}
+
+---
+*For specific medical advice, please consult your healthcare provider.*"""
     
     async def _answer_with_gemini(
         self, 
@@ -339,7 +399,7 @@ Answer the user's question based ONLY on the above context."""
             )
         )
         
-        return response.text, "gemini-1.5-flash"
+        return response.text, "gemini-2.0-flash"
     
     async def _answer_with_ollama(
         self, 

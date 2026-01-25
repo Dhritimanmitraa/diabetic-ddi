@@ -79,13 +79,12 @@ def generate_patient_report_pdf(
         textColor=colors.HexColor('#334155'),
         fontName='Helvetica-Bold'
     ))
-    styles.add(ParagraphStyle(
-        name='BodyText',
-        fontSize=10,
-        spaceAfter=5,
-        textColor=colors.HexColor('#475569'),
-        leading=14
-    ))
+    # Modify existing BodyText style instead of adding duplicate
+    styles['BodyText'].fontSize = 10
+    styles['BodyText'].spaceAfter = 5
+    styles['BodyText'].textColor = colors.HexColor('#475569')
+    styles['BodyText'].leading = 14
+    
     styles.add(ParagraphStyle(
         name='WarningText',
         fontSize=10,
@@ -97,7 +96,7 @@ def generate_patient_report_pdf(
     elements = []
 
     # Header
-    elements.append(Paragraph("🛡️ DrugGuard", styles['DrugGuardTitle']))
+    elements.append(Paragraph("DrugGuard", styles['DrugGuardTitle']))
     elements.append(Paragraph("Diabetic Drug Interaction Report", styles['Heading2']))
     elements.append(Spacer(1, 10))
     elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#14b89a')))
@@ -108,7 +107,7 @@ def generate_patient_report_pdf(
     elements.append(Spacer(1, 15))
 
     # Patient Profile Section
-    elements.append(Paragraph("📋 Patient Profile", styles['SectionTitle']))
+    elements.append(Paragraph("Patient Profile", styles['SectionTitle']))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.gray))
     
     patient_info = [
@@ -142,13 +141,13 @@ def generate_patient_report_pdf(
     # Complications
     complications = patient_data.get('complications', [])
     if complications:
-        elements.append(Paragraph("⚠️ Diabetes Complications:", styles['SubTitle']))
+        elements.append(Paragraph("Diabetes Complications:", styles['SubTitle']))
         comp_text = ", ".join([c.replace('_', ' ').title() for c in complications])
         elements.append(Paragraph(comp_text, styles['BodyText']))
         elements.append(Spacer(1, 15))
 
     # Overall Safety Score
-    elements.append(Paragraph("🎯 Overall Safety Score", styles['SectionTitle']))
+    elements.append(Paragraph("Overall Safety Score", styles['SectionTitle']))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.gray))
     
     score_color = colors.HexColor('#22c55e') if overall_score >= 70 else (
@@ -160,7 +159,7 @@ def generate_patient_report_pdf(
     elements.append(Spacer(1, 20))
 
     # Current Medications Section
-    elements.append(Paragraph("💊 Current Medications", styles['SectionTitle']))
+    elements.append(Paragraph("Current Medications", styles['SectionTitle']))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.gray))
     
     if medications:
@@ -189,7 +188,7 @@ def generate_patient_report_pdf(
     elements.append(Spacer(1, 20))
 
     # Risk Assessments Section
-    elements.append(Paragraph("⚡ Risk Assessments", styles['SectionTitle']))
+    elements.append(Paragraph("Risk Assessments", styles['SectionTitle']))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.gray))
     
     if risk_assessments:
@@ -233,11 +232,11 @@ def generate_patient_report_pdf(
     dangerous = [a for a in risk_assessments if a.get('risk_level') in ['contraindicated', 'fatal']]
     if dangerous:
         elements.append(Spacer(1, 20))
-        elements.append(Paragraph("🚨 CRITICAL WARNINGS", styles['SectionTitle']))
+        elements.append(Paragraph("CRITICAL WARNINGS", styles['SectionTitle']))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=colors.red))
         for d in dangerous:
             elements.append(Paragraph(
-                f"⛔ {d.get('drug_name', 'Unknown')} is CONTRAINDICATED for this patient!",
+                f"[!] {d.get('drug_name', 'Unknown')} is CONTRAINDICATED for this patient!",
                 styles['WarningText']
             ))
         elements.append(Spacer(1, 10))

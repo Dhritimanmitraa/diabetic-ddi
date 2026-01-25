@@ -79,11 +79,19 @@ class DiabeticDDIService:
         if data.labs:
             patient.hba1c = data.labs.hba1c
             patient.fasting_glucose = data.labs.fasting_glucose
+            patient.postprandial_glucose = getattr(data.labs, 'postprandial_glucose', None)
+            patient.mean_blood_glucose = getattr(data.labs, 'mean_blood_glucose', None)
             patient.egfr = data.labs.egfr
             patient.creatinine = data.labs.creatinine
             patient.potassium = data.labs.potassium
             patient.alt = data.labs.alt
             patient.ast = data.labs.ast
+            # Lipid profile
+            patient.total_cholesterol = getattr(data.labs, 'total_cholesterol', None)
+            patient.triglycerides = getattr(data.labs, 'triglycerides', None)
+            patient.hdl_cholesterol = getattr(data.labs, 'hdl_cholesterol', None)
+            patient.ldl_cholesterol = getattr(data.labs, 'ldl_cholesterol', None)
+            patient.vldl_cholesterol = getattr(data.labs, 'vldl_cholesterol', None)
         
         # Set complications if provided
         if data.complications:
@@ -595,14 +603,26 @@ class DiabeticDDIService:
             bmi=patient.bmi,
             diabetes_type=patient.diabetes_type,
             years_with_diabetes=patient.years_with_diabetes,
+            # Glucose values
             hba1c=patient.hba1c,
             fasting_glucose=patient.fasting_glucose,
+            postprandial_glucose=getattr(patient, 'postprandial_glucose', None),
+            mean_blood_glucose=getattr(patient, 'mean_blood_glucose', None),
+            # Kidney function
             egfr=patient.egfr,
             kidney_stage=patient.kidney_stage,
             creatinine=patient.creatinine,
             potassium=patient.potassium,
+            # Liver function
             alt=patient.alt,
             ast=patient.ast,
+            # Lipid profile
+            total_cholesterol=getattr(patient, 'total_cholesterol', None),
+            triglycerides=getattr(patient, 'triglycerides', None),
+            hdl_cholesterol=getattr(patient, 'hdl_cholesterol', None),
+            ldl_cholesterol=getattr(patient, 'ldl_cholesterol', None),
+            vldl_cholesterol=getattr(patient, 'vldl_cholesterol', None),
+            # Complications
             has_nephropathy=patient.has_nephropathy,
             has_retinopathy=patient.has_retinopathy,
             has_neuropathy=patient.has_neuropathy,

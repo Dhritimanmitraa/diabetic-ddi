@@ -10,7 +10,10 @@ export default [
         files: ['**/*.{js,jsx}'],
         languageOptions: {
             ecmaVersion: 2020,
-            globals: globals.browser,
+            globals: {
+                ...globals.browser,
+                process: 'readonly',
+            },
             parserOptions: {
                 ecmaVersion: 'latest',
                 ecmaFeatures: { jsx: true },
@@ -35,6 +38,27 @@ export default [
             ],
             'react/prop-types': 'off',
             'no-unused-vars': 'warn',
+        },
+    },
+    // Test file configuration
+    {
+        files: ['**/*.test.{js,jsx}', '**/*.spec.{js,jsx}', '**/tests/**/*.{js,jsx}'],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                global: 'readonly',
+                process: 'readonly',
+                describe: 'readonly',
+                it: 'readonly',
+                expect: 'readonly',
+                beforeEach: 'readonly',
+                afterEach: 'readonly',
+                beforeAll: 'readonly',
+                afterAll: 'readonly',
+                vi: 'readonly',
+                test: 'readonly',
+            },
         },
     },
 ]

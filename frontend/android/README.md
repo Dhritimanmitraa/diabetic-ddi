@@ -72,12 +72,12 @@ cd frontend/android
 
 ## Features
 
-- ✅ Drug interaction checking
-- ✅ Diabetic patient management
-- ✅ Native camera for medication scanning
-- ✅ Prescription upload & RAG chat
-- ✅ ML-powered predictions
-- ✅ Safe alternative suggestions
+- Drug interaction checking
+- Diabetic patient management
+- Native camera for medication scanning
+- Prescription upload & RAG chat
+- ML-powered predictions
+- Safe alternative suggestions
 
 ## Permissions
 

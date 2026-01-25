@@ -85,17 +85,34 @@ class DiabeticMLPredictor:
         if not os.path.exists(self.model_path):
             return
         with self._load_lock:
-            artifact = joblib.load(self.model_path)
-            # Try to load calibrated model first, fall back to base model
-            self.model = artifact.get("model")  # Calibrated model
-            if self.model is None:
-                self.model = artifact.get("base_model")  # Base model fallback
-            self.scaler = artifact["scaler"]
-            self.hash_size = artifact.get("hash_size", 48)
-            self.risk_to_int = artifact.get("risk_to_int", {})
-            self.int_to_risk = artifact.get("int_to_risk", {})
-            self.model_version = artifact.get("model_version")
-            self.is_loaded = True
+            try:
+                artifact = joblib.load(self.model_path)
+                
+                # Handle dictionary artifact (expected format from train_diabetic_ml.py)
+                if isinstance(artifact, dict):
+                    # Try to load calibrated model first, fall back to base model
+                    self.model = artifact.get("model")  # Calibrated model
+                    if self.model is None:
+                        self.model = artifact.get("base_model")  # Base model fallback
+                    self.scaler = artifact.get("scaler")
+                    self.hash_size = artifact.get("hash_size", 48)
+                    self.risk_to_int = artifact.get("risk_to_int", {})
+                    self.int_to_risk = artifact.get("int_to_risk", {})
+                    self.model_version = artifact.get("model_version")
+                    
+                    if self.model is not None and self.scaler is not None:
+                        self.is_loaded = True
+                else:
+                    # Raw model file (XGBClassifier, RandomForest, etc.)
+                    # Can't use without supporting artifacts (scaler, label mappings)
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Model file {self.model_path} is not in expected dictionary format. "
+                        "ML predictions disabled. Using rules engine only."
+                    )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Failed to load ML model: {e}")
 
     def predict(self, drug_name: str, patient: Dict) -> Optional[DiabeticMLResult]:
         if not self.is_loaded or self.model is None or self.scaler is None:

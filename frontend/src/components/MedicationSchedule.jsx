@@ -1,27 +1,22 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import toast from 'react-hot-toast'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 /**
  * MedicationSchedule Component
  * Displays a visual daily medication schedule for a patient
  */
-function MedicationSchedule({ patientId, medications = [] }) {
+function MedicationSchedule({ medications = [] }) {
     const [schedule, setSchedule] = useState([])
-    const [loading, setLoading] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
-    const [editingMed, setEditingMed] = useState(null)
     const [scheduleTimes, setScheduleTimes] = useState({})
 
     // Time slots for medication schedule
-    const timeSlots = [
-        { id: 'morning', label: 'Morning', time: '7:00 AM', icon: '🌅' },
-        { id: 'afternoon', label: 'Afternoon', time: '12:00 PM', icon: '☀️' },
-        { id: 'evening', label: 'Evening', time: '6:00 PM', icon: '🌆' },
-        { id: 'bedtime', label: 'Bedtime', time: '10:00 PM', icon: '🌙' },
-    ]
+    const timeSlots = useMemo(() => [
+        { id: 'morning', label: 'Morning', time: '7:00 AM', icon: '' },
+        { id: 'afternoon', label: 'Afternoon', time: '12:00 PM', icon: '' },
+        { id: 'evening', label: 'Evening', time: '6:00 PM', icon: '' },
+        { id: 'bedtime', label: 'Bedtime', time: '10:00 PM', icon: '' },
+    ], [])
 
     // Initialize schedule from medications
     useEffect(() => {
@@ -53,9 +48,10 @@ function MedicationSchedule({ patientId, medications = [] }) {
             setScheduleTimes(initialSchedule)
             buildScheduleView(initialSchedule)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [medications])
 
-    const buildScheduleView = (scheduleData) => {
+    const buildScheduleView = useCallback((scheduleData) => {
         const scheduleView = timeSlots.map(slot => ({
             ...slot,
             medications: medications.filter(med =>
@@ -66,7 +62,7 @@ function MedicationSchedule({ patientId, medications = [] }) {
             }))
         }))
         setSchedule(scheduleView)
-    }
+    }, [medications, timeSlots])
 
     const toggleTimeSlot = (drugName, slotId) => {
         setScheduleTimes(prev => {
@@ -117,7 +113,7 @@ function MedicationSchedule({ patientId, medications = [] }) {
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="flex items-center gap-3 text-lg font-semibold text-white mb-4 hover:text-medical-400 transition-colors"
             >
-                <span className="text-2xl">📅</span>
+                <span className="text-2xl"></span>
                 Medication Schedule
                 <svg
                     className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -150,8 +146,8 @@ function MedicationSchedule({ patientId, medications = [] }) {
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: idx * 0.1 }}
                                     className={`p-4 rounded-xl border ${slot.medications.length > 0
-                                            ? 'bg-slate-800/70 border-medical-500/30'
-                                            : 'bg-slate-900/50 border-slate-700/30'
+                                        ? 'bg-slate-800/70 border-medical-500/30'
+                                        : 'bg-slate-900/50 border-slate-700/30'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 mb-3">
@@ -161,8 +157,8 @@ function MedicationSchedule({ patientId, medications = [] }) {
                                             <p className="text-xs text-slate-400">{slot.time}</p>
                                         </div>
                                         <span className={`ml-auto text-xs px-2 py-1 rounded-full ${slot.medications.length > 0
-                                                ? 'bg-medical-500/20 text-medical-400'
-                                                : 'bg-slate-700 text-slate-500'
+                                            ? 'bg-medical-500/20 text-medical-400'
+                                            : 'bg-slate-700 text-slate-500'
                                             }`}>
                                             {slot.medications.length} medications
                                         </span>
@@ -181,7 +177,7 @@ function MedicationSchedule({ patientId, medications = [] }) {
                                                     )}
                                                     {med.withFood && (
                                                         <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded">
-                                                            🍽️ with food
+                                                            with food
                                                         </span>
                                                     )}
                                                 </div>
@@ -195,7 +191,7 @@ function MedicationSchedule({ patientId, medications = [] }) {
                         {/* Edit Schedule */}
                         <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                             <h4 className="font-medium text-white mb-3 flex items-center gap-2">
-                                <span>⚙️</span> Customize Schedule
+                                <span></span> Customize Schedule
                             </h4>
                             <div className="space-y-3">
                                 {medications.map((med, idx) => (
@@ -205,11 +201,11 @@ function MedicationSchedule({ patientId, medications = [] }) {
                                             <button
                                                 onClick={() => toggleWithFood(med.drug_name)}
                                                 className={`text-xs px-2 py-1 rounded transition-colors ${scheduleTimes[med.drug_name]?.withFood
-                                                        ? 'bg-amber-500/30 text-amber-400 border border-amber-500/50'
-                                                        : 'bg-slate-700 text-slate-400 border border-slate-600'
+                                                    ? 'bg-amber-500/30 text-amber-400 border border-amber-500/50'
+                                                    : 'bg-slate-700 text-slate-400 border border-slate-600'
                                                     }`}
                                             >
-                                                🍽️ With Food
+                                                With Food
                                             </button>
                                         </div>
                                         <div className="flex gap-2 flex-wrap">
@@ -218,8 +214,8 @@ function MedicationSchedule({ patientId, medications = [] }) {
                                                     key={slot.id}
                                                     onClick={() => toggleTimeSlot(med.drug_name, slot.id)}
                                                     className={`px-3 py-1 rounded text-xs transition-colors ${scheduleTimes[med.drug_name]?.slots?.includes(slot.id)
-                                                            ? 'bg-medical-500/30 text-medical-400 border border-medical-500/50'
-                                                            : 'bg-slate-700 text-slate-400 border border-slate-600'
+                                                        ? 'bg-medical-500/30 text-medical-400 border border-medical-500/50'
+                                                        : 'bg-slate-700 text-slate-400 border border-slate-600'
                                                         }`}
                                                 >
                                                     {slot.icon} {slot.label}
@@ -234,7 +230,7 @@ function MedicationSchedule({ patientId, medications = [] }) {
                         {/* Timing Tips */}
                         <div className="mt-4 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
                             <h4 className="font-medium text-blue-400 mb-2 flex items-center gap-2">
-                                <span>💡</span> Timing Tips for Diabetics
+                                <span></span> Timing Tips for Diabetics
                             </h4>
                             <ul className="text-sm text-slate-300 space-y-1">
                                 <li>• <strong>Metformin:</strong> Take with meals to reduce stomach upset</li>

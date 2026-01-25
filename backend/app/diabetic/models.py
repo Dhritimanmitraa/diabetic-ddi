@@ -51,11 +51,20 @@ class DiabeticPatient(Base):
     # Key labs
     hba1c = Column(Float, nullable=True)  # Glycated hemoglobin (%)
     fasting_glucose = Column(Float, nullable=True)  # mg/dL
+    postprandial_glucose = Column(Float, nullable=True)  # Post-meal glucose mg/dL (PPBS)
+    mean_blood_glucose = Column(Float, nullable=True)  # Mean blood glucose mg/dL
     egfr = Column(Float, nullable=True)  # Kidney function (mL/min/1.73m²)
     creatinine = Column(Float, nullable=True)  # mg/dL
     potassium = Column(Float, nullable=True)  # mEq/L
     alt = Column(Float, nullable=True)  # Liver function
     ast = Column(Float, nullable=True)  # Liver function
+    
+    # Lipid Profile
+    total_cholesterol = Column(Float, nullable=True)  # mg/dL
+    triglycerides = Column(Float, nullable=True)  # mg/dL
+    hdl_cholesterol = Column(Float, nullable=True)  # mg/dL (HDL)
+    ldl_cholesterol = Column(Float, nullable=True)  # mg/dL (LDL)
+    vldl_cholesterol = Column(Float, nullable=True)  # mg/dL (VLDL)
     
     # Complications flags
     has_nephropathy = Column(Boolean, default=False)  # Kidney disease
