@@ -762,3 +762,123 @@ async def preview_rules(
 
     return RulesPreviewResponse(assessments=assessments)
 
+
+# ==================== Food Interaction Endpoints ====================
+
+@router.get("/food-interactions/{drug_name}")
+async def get_food_interactions(
+    drug_name: str,
+    min_severity: Optional[str] = Query(
+        None,
+        description="Minimum severity to include (contraindicated, major, moderate, minor)"
+    )
+):
+    """
+    Get food interactions for a specific drug.
+    
+    Returns all foods that may interact with this medication, including:
+    - Severity level (contraindicated, major, moderate, minor)
+    - Effect description
+    - Recommendation for patient
+    - Timing (ongoing, around_dose, with_dose)
+    """
+    from app.services.food_interactions import get_food_interaction_service
+    
+    service = get_food_interaction_service()
+    result = service.get_interactions(drug_name, min_severity)
+    
+    return result.to_dict()
+
+
+@router.get("/food-categories")
+async def get_food_categories():
+    """
+    Get all food categories and their descriptions.
+    
+    Useful for educating patients about different types of food-drug interactions.
+    """
+    from app.services.food_interactions import get_food_interaction_service
+    
+    service = get_food_interaction_service()
+    return {
+        "categories": service.get_all_food_categories(),
+        "total": len(service.food_categories)
+    }
+
+
+@router.get("/food-categories/{category_id}/drugs")
+async def get_drugs_by_food_category(category_id: str):
+    """
+    Get all drugs that interact with a specific food category.
+    
+    For example, get all drugs that interact with grapefruit.
+    """
+    from app.services.food_interactions import get_food_interaction_service
+    
+    service = get_food_interaction_service()
+    drugs = service.get_drugs_by_food_category(category_id)
+    
+    if not drugs:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Food category '{category_id}' not found or has no interactions"
+        )
+    
+    category_info = service.food_categories.get(category_id)
+    
+    return {
+        "category": {
+            "id": category_id,
+            "name": category_info.name if category_info else category_id,
+            "description": category_info.description if category_info else "",
+            "examples": category_info.examples if category_info else []
+        },
+        "drugs": drugs,
+        "total": len(drugs)
+    }
+
+
+@router.get("/patients/{patient_id}/food-interactions")
+async def get_patient_food_interactions(
+    patient_id: str,
+    service: DiabeticDDIService = Depends(get_service)
+):
+    """
+    Get all food interactions for a patient's current medications.
+    
+    Provides a comprehensive dietary guidance report for the patient.
+    """
+    from app.services.food_interactions import get_food_interaction_service
+    
+    # Get patient
+    patient = await service.get_patient(patient_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
+    
+    # Get patient's current medications
+    medications = await service.get_patient_medications(patient_id)
+    med_names = [m.drug_name for m in medications]
+    
+    if not med_names:
+        return {
+            "patient_id": patient_id,
+            "patient_name": patient.name,
+            "medications_checked": [],
+            "total_interactions_found": 0,
+            "has_critical_interactions": False,
+            "foods_to_avoid": [],
+            "all_interactions": [],
+            "summary": "No medications found for this patient."
+        }
+    
+    # Check all medications
+    food_service = get_food_interaction_service()
+    result = food_service.check_patient_medications(med_names)
+    
+    return {
+        "patient_id": patient_id,
+        "patient_name": patient.name,
+        **result
+    }
+
+

@@ -2,10 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   THEME VARIABLES - Dark Mode (Default)
+   ============================================ */
 :root {
   --medical-primary: #14b89a;
   --medical-dark: #0d1321;
   --medical-light: #f0fdf9;
+  
+  /* Dark theme colors */
+  --bg-primary: #0d1321;
+  --bg-secondary: #172033;
+  --bg-tertiary: #1e293b;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --card-bg: rgba(23, 32, 51, 0.7);
+  --glass-bg: rgba(23, 32, 51, 0.7);
+  --input-bg: #1e293b;
+  --scrollbar-track: #172033;
+  --scrollbar-thumb: #14b89a;
+}
+
+/* ============================================
+   THEME VARIABLES - Light Mode
+   ============================================ */
+.light {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --border-color: rgba(0, 0, 0, 0.1);
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --input-bg: #ffffff;
+  --scrollbar-track: #e2e8f0;
+  --scrollbar-thumb: #0d947d;
 }
 
 * {
@@ -20,10 +55,18 @@ html {
 
 body {
   font-family: 'DM Sans', system-ui, sans-serif;
-  background-color: #0d1321;
-  color: #e2e8f0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light mode specific body styles */
+.light body,
+.light {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Custom scrollbar */

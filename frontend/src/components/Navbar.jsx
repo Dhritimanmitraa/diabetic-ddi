@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
 import { Pill, Shield, Brain, Heart, Menu, X, FileText } from 'lucide-react'
 import { healthCheck } from '../services/api'
+import ThemeToggle from './ThemeToggle'
 
 function Navbar() {
   const [isHealthy, setIsHealthy] = useState(null)
@@ -118,10 +119,13 @@ function Navbar() {
             />
           </div>
 
-          {/* Status indicator & Mobile menu button */}
+          {/* Status indicator, Theme toggle & Mobile menu button */}
           <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Health Status */}
-            <div 
+            <div
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/50 border border-slate-700/50"
               role="status"
               aria-live="polite"
@@ -167,14 +171,14 @@ function Navbar() {
               role="menu"
               aria-label="Mobile navigation"
             >
-              <MobileNavLink 
-                href="/#how-it-works" 
+              <MobileNavLink
+                href="/#how-it-works"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 How it Works
               </MobileNavLink>
-              <MobileNavLink 
-                href="/#features" 
+              <MobileNavLink
+                href="/#features"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Features
@@ -237,7 +241,7 @@ function NavMenuItem({ to, isActive, icon, activeColor, label }) {
     rose: 'bg-rose-500/20 border-rose-500/40 text-rose-300',
     purple: 'bg-purple-500/20 border-purple-500/40 text-purple-300',
   }
-  
+
   const inactiveClasses = {
     cyan: 'bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20',
     rose: 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20',
@@ -247,9 +251,8 @@ function NavMenuItem({ to, isActive, icon, activeColor, label }) {
   return (
     <Link
       to={to}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-${activeColor}-500/50 ${
-        isActive ? activeClasses[activeColor] : inactiveClasses[activeColor]
-      }`}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-${activeColor}-500/50 ${isActive ? activeClasses[activeColor] : inactiveClasses[activeColor]
+        }`}
       role="menuitem"
       aria-current={isActive ? 'page' : undefined}
     >
