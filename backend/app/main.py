@@ -972,6 +972,116 @@ async def get_ml_model_info():
         }
 
 
+@app.post("/ml/explain", tags=["Machine Learning"])
+async def explain_ml_prediction(
+    request: InteractionCheckRequest,
+    method: str = "auto",
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get explainable AI insights for an interaction prediction.
+    
+    Uses SHAP (preferred) or LIME to explain why the model made its prediction.
+    Returns feature importance, natural language explanation, and visualization data.
+    
+    Args:
+        request: Drug pair to explain
+        method: "shap", "lime", or "auto" (tries SHAP first, falls back to LIME)
+    
+    Returns:
+        Explanation with feature attributions, importance breakdown, and natural language summary
+    """
+    from app.ml.predictor import get_predictor, extract_features_simple
+    from app.ml.explainability_service import get_explainability_service
+    
+    # Get drug information from database
+    service = create_interaction_service(db)
+    drug1 = await service.get_drug_by_name(request.drug1_name)
+    drug2 = await service.get_drug_by_name(request.drug2_name)
+    
+    if not drug1 or not drug2:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "One or both drugs not found in database",
+                "drug1_found": drug1 is not None,
+                "drug2_found": drug2 is not None
+            }
+        )
+    
+    # Convert to dict for predictor
+    drug1_dict = {
+        'name': drug1.name,
+        'generic_name': drug1.generic_name,
+        'drug_class': drug1.drug_class,
+        'description': drug1.description,
+        'mechanism': drug1.mechanism,
+        'indication': drug1.indication,
+        'molecular_weight': drug1.molecular_weight,
+        'is_approved': drug1.is_approved,
+    }
+    
+    drug2_dict = {
+        'name': drug2.name,
+        'generic_name': drug2.generic_name,
+        'drug_class': drug2.drug_class,
+        'description': drug2.description,
+        'mechanism': drug2.mechanism,
+        'indication': drug2.indication,
+        'molecular_weight': drug2.molecular_weight,
+        'is_approved': drug2.is_approved,
+    }
+    
+    try:
+        # Get prediction first
+        predictor = get_predictor("./models")
+        if not predictor.is_loaded:
+            raise HTTPException(
+                status_code=503,
+                detail="ML models not loaded. Please train models first."
+            )
+        
+        prediction = predictor.predict(drug1_dict, drug2_dict)
+        
+        # Extract features for explanation
+        features = extract_features_simple(drug1_dict, drug2_dict)
+        
+        # Get explanation
+        explainer = get_explainability_service(predictor.models)
+        
+        if not explainer.is_available():
+            return {
+                "prediction": prediction.to_dict(),
+                "explanation": None,
+                "error": "No explainability method available. Install shap or lime: pip install shap lime"
+            }
+        
+        explanation = explainer.explain(
+            features=features,
+            drug1_name=drug1.name,
+            drug2_name=drug2.name,
+            prediction_probability=prediction.interaction_probability,
+            severity=prediction.severity_prediction,
+            method=method,
+            top_k=5
+        )
+        
+        return {
+            "prediction": prediction.to_dict(),
+            "explanation": explanation.to_dict(),
+            "available_methods": explainer.get_available_methods()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ML explanation error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Explanation failed: {str(e)}"
+        )
+
+
 @app.get("/ml/comparison", tags=["Machine Learning"])
 async def get_optimization_comparison():
     """

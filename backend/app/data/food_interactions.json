@@ -1,0 +1,415 @@
+{
+    "metadata": {
+        "version": "1.0.0",
+        "last_updated": "2026-01-26",
+        "description": "Database of drug-food interactions for DrugGuard",
+        "sources": [
+            "FDA",
+            "NIH",
+            "Clinical Guidelines",
+            "PubMed"
+        ]
+    },
+    "food_categories": {
+        "grapefruit": {
+            "name": "Grapefruit & Citrus",
+            "description": "Inhibits CYP3A4 enzyme, affecting drug metabolism",
+            "examples": [
+                "grapefruit",
+                "grapefruit juice",
+                "pomelo",
+                "seville oranges"
+            ]
+        },
+        "vitamin_k": {
+            "name": "Vitamin K Rich Foods",
+            "description": "Counteracts anticoagulant effects",
+            "examples": [
+                "spinach",
+                "kale",
+                "broccoli",
+                "brussels sprouts",
+                "green tea"
+            ]
+        },
+        "tyramine": {
+            "name": "Tyramine-Rich Foods",
+            "description": "Can cause hypertensive crisis with MAOIs",
+            "examples": [
+                "aged cheese",
+                "cured meats",
+                "fermented foods",
+                "red wine",
+                "soy sauce"
+            ]
+        },
+        "dairy": {
+            "name": "Dairy Products",
+            "description": "Calcium binds to certain drugs reducing absorption",
+            "examples": [
+                "milk",
+                "cheese",
+                "yogurt",
+                "calcium supplements"
+            ]
+        },
+        "alcohol": {
+            "name": "Alcohol",
+            "description": "Enhances CNS depression, affects drug metabolism",
+            "examples": [
+                "beer",
+                "wine",
+                "spirits",
+                "alcohol-containing products"
+            ]
+        },
+        "high_fiber": {
+            "name": "High Fiber Foods",
+            "description": "May reduce drug absorption",
+            "examples": [
+                "whole grains",
+                "bran",
+                "beans",
+                "legumes"
+            ]
+        },
+        "caffeine": {
+            "name": "Caffeine",
+            "description": "Interacts with multiple drug pathways",
+            "examples": [
+                "coffee",
+                "tea",
+                "energy drinks",
+                "chocolate"
+            ]
+        },
+        "potassium": {
+            "name": "High Potassium Foods",
+            "description": "Risk of hyperkalemia with certain drugs",
+            "examples": [
+                "bananas",
+                "oranges",
+                "potatoes",
+                "tomatoes",
+                "salt substitutes"
+            ]
+        }
+    },
+    "interactions": [
+        {
+            "drug_pattern": "warfarin",
+            "drug_class": "anticoagulant",
+            "food_category": "vitamin_k",
+            "severity": "major",
+            "effect": "Vitamin K-rich foods can reduce anticoagulant effect, increasing clot risk",
+            "recommendation": "Maintain consistent vitamin K intake. Don't suddenly increase or decrease green vegetable consumption.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "warfarin",
+            "drug_class": "anticoagulant",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Alcohol can increase bleeding risk and affect INR levels",
+            "recommendation": "Limit alcohol consumption. Avoid binge drinking. Monitor INR closely.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "warfarin",
+            "drug_class": "anticoagulant",
+            "food_category": "grapefruit",
+            "severity": "moderate",
+            "effect": "Grapefruit may increase warfarin levels",
+            "recommendation": "Avoid or limit grapefruit consumption",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "atorvastatin",
+            "drug_class": "statin",
+            "food_category": "grapefruit",
+            "severity": "major",
+            "effect": "Grapefruit inhibits CYP3A4, dramatically increasing statin levels and risk of muscle damage (rhabdomyolysis)",
+            "recommendation": "Avoid grapefruit and grapefruit juice completely",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "simvastatin",
+            "drug_class": "statin",
+            "food_category": "grapefruit",
+            "severity": "major",
+            "effect": "Grapefruit can increase simvastatin blood levels up to 15-fold",
+            "recommendation": "Completely avoid grapefruit products",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "lovastatin",
+            "drug_class": "statin",
+            "food_category": "grapefruit",
+            "severity": "major",
+            "effect": "Grapefruit significantly increases lovastatin exposure",
+            "recommendation": "Avoid grapefruit products entirely",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "metformin",
+            "drug_class": "antidiabetic",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Alcohol increases risk of lactic acidosis, especially in fasting state",
+            "recommendation": "Limit alcohol intake significantly. Never drink on empty stomach.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "metformin",
+            "drug_class": "antidiabetic",
+            "food_category": "high_fiber",
+            "severity": "minor",
+            "effect": "High fiber may slightly reduce metformin absorption",
+            "recommendation": "Take metformin with meals. No need to avoid fiber.",
+            "timing": "with_dose"
+        },
+        {
+            "drug_pattern": "ciprofloxacin",
+            "drug_class": "fluoroquinolone",
+            "food_category": "dairy",
+            "severity": "major",
+            "effect": "Calcium in dairy products chelates ciprofloxacin, reducing absorption by up to 40%",
+            "recommendation": "Take ciprofloxacin 2 hours before or 6 hours after dairy products",
+            "timing": "around_dose"
+        },
+        {
+            "drug_pattern": "doxycycline",
+            "drug_class": "tetracycline",
+            "food_category": "dairy",
+            "severity": "major",
+            "effect": "Calcium significantly reduces tetracycline absorption",
+            "recommendation": "Avoid dairy products 2 hours before and after taking doxycycline",
+            "timing": "around_dose"
+        },
+        {
+            "drug_pattern": "tetracycline",
+            "drug_class": "tetracycline",
+            "food_category": "dairy",
+            "severity": "major",
+            "effect": "Dairy products can reduce tetracycline absorption by more than 50%",
+            "recommendation": "Take 1 hour before or 2 hours after dairy consumption",
+            "timing": "around_dose"
+        },
+        {
+            "drug_pattern": "levothyroxine",
+            "drug_class": "thyroid_hormone",
+            "food_category": "dairy",
+            "severity": "moderate",
+            "effect": "Calcium reduces levothyroxine absorption",
+            "recommendation": "Take levothyroxine on empty stomach, 4 hours apart from calcium",
+            "timing": "around_dose"
+        },
+        {
+            "drug_pattern": "levothyroxine",
+            "drug_class": "thyroid_hormone",
+            "food_category": "high_fiber",
+            "severity": "moderate",
+            "effect": "High fiber foods can reduce levothyroxine absorption",
+            "recommendation": "Take levothyroxine on empty stomach, separate from high-fiber meals",
+            "timing": "around_dose"
+        },
+        {
+            "drug_pattern": "levothyroxine",
+            "drug_class": "thyroid_hormone",
+            "food_category": "caffeine",
+            "severity": "minor",
+            "effect": "Coffee may reduce levothyroxine absorption",
+            "recommendation": "Wait at least 30 minutes after taking levothyroxine before drinking coffee",
+            "timing": "around_dose"
+        },
+        {
+            "drug_pattern": "phenelzine",
+            "drug_class": "maoi",
+            "food_category": "tyramine",
+            "severity": "contraindicated",
+            "effect": "Tyramine can cause life-threatening hypertensive crisis with MAOIs",
+            "recommendation": "Strictly avoid all tyramine-rich foods. This is critical.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "tranylcypromine",
+            "drug_class": "maoi",
+            "food_category": "tyramine",
+            "severity": "contraindicated",
+            "effect": "Tyramine accumulation can cause severe hypertension, stroke",
+            "recommendation": "Complete avoidance of aged cheeses, cured meats, fermented foods required",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "selegiline",
+            "drug_class": "maoi",
+            "food_category": "tyramine",
+            "severity": "major",
+            "effect": "Risk of hypertensive crisis, especially at higher doses",
+            "recommendation": "Avoid tyramine-rich foods. Risk is dose-dependent.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "lisinopril",
+            "drug_class": "ace_inhibitor",
+            "food_category": "potassium",
+            "severity": "moderate",
+            "effect": "ACE inhibitors raise potassium levels; high potassium foods compound this risk",
+            "recommendation": "Moderate potassium intake. Avoid potassium-based salt substitutes.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "enalapril",
+            "drug_class": "ace_inhibitor",
+            "food_category": "potassium",
+            "severity": "moderate",
+            "effect": "Risk of hyperkalemia with ACE inhibitors",
+            "recommendation": "Monitor potassium levels. Limit high-potassium foods.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "spironolactone",
+            "drug_class": "potassium_sparing_diuretic",
+            "food_category": "potassium",
+            "severity": "major",
+            "effect": "Spironolactone causes potassium retention; high potassium foods can cause dangerous hyperkalemia",
+            "recommendation": "Significantly limit high-potassium foods. Regular potassium monitoring.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "amlodipine",
+            "drug_class": "calcium_channel_blocker",
+            "food_category": "grapefruit",
+            "severity": "moderate",
+            "effect": "Grapefruit can increase amlodipine levels, causing low blood pressure",
+            "recommendation": "Limit grapefruit consumption",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "felodipine",
+            "drug_class": "calcium_channel_blocker",
+            "food_category": "grapefruit",
+            "severity": "major",
+            "effect": "Grapefruit can triple felodipine blood levels",
+            "recommendation": "Avoid grapefruit completely",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "alprazolam",
+            "drug_class": "benzodiazepine",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Combined CNS depression can cause severe sedation, respiratory depression",
+            "recommendation": "Avoid alcohol completely while taking benzodiazepines",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "diazepam",
+            "drug_class": "benzodiazepine",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Potentiates sedative effects, risk of overdose",
+            "recommendation": "Do not consume alcohol",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "oxycodone",
+            "drug_class": "opioid",
+            "food_category": "alcohol",
+            "severity": "contraindicated",
+            "effect": "Life-threatening respiratory depression",
+            "recommendation": "Never consume alcohol with opioids",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "morphine",
+            "drug_class": "opioid",
+            "food_category": "alcohol",
+            "severity": "contraindicated",
+            "effect": "Severe respiratory depression, may be fatal",
+            "recommendation": "Absolutely no alcohol consumption",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "acetaminophen",
+            "drug_class": "analgesic",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Chronic alcohol use increases risk of hepatotoxicity",
+            "recommendation": "Limit dose to 2g/day if consuming alcohol regularly. Avoid if possible.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "theophylline",
+            "drug_class": "bronchodilator",
+            "food_category": "caffeine",
+            "severity": "moderate",
+            "effect": "Caffeine and theophylline are both xanthines; combined effect increases side effects",
+            "recommendation": "Limit caffeine intake while on theophylline",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "lithium",
+            "drug_class": "mood_stabilizer",
+            "food_category": "caffeine",
+            "severity": "moderate",
+            "effect": "Caffeine can reduce lithium levels; sudden changes affect drug level",
+            "recommendation": "Maintain consistent caffeine intake. Don't suddenly stop or increase.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "alendronate",
+            "drug_class": "bisphosphonate",
+            "food_category": "dairy",
+            "severity": "major",
+            "effect": "Food, especially calcium, dramatically reduces absorption",
+            "recommendation": "Take on empty stomach with plain water only. Wait 30-60 minutes before eating.",
+            "timing": "around_dose"
+        },
+        {
+            "drug_pattern": "methotrexate",
+            "drug_class": "immunosuppressant",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Alcohol increases methotrexate hepatotoxicity",
+            "recommendation": "Avoid alcohol or limit significantly",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "cyclosporine",
+            "drug_class": "immunosuppressant",
+            "food_category": "grapefruit",
+            "severity": "major",
+            "effect": "Grapefruit increases cyclosporine levels, risking toxicity",
+            "recommendation": "Avoid grapefruit completely",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "sildenafil",
+            "drug_class": "pde5_inhibitor",
+            "food_category": "grapefruit",
+            "severity": "moderate",
+            "effect": "Grapefruit can increase sildenafil levels",
+            "recommendation": "Avoid grapefruit juice",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "insulin",
+            "drug_class": "antidiabetic",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Alcohol can cause severe hypoglycemia, especially without food",
+            "recommendation": "Limit alcohol. Never drink on an empty stomach. Monitor blood glucose closely.",
+            "timing": "ongoing"
+        },
+        {
+            "drug_pattern": "glipizide",
+            "drug_class": "sulfonylurea",
+            "food_category": "alcohol",
+            "severity": "major",
+            "effect": "Risk of hypoglycemia and disulfiram-like reaction",
+            "recommendation": "Limit alcohol significantly",
+            "timing": "ongoing"
+        }
+    ]
+}
