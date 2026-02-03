@@ -289,7 +289,7 @@ def train_model(output_dir: str = "./models"):
     output_path = os.path.join(output_dir, "diabetic_risk_model.pkl")
     joblib.dump(artifact, output_path)
     
-    print(f"\n✅ Model saved to: {output_path}")
+    print(f"\n[OK] Model saved to: {output_path}")
     print(f"   Version: {model_version}")
     print(f"   Accuracy: {accuracy:.4f}")
     

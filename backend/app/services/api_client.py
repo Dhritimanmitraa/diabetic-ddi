@@ -280,7 +280,7 @@ class RobustAPIClient:
                         if use_cache:
                             self._set_cache(cache_key, data, cache_ttl)
                         
-                        logger.info(f"✓ {source}: Fetched {url[:50]}...")
+                        logger.info(f"[OK] {source}: Fetched {url[:50]}...")
                         return data
                     
                     elif response.status == 429:  # Rate limited
@@ -317,7 +317,7 @@ class RobustAPIClient:
         
         # All retries failed
         self._record_failure(source)
-        logger.error(f"✗ {source}: All {max_retries} attempts failed. Last error: {last_error}")
+        logger.error(f"[X] {source}: All {max_retries} attempts failed. Last error: {last_error}")
         return None
     
     async def fetch_with_fallback(

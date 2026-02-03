@@ -1,2 +1,0 @@
-"""ML Standalone Application - Backend"""
-

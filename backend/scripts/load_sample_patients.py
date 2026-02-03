@@ -63,14 +63,14 @@ async def load_sample_patients():
                 )
                 
                 if response.status_code == 201:
-                    print(f"  ✓ Created patient: {patient['name']} ({patient['patient_id']})")
+                    print(f"  [OK] Created patient: {patient['name']} ({patient['patient_id']})")
                 elif response.status_code == 200:
-                    print(f"  ✓ Updated patient: {patient['name']} ({patient['patient_id']})")
+                    print(f"  [OK] Updated patient: {patient['name']} ({patient['patient_id']})")
                 else:
-                    print(f"  ✗ Failed to create {patient['patient_id']}: {response.status_code}")
+                    print(f"  [ERROR] Failed to create {patient['patient_id']}: {response.status_code}")
                     print(f"    Response: {response.text[:200]}")
             except Exception as e:
-                print(f"  ✗ Error creating {patient['patient_id']}: {e}")
+                print(f"  [ERROR] Error creating {patient['patient_id']}: {e}")
     
     print(f"\nDone! Loaded {len(patients)} sample patients.")
     print(f"\nYou can now check drug risks for these patients at:")

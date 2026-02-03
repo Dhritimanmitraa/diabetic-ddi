@@ -529,7 +529,7 @@ Precautions and Warnings:
                 if len(content_parts) > 1:
                     full_content = "\n".join(content_parts)
                     self._cache_drug_content(drug_name, full_content, "RxNorm API")
-                    logger.info(f"✓ RxNorm: Found info for {drug_name}")
+                    logger.info(f"[OK] RxNorm: Found info for {drug_name}")
                     return full_content
                     
         except Exception as e:

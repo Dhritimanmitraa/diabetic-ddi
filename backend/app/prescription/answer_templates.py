@@ -235,7 +235,7 @@ class AnswerTemplateEngine:
     
     def generate_interaction_alert(self, context: InteractionContext) -> str:
         """Generate interaction alert response."""
-        severity = context.severity.lower()
+        severity = (context.severity or "unknown").lower()
         
         return INTERACTION_ALERT_TEMPLATE.format(
             drug1=context.drug1,
@@ -303,7 +303,7 @@ class AnswerTemplateEngine:
             content = doc.get("content", "")
             metadata = doc.get("metadata", {})
             source = metadata.get("source", "knowledge_base")
-            drug_name = metadata.get("drug_name", "")
+            # drug_name available in metadata if needed for future enhancements
             
             if content:
                 combined_content.append(content)

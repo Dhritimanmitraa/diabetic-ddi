@@ -93,12 +93,12 @@ class FoodInteractionResult:
         
         if self.has_contraindicated:
             return (
-                f"⚠️ CRITICAL: {self.drug_name} has dangerous food interactions that "
+                f"CRITICAL: {self.drug_name} has dangerous food interactions that "
                 f"must be strictly avoided. Please review the details carefully."
             )
         elif self.has_major:
             return (
-                f"⚠️ {self.drug_name} has {self.total_count} significant food interaction(s). "
+                f"[!] {self.drug_name} has {self.total_count} significant food interaction(s). "
                 f"Please follow the dietary recommendations."
             )
         else:
@@ -376,7 +376,7 @@ class FoodInteractionService:
         
         if critical:
             return (
-                f"⚠️ CRITICAL: You have {len(critical)} food restriction(s) that MUST be strictly followed "
+                f"CRITICAL: You have {len(critical)} food restriction(s) that MUST be strictly followed "
                 f"to avoid dangerous reactions. Please review the complete list carefully and discuss with your doctor."
             )
         elif major:

@@ -88,8 +88,8 @@ class LLMDrugChecker:
     """
     LLM-based drug risk checker running in parallel with ML model.
     
-    Uses Ollama for local inference. Designed to work alongside ML predictions
-    to provide complementary reasoning and context-aware analysis.
+    Uses Gemini (primary) or Ollama (fallback) for inference. Designed to work 
+    alongside ML predictions to provide complementary reasoning and context-aware analysis.
     """
     
     def __init__(self, model: str = DEFAULT_MODEL, host: str = DEFAULT_HOST):
@@ -99,6 +99,29 @@ class LLMDrugChecker:
         self._available = None
         self._semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
         self._init_attempted = False
+        
+        # Gemini initialization
+        self._gemini_model = None
+        self._gemini_available = False
+        self._init_gemini()
+    
+    def _init_gemini(self):
+        """Initialize Google Gemini model."""
+        try:
+            import google.generativeai as genai
+            from app.config import get_settings
+            settings = get_settings()
+            
+            api_key = settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY
+            if api_key:
+                genai.configure(api_key=api_key)
+                self._gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+                self._gemini_available = True
+                logger.info("Gemini model initialized for drug risk analysis")
+            else:
+                logger.warning("No Gemini API key found, will use Ollama fallback")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Gemini: {e}")
         
     async def _get_client(self):
         """Lazy initialization of Ollama client."""
@@ -142,6 +165,8 @@ class LLMDrugChecker:
         """
         Check drug risk using LLM analysis.
         
+        Tries Gemini first (primary), then Ollama (fallback), then templates.
+        
         Args:
             drug_name: Name of the drug to check
             patient_context: Patient clinical profile (age, eGFR, complications, etc.)
@@ -150,11 +175,33 @@ class LLMDrugChecker:
         Returns:
             LLMDrugRiskResult with risk assessment
         """
-        # Let the LLM analyze any input - it can determine if something is a valid drug
+        # Build prompt for LLM analysis
         prompt = self._build_prompt(drug_name, patient_context, current_medications)
+        full_prompt = f"{SYSTEM_PROMPT}\n\n{prompt}"
         
         # Use semaphore to limit concurrent requests
         async with self._semaphore:
+            # Try Gemini first (primary)
+            if self._gemini_available and self._gemini_model:
+                try:
+                    logger.info(f"Checking drug risk with Gemini: {drug_name}")
+                    response = await asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda: self._gemini_model.generate_content(full_prompt)
+                    )
+                    
+                    if response and response.text:
+                        text = response.text.strip()
+                        result = self._parse_response(text)
+                        result.model_used = "gemini-2.0-flash"
+                        result.was_fallback = False
+                        logger.info(f"Gemini analysis completed for {drug_name}: {result.risk_level}")
+                        return result
+                        
+                except Exception as e:
+                    logger.warning(f"Gemini drug check failed for {drug_name}: {e}")
+            
+            # Fallback to Ollama
             try:
                 client = await self._get_client()
                 if client and await self.is_available():
@@ -178,9 +225,9 @@ class LLMDrugChecker:
                     return self._parse_response(text)
                     
             except asyncio.TimeoutError:
-                logger.warning(f"LLM drug check timed out for {drug_name}")
+                logger.warning(f"Ollama drug check timed out for {drug_name}")
             except Exception as e:
-                logger.warning(f"LLM drug check failed for {drug_name}: {e}")
+                logger.warning(f"Ollama drug check failed for {drug_name}: {e}")
         
         # Fallback to conservative assessment
         return self._generate_fallback(drug_name, patient_context)

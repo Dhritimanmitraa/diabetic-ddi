@@ -669,7 +669,7 @@ class DiabeticDDIService:
         
         fatal = [a for a in assessments if a.risk_level == "fatal"]
         if fatal:
-            recommendations.append(f"🚨 IMMEDIATE ACTION: Stop {', '.join(a.drug_name for a in fatal)}")
+            recommendations.append(f"CRITICAL IMMEDIATE ACTION: Stop {', '.join(a.drug_name for a in fatal)}")
         
         contraindicated = [a for a in assessments if a.risk_level == "contraindicated"]
         if contraindicated:

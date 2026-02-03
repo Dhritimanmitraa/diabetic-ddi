@@ -185,7 +185,7 @@ class RobustDrugFetcher:
                 drug_info.side_effects = label_data.get("adverse_reactions")
                 drug_info.mechanism = label_data.get("mechanism")
         
-        logger.info(f"✓ DailyMed: Found {drug_name}")
+        logger.info(f"[OK] DailyMed: Found {drug_name}")
         return drug_info
     
     async def _fetch_dailymed_label(self, setid: str) -> Optional[Dict]:
@@ -268,7 +268,7 @@ class RobustDrugFetcher:
             interactions = await self._fetch_rxnorm_interactions(drug_info.rxcui)
             drug_info.interactions = interactions[:20]  # Limit
         
-        logger.info(f"✓ RxNorm: Found {drug_name} (RxCUI: {drug_info.rxcui})")
+        logger.info(f"[OK] RxNorm: Found {drug_name} (RxCUI: {drug_info.rxcui})")
         return drug_info
     
     async def _fetch_rxnorm_class(self, rxcui: str) -> Optional[str]:
@@ -359,7 +359,7 @@ class RobustDrugFetcher:
         if drug_info.uses and len(drug_info.uses) > 800:
             drug_info.uses = drug_info.uses[:800] + "..."
         
-        logger.info(f"✓ OpenFDA: Found {drug_name}")
+        logger.info(f"[OK] OpenFDA: Found {drug_name}")
         return drug_info
     
     # ========== PubChem (Chemical Info) ==========
@@ -399,7 +399,7 @@ class RobustDrugFetcher:
             if props:
                 drug_info.description = props.get("description")
         
-        logger.info(f"✓ PubChem: Found {drug_name}")
+        logger.info(f"[OK] PubChem: Found {drug_name}")
         return drug_info
     
     async def _fetch_pubchem_properties(self, cid: int) -> Optional[Dict]:
