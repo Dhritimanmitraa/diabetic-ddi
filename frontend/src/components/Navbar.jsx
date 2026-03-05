@@ -46,7 +46,7 @@ function Navbar() {
   const isActive = (path) => location.pathname === path
   const toggleMobileMenu = useCallback(() => setMobileMenuOpen(prev => !prev), [])
 
-  const healthColor = isHealthy === null ? 'bg-slate-500' : isHealthy ? 'bg-emerald-400' : 'bg-red-400'
+  const healthColor = isHealthy === null ? 'bg-slate-500' : isHealthy ? 'bg-emerald-500' : 'bg-red-500'
   const healthLabel = isHealthy === null ? 'Checking' : isHealthy ? 'Online' : 'Offline'
 
   return (
