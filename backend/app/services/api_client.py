@@ -126,6 +126,8 @@ class RobustAPIClient:
     CIRCUIT_FAILURE_THRESHOLD = 5
     CIRCUIT_RECOVERY_TIME = timedelta(minutes=5)
     
+    MAX_CACHE_SIZE = 1000  # Maximum cache entries
+    
     def __init__(self, cache_ttl: int = 3600):
         self.cache_ttl = cache_ttl
         self._cache: Dict[str, CacheEntry] = {}
@@ -172,7 +174,20 @@ class RobustAPIClient:
         return None
     
     def _set_cache(self, cache_key: str, data: Any, ttl: Optional[int] = None):
-        """Set data in cache."""
+        """Set data in cache with eviction if over limit."""
+        # Evict expired entries first
+        if len(self._cache) >= self.MAX_CACHE_SIZE:
+            expired_keys = [k for k, v in self._cache.items() if v.is_expired]
+            for k in expired_keys:
+                del self._cache[k]
+        
+        # If still over limit, evict oldest 20%
+        if len(self._cache) >= self.MAX_CACHE_SIZE:
+            entries = sorted(self._cache.items(), key=lambda x: x[1].created_at)
+            evict_count = max(1, len(entries) // 5)
+            for k, _ in entries[:evict_count]:
+                del self._cache[k]
+        
         self._cache[cache_key] = CacheEntry(
             data=data,
             created_at=datetime.now(),

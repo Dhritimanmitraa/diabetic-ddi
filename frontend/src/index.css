@@ -3,47 +3,50 @@
 @tailwind utilities;
 
 /* ============================================
-   THEME VARIABLES - Dark Mode (Default)
+   DESIGN TOKENS
    ============================================ */
 :root {
-  --medical-primary: #14b89a;
-  --medical-dark: #0d1321;
-  --medical-light: #f0fdf9;
-  
-  /* Dark theme colors */
-  --bg-primary: #0d1321;
-  --bg-secondary: #172033;
-  --bg-tertiary: #1e293b;
-  --text-primary: #e2e8f0;
+  /* Primary palette */
+  --accent: 160 72% 40%;
+  --accent-h: 160;
+  --accent-s: 72%;
+  --accent-l: 40%;
+
+  /* Dark theme (default) */
+  --bg-primary: #0a0f1c;
+  --bg-secondary: #111827;
+  --bg-elevated: #1a2236;
+  --bg-surface: rgba(17, 24, 39, 0.65);
+  --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --card-bg: rgba(23, 32, 51, 0.7);
-  --glass-bg: rgba(23, 32, 51, 0.7);
-  --input-bg: #1e293b;
-  --scrollbar-track: #172033;
-  --scrollbar-thumb: #14b89a;
+  --text-muted: #475569;
+  --border: rgba(148, 163, 184, 0.08);
+  --border-hover: rgba(148, 163, 184, 0.16);
+  --ring: hsla(var(--accent), 0.35);
+  --shadow-color: 220 60% 2%;
 }
 
-/* ============================================
-   THEME VARIABLES - Light Mode
-   ============================================ */
 .light {
   --bg-primary: #f8fafc;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f1f5f9;
+  --bg-elevated: #f1f5f9;
+  --bg-surface: rgba(255, 255, 255, 0.8);
   --text-primary: #0f172a;
   --text-secondary: #475569;
-  --text-muted: #64748b;
-  --border-color: rgba(0, 0, 0, 0.1);
-  --card-bg: rgba(255, 255, 255, 0.9);
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --input-bg: #ffffff;
-  --scrollbar-track: #e2e8f0;
-  --scrollbar-thumb: #0d947d;
+  --text-muted: #94a3b8;
+  --border: rgba(15, 23, 42, 0.06);
+  --border-hover: rgba(15, 23, 42, 0.12);
+  --ring: hsla(var(--accent), 0.25);
+  --shadow-color: 220 20% 80%;
+  --loading-overlay-bg: rgba(248, 250, 252, 0.88);
 }
 
-* {
+/* ============================================
+   RESET & GLOBAL
+   ============================================ */
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -51,236 +54,140 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  line-height: 1.6;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
-/* Light mode specific body styles */
 .light body,
 .light {
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
-/* Custom scrollbar */
+/* ============================================
+   SCROLLBAR
+   ============================================ */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #172033;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #14b89a;
-  border-radius: 4px;
+  background: var(--text-muted);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #0d947d;
+  background: var(--text-secondary);
 }
 
-/* Selection */
+/* ============================================
+   SELECTION
+   ============================================ */
 ::selection {
-  background: rgba(20, 184, 154, 0.3);
-  color: #fff;
+  background: hsla(var(--accent), 0.2);
+  color: var(--text-primary);
 }
 
-/* Glass effect */
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+/* ============================================
+   GLASS MORPHISM — tasteful, single variant
+   ============================================ */
 .glass {
-  background: rgba(23, 32, 51, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-surface);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid var(--border);
 }
 
-.glass-light {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+.glass-subtle {
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
 }
 
-/* 3D Tilt card effect */
-.card-3d {
-  transform-style: preserve-3d;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.card-3d:hover {
-  transform: perspective(1000px) rotateY(-5deg) rotateX(5deg) scale(1.02);
-  box-shadow:
-    10px 10px 30px rgba(0, 0, 0, 0.3),
-    -5px -5px 20px rgba(20, 184, 154, 0.1);
-}
-
-/* Typewriter effect */
-.typewriter {
-  overflow: hidden;
-  white-space: nowrap;
-  animation: typing 2s steps(30, end);
-}
-
-@keyframes typing {
-  from {
-    width: 0;
-  }
-
-  to {
-    width: 100%;
-  }
-}
-
-/* Animated gradient mesh background */
-.bg-gradient-mesh {
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(20, 184, 154, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 40%),
-    radial-gradient(ellipse at 40% 80%, rgba(34, 197, 94, 0.08) 0%, transparent 40%),
-    radial-gradient(ellipse at 90% 90%, rgba(20, 184, 154, 0.12) 0%, transparent 50%);
-}
-
-/* Neon glow text */
-.neon-text {
-  text-shadow:
-    0 0 5px rgba(20, 184, 154, 0.5),
-    0 0 10px rgba(20, 184, 154, 0.3),
-    0 0 20px rgba(20, 184, 154, 0.2);
-}
-
-/* Glass morphism premium */
-.glass-premium {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-/* Hover lift effect */
-.hover-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-8px);
-  box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.3),
-    0 0 30px rgba(20, 184, 154, 0.1);
-}
-
-/* Animated border gradient */
-.border-gradient-animated {
-  position: relative;
-}
-
-.border-gradient-animated::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  padding: 2px;
-  background: linear-gradient(var(--border-angle, 0deg),
-      #14b89a,
-      #5feaca,
-      #8b5cf6,
-      #14b89a);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: border-rotate 3s linear infinite;
-}
-
-@keyframes border-rotate {
-  to {
-    --border-angle: 360deg;
-  }
-}
-
-@property --border-angle {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: 0deg;
-}
-
-/* Gradient text */
+/* ============================================
+   GRADIENT TEXT — single clean gradient
+   ============================================ */
 .gradient-text {
-  background: linear-gradient(135deg, #14b89a 0%, #5feaca 50%, #2dd4b3 100%);
+  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 60%, #3b82f6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Animated gradient background */
+/* ============================================
+   AMBIENT BACKGROUND — replaces animated-gradient
+   ============================================ */
 .animated-gradient {
-  background: linear-gradient(-45deg, #0d1321, #172033, #134d45, #115d53);
-  background-size: 400% 400%;
-  animation: gradient 15s ease infinite;
+  background: var(--bg-primary);
 }
 
-@keyframes gradient {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-/* Pulse glow */
-.pulse-glow {
-  animation: pulseGlow 2s ease-in-out infinite;
-}
-
-@keyframes pulseGlow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(20, 184, 154, 0.2);
-  }
-
-  50% {
-    box-shadow: 0 0 40px rgba(20, 184, 154, 0.4);
-  }
-}
-
-/* Float animation */
-.float {
-  animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-/* Input focus */
+/* ============================================
+   FOCUS STATES
+   ============================================ */
 input:focus,
-textarea:focus {
+textarea:focus,
+select:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(20, 184, 154, 0.3);
+  box-shadow: 0 0 0 2px var(--ring);
+  border-color: hsl(var(--accent)) !important;
 }
 
-/* Button hover effect */
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn-primary {
+  background: linear-gradient(135deg, hsl(160, 72%, 38%), hsl(170, 68%, 35%));
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px hsla(var(--accent), 0.25);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Subtle sweep effect on hover */
 .btn-hover {
   position: relative;
   overflow: hidden;
@@ -293,57 +200,92 @@ textarea:focus {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transition: left 0.5s;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+  transition: left 0.6s ease;
 }
 
 .btn-hover:hover::before {
   left: 100%;
 }
 
-/* Card hover */
+/* ============================================
+   CARDS — clean hover, no 3D
+   ============================================ */
 .card-hover {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px hsla(var(--shadow-color), 0.12);
+  border-color: var(--border-hover);
 }
 
-/* Severity colors */
+/* ============================================
+   SEVERITY INDICATORS — flat, clean badges
+   ============================================ */
 .severity-minor {
-  background: rgba(34, 197, 94, 0.1);
-  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.2);
   color: #22c55e;
 }
 
 .severity-moderate {
-  background: rgba(245, 158, 11, 0.1);
-  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.2);
   color: #f59e0b;
 }
 
 .severity-major {
-  background: rgba(249, 115, 22, 0.1);
-  border-color: rgba(249, 115, 22, 0.3);
+  background: rgba(249, 115, 22, 0.08);
+  border-color: rgba(249, 115, 22, 0.2);
   color: #f97316;
 }
 
 .severity-contraindicated {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
   color: #ef4444;
 }
 
-/* Loading spinner */
+/* ============================================
+   SEVERITY GLOW — subtle, not pulsing
+   ============================================ */
+.glow-safe {
+  box-shadow: 0 0 0 1px rgba(20, 184, 154, 0.15),
+    0 4px 20px rgba(20, 184, 154, 0.08);
+}
+
+.glow-minor {
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15),
+    0 4px 20px rgba(34, 197, 94, 0.08);
+}
+
+.glow-moderate {
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15),
+    0 4px 20px rgba(245, 158, 11, 0.08);
+}
+
+.glow-major {
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2),
+    0 4px 20px rgba(249, 115, 22, 0.1);
+}
+
+.glow-danger {
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2),
+    0 4px 20px rgba(239, 68, 68, 0.12);
+}
+
+/* ============================================
+   LOADING
+   ============================================ */
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(20, 184, 154, 0.1);
-  border-top-color: #14b89a;
+  width: 36px;
+  height: 36px;
+  border: 2.5px solid var(--border);
+  border-top-color: hsl(var(--accent));
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
@@ -352,22 +294,22 @@ textarea:focus {
   }
 }
 
-/* Grid pattern background */
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(20, 184, 154, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(20, 184, 154, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
+/* Pill loader — simplified */
+.pill-loader {
+  width: 48px;
+  height: 20px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, hsl(160, 72%, 40%) 50%, hsl(160, 72%, 32%) 50%);
 }
 
-/* Shimmer/Skeleton Loading Animation */
+/* Shimmer skeleton */
 .shimmer {
   background: linear-gradient(90deg,
-      rgba(255, 255, 255, 0.03) 25%,
-      rgba(255, 255, 255, 0.08) 50%,
-      rgba(255, 255, 255, 0.03) 75%);
+      var(--bg-elevated) 25%,
+      var(--border-hover) 50%,
+      var(--bg-elevated) 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
+  animation: shimmer 1.8s ease infinite;
 }
 
 @keyframes shimmer {
@@ -380,9 +322,8 @@ textarea:focus {
   }
 }
 
-/* Skeleton placeholder */
 .skeleton {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-elevated);
   border-radius: 8px;
   overflow: hidden;
   position: relative;
@@ -392,11 +333,8 @@ textarea:focus {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg,
-      transparent,
-      rgba(255, 255, 255, 0.08),
-      transparent);
-  animation: skeleton-wave 1.5s infinite;
+  background: linear-gradient(90deg, transparent, var(--border-hover), transparent);
+  animation: skeleton-wave 1.8s ease infinite;
 }
 
 @keyframes skeleton-wave {
@@ -409,138 +347,28 @@ textarea:focus {
   }
 }
 
-/* Severity glow effects */
-.glow-safe {
-  box-shadow: 0 0 20px rgba(20, 184, 154, 0.3),
-    0 0 40px rgba(20, 184, 154, 0.15);
-  animation: glow-pulse-safe 2s ease-in-out infinite;
-}
-
-@keyframes glow-pulse-safe {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(20, 184, 154, 0.3), 0 0 40px rgba(20, 184, 154, 0.15);
-  }
-
-  50% {
-    box-shadow: 0 0 30px rgba(20, 184, 154, 0.5), 0 0 60px rgba(20, 184, 154, 0.25);
-  }
-}
-
-.glow-minor {
-  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
-  animation: glow-pulse-minor 2s ease-in-out infinite;
-}
-
-@keyframes glow-pulse-minor {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 35px rgba(34, 197, 94, 0.5);
-  }
-}
-
-.glow-moderate {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
-  animation: glow-pulse-moderate 1.8s ease-in-out infinite;
-}
-
-@keyframes glow-pulse-moderate {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 35px rgba(245, 158, 11, 0.5);
-  }
-}
-
-.glow-major {
-  box-shadow: 0 0 25px rgba(249, 115, 22, 0.4);
-  animation: glow-pulse-major 1.5s ease-in-out infinite;
-}
-
-@keyframes glow-pulse-major {
-
-  0%,
-  100% {
-    box-shadow: 0 0 25px rgba(249, 115, 22, 0.4);
-  }
-
-  50% {
-    box-shadow: 0 0 45px rgba(249, 115, 22, 0.6);
-  }
-}
-
-.glow-danger {
-  box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
-  animation: glow-pulse-danger 1.2s ease-in-out infinite;
-}
-
-@keyframes glow-pulse-danger {
-
-  0%,
-  100% {
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
-  }
-
-  50% {
-    box-shadow: 0 0 50px rgba(239, 68, 68, 0.7);
-  }
-}
-
-/* Risk meter gauge */
+/* ============================================
+   RISK METER — clean gauge
+   ============================================ */
 .risk-meter {
-  height: 8px;
-  border-radius: 4px;
+  height: 6px;
+  border-radius: 3px;
   background: linear-gradient(90deg,
-      #22c55e 0%,
-      #84cc16 25%,
-      #eab308 50%,
-      #f97316 75%,
-      #ef4444 100%);
+      #22c55e 0%, #84cc16 25%, #eab308 50%, #f97316 75%, #ef4444 100%);
   position: relative;
-  overflow: hidden;
 }
 
-.risk-meter::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  animation: risk-shine 2s infinite;
-}
-
-@keyframes risk-shine {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-/* Celebration animation (for safe results) */
+/* ============================================
+   CELEBRATION — scale-in for safe results
+   ============================================ */
 .celebrate {
-  animation: celebrate 0.6s ease-out;
+  animation: celebrate 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes celebrate {
   0% {
-    transform: scale(0.8);
+    transform: scale(0.9);
     opacity: 0;
-  }
-
-  50% {
-    transform: scale(1.05);
   }
 
   100% {
@@ -549,58 +377,47 @@ textarea:focus {
   }
 }
 
-/* Pill capsule loader */
-.pill-loader {
-  width: 60px;
-  height: 24px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, #14b89a 50%, #0d947d 50%);
-  position: relative;
-  animation: pill-bounce 1s ease-in-out infinite;
+/* ============================================
+   COUNTER / BADGE
+   ============================================ */
+.counter-animate {
+  display: inline-block;
 }
 
-.pill-loader::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 2px;
-  height: 16px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 1px;
+.badge-pulse {
+  display: inline-block;
+  /* intentionally static — no more pulsing animation */
 }
 
-@keyframes pill-bounce {
-
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-
-  25% {
-    transform: translateY(-10px) rotate(-5deg);
-  }
-
-  75% {
-    transform: translateY(-10px) rotate(5deg);
-  }
+/* ============================================
+   GRID BACKGROUND — extremely subtle
+   ============================================ */
+.grid-bg {
+  display: block;
 }
 
-/* Mobile responsive improvements */
+/* ============================================
+   SWAP BUTTON
+   ============================================ */
+.swap-rotate {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.swap-rotate:hover {
+  transform: rotate(180deg);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 768px) {
-  .glass {
-    padding: 1rem;
-  }
 
-  /* Touch-friendly buttons */
   button,
   .btn-hover {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* Better tap targets for mobile */
   input,
   select,
   textarea {
@@ -609,7 +426,9 @@ textarea:focus {
   }
 }
 
-/* Safe area insets for notched Android devices */
+/* ============================================
+   SAFE AREA (Capacitor / notch devices)
+   ============================================ */
 @supports (padding: env(safe-area-inset-top)) {
   body {
     padding-top: env(safe-area-inset-top);
@@ -618,36 +437,27 @@ textarea:focus {
     padding-right: env(safe-area-inset-right);
   }
 
-  /* Fixed header spacing */
   header,
   nav,
   .navbar {
     padding-top: env(safe-area-inset-top);
   }
 
-  /* Fixed footer spacing */
   footer,
   .footer {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* Capacitor/Mobile App specific styles */
 .capacitor-mobile {
-  /* Disable text selection on interactive elements */
   -webkit-user-select: none;
   user-select: none;
-
-  /* Disable tap highlight */
   -webkit-tap-highlight-color: transparent;
-
-  /* Smooth scrolling momentum on mobile */
   -webkit-overflow-scrolling: touch;
 }
 
-/* Status bar overlay - dark theme */
 .status-bar-overlay {
-  background-color: #0d1321;
+  background-color: var(--bg-primary);
   position: fixed;
   top: 0;
   left: 0;
@@ -656,74 +466,241 @@ textarea:focus {
   z-index: 9999;
 }
 
-/* Swap button animation */
-.swap-rotate {
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+/* ============================================
+   LIGHT MODE OVERRIDES
+   Remap hardcoded dark-mode Tailwind classes
+   to appropriate light-mode equivalents.
+   ============================================ */
+
+/* --- Text color overrides --- */
+
+/*
+ * text-white override REMOVED.
+ * The broad :not() selector broke icons inside colored-bg parents (e.g. Shield in Navbar).
+ * Instead, individual heading/label text-white occurrences are fixed directly in their components.
+ */
+
+/* --- Select / Option / Input overrides --- */
+/* Browsers render <option> with native styles; force light styling */
+.light select,
+.light select option {
+  background-color: #ffffff;
+  color: #0f172a;
 }
 
-.swap-rotate:hover {
-  transform: rotate(180deg);
+.light input,
+.light textarea {
+  caret-color: #0f172a;
 }
 
-/* Gradient border effect */
-.gradient-border {
-  position: relative;
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #94a3b8;
 }
 
-.gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 2px;
-  background: linear-gradient(135deg, #14b89a, #5feaca, #2dd4b3);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+/* slate text shades — map to darker equivalents in light mode */
+.light .text-slate-200 {
+  color: #1e293b !important;
+  /* slate-800 */
 }
 
-.gradient-border:hover::before {
-  opacity: 1;
+.light .text-slate-300 {
+  color: #334155 !important;
+  /* slate-700 */
 }
 
-/* Badge pulse for severity */
-.badge-pulse {
-  animation: badge-pulse 2s ease-in-out infinite;
+.light .text-slate-400 {
+  color: var(--text-secondary) !important;
+  /* #475569 */
 }
 
-@keyframes badge-pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
+.light .text-slate-500 {
+  color: #64748b !important;
+  /* slate-500 — stays readable */
 }
 
-/* Counter animation */
-.counter-animate {
-  display: inline-block;
-  animation: counter-pop 0.5s ease-out;
+/* --- Background overrides --- */
+
+/* bg-slate-900 → near-white */
+.light .bg-slate-900 {
+  background-color: #f8fafc !important;
+  /* slate-50 */
 }
 
-@keyframes counter-pop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
+/* bg-slate-800 → light gray */
+.light .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  /* slate-100 */
+}
 
-  70% {
-    transform: scale(1.2);
-  }
+/* bg-slate-700 → lighter gray */
+.light .bg-slate-700 {
+  background-color: #e2e8f0 !important;
+  /* slate-200 */
+}
 
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+/* Opacity-variant bg-slate overrides (bg-slate-800/50, bg-slate-900/40, etc.) */
+.light [class*="bg-slate-900\\/"] {
+  background-color: rgba(248, 250, 252, 0.6) !important;
+}
+
+.light [class*="bg-slate-800\\/"] {
+  background-color: rgba(241, 245, 249, 0.65) !important;
+}
+
+.light [class*="bg-slate-700\\/"] {
+  background-color: rgba(226, 232, 240, 0.65) !important;
+}
+
+/* --- Border overrides --- */
+.light .border-slate-600 {
+  border-color: #cbd5e1 !important;
+  /* slate-300 */
+}
+
+.light .border-slate-700 {
+  border-color: #e2e8f0 !important;
+  /* slate-200 */
+}
+
+/* Border opacity variants (border-slate-700/50, etc.) */
+.light [class*="border-slate-700\\/"] {
+  border-color: rgba(226, 232, 240, 0.65) !important;
+}
+
+.light [class*="border-slate-600\\/"] {
+  border-color: rgba(203, 213, 225, 0.65) !important;
+}
+
+/* --- Hover state overrides --- */
+.light .hover\:bg-slate-800:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.light .hover\:bg-slate-700:hover {
+  background-color: #cbd5e1 !important;
+}
+
+.light .hover\:bg-slate-600:hover {
+  background-color: #94a3b8 !important;
+}
+
+.light .hover\:text-white:hover {
+  color: var(--text-primary) !important;
+}
+
+/* --- Specific component helpers --- */
+
+/* Progress bar tracks */
+.light .bg-slate-700.rounded-full,
+.light [class*="bg-slate-700"].rounded-full {
+  background-color: #e2e8f0 !important;
+}
+
+/* Skeleton loaders — handled by .bg-slate-700 override above */
+
+/* Glass surfaces in light mode */
+.light .glass {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.light .glass-subtle {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* Severity badge text — ensure readable on light backgrounds */
+.light .severity-minor {
+  color: #16a34a;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.light .severity-moderate {
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.light .severity-major {
+  color: #ea580c;
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.light .severity-contraindicated {
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* Purple (LLM) analysis text — darken for light bg */
+.light .text-purple-300 {
+  color: #7e22ce !important;
+}
+
+.light .text-purple-200 {
+  color: #7c3aed !important;
+}
+
+.light .text-purple-400 {
+  color: #9333ea !important;
+}
+
+/* Indigo patient factor badges */
+.light .text-indigo-300 {
+  color: #4338ca !important;
+}
+
+/* Emerald safer-alternative text */
+.light .text-emerald-200 {
+  color: #059669 !important;
+}
+
+/* Colored text shades used as labels — darken for readability */
+.light .text-red-300 {
+  color: #dc2626 !important;
+}
+
+.light .text-red-400 {
+  color: #dc2626 !important;
+}
+
+.light .text-emerald-400 {
+  color: #059669 !important;
+}
+
+.light .text-amber-400 {
+  color: #d97706 !important;
+}
+
+.light .text-amber-300 {
+  color: #b45309 !important;
+}
+
+.light .text-orange-400 {
+  color: #ea580c !important;
+}
+
+.light .text-blue-400 {
+  color: #2563eb !important;
+}
+
+.light .text-medical-300 {
+  color: #0d947d !important;
+}
+
+.light .text-medical-400 {
+  color: #0f7566 !important;
+}
+
+/* Blue badge text */
+.light .text-blue-400 {
+  color: #2563eb !important;
+}
+
+/* Fix white/70 overlays — these are camera/preview overlays, keep them */
+.light .text-white\/70 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.light .text-white\/40 {
+  color: rgba(100, 116, 139, 0.6) !important;
 }

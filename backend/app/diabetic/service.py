@@ -6,7 +6,7 @@ Main service for managing diabetic patient profiles and drug risk assessments.
 import asyncio
 import json
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, delete
 from sqlalchemy.orm import selectinload
@@ -153,7 +153,7 @@ class DiabeticDDIService:
             if value is not None:
                 setattr(patient, key, value)
         
-        patient.updated_at = datetime.utcnow()
+        patient.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(patient)
         
@@ -208,7 +208,7 @@ class DiabeticDDIService:
             route=data.route,
             indication=data.indication,
             is_diabetes_medication=data.is_diabetes_medication,
-            start_date=datetime.utcnow()
+            start_date=datetime.now(timezone.utc)
         )
         
         self.db.add(medication)
@@ -521,7 +521,7 @@ class DiabeticDDIService:
         
         return PatientDDIReportResponse(
             patient=self._patient_to_response(patient),
-            report_generated_at=datetime.utcnow(),
+            report_generated_at=datetime.now(timezone.utc),
             current_medications=[
                 MedicationResponse.model_validate(m) for m in medications
             ],

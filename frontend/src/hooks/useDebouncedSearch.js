@@ -29,57 +29,57 @@ export function useDebouncedSearch(searchFn, options = {}) {
   
   const timeoutRef = useRef(null)
   const abortControllerRef = useRef(null)
+  const searchFnRef = useRef(searchFn)
+  searchFnRef.current = searchFn
 
   // Perform the search
   useEffect(() => {
-    // Clear results if query is too short
     if (query.length < minLength) {
       setResults([])
       setError(null)
       return
     }
 
-    // Clear any existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
     }
 
-    // Cancel any in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
 
-    // Set up new timeout for debounced search
     timeoutRef.current = setTimeout(async () => {
       setIsLoading(true)
       setError(null)
       
-      // Create new abort controller for this request
-      abortControllerRef.current = new AbortController()
+      const controller = new AbortController()
+      abortControllerRef.current = controller
       
       try {
-        const searchResults = await searchFn(query)
-        setResults(searchResults)
-        setShowResults(true)
+        const searchResults = await searchFnRef.current(query, 10, { signal: controller.signal })
+        if (!controller.signal.aborted) {
+          setResults(searchResults)
+          setShowResults(true)
+        }
       } catch (err) {
-        // Ignore abort errors
         if (err.name !== 'AbortError') {
           console.error('Search error:', err)
           setError(err)
           setResults([])
         }
       } finally {
-        setIsLoading(false)
+        if (!controller.signal.aborted) {
+          setIsLoading(false)
+        }
       }
     }, delay)
 
-    // Cleanup function
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [query, searchFn, delay, minLength])
+  }, [query, delay, minLength])
 
   // Cleanup on unmount
   useEffect(() => {

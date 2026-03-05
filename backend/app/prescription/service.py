@@ -5,7 +5,7 @@ Orchestrates prescription upload, extraction, indexing, and chat.
 """
 import logging
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 
@@ -80,7 +80,7 @@ class PrescriptionService:
             prescription.raw_text = result.raw_text
             prescription.extraction_confidence = result.confidence
             prescription.vision_model_used = result.model_used
-            prescription.processed_at = datetime.utcnow()
+            prescription.processed_at = datetime.now(timezone.utc)
             
             if result.error and not result.medicines:
                 prescription.status = "failed"

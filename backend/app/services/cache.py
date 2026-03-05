@@ -46,14 +46,28 @@ async def get_redis_client() -> Optional[redis.Redis]:
     """
     Return a shared async Redis client if REDIS_URL is set and reachable.
     
+    Re-validates the connection on each call and reconnects if stale.
+    
     Returns:
         Redis client instance or None if unavailable
     """
     global _redis_client
+    
+    # If we have an existing client, verify it's still alive
     if _redis_client:
-        return _redis_client
+        try:
+            await _redis_client.ping()
+            return _redis_client
+        except Exception:
+            logger.warning("Redis connection lost, attempting reconnect...")
+            try:
+                await _redis_client.close()
+            except Exception:
+                pass
+            _redis_client = None
 
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    from app.config import get_settings
+    redis_url = get_settings().REDIS_URL
     try:
         _redis_client = redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
         # quick ping to validate connection

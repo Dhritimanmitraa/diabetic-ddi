@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { getApiBaseUrl } from '../utils/platform';
+const API_BASE = getApiBaseUrl();
 
 /**
  * ExplainabilityView Component
@@ -88,7 +89,7 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700"
+            className="bg-[var(--bg-elevated)] rounded-2xl p-6 shadow-xl border border-[var(--border)]"
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -97,7 +98,7 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
                         <Brain className="w-6 h-6 text-purple-400" />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white">AI Explanation</h3>
+                        <h3 className="text-xl font-bold text-[var(--text-primary)]">AI Explanation</h3>
                         <p className="text-sm text-slate-400">
                             Why the model made this prediction
                         </p>
@@ -108,7 +109,7 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
                 <select
                     value={method}
                     onChange={(e) => setMethod(e.target.value)}
-                    className="bg-slate-800 text-white px-3 py-2 rounded-lg border border-slate-600 text-sm"
+                    className="bg-[var(--bg-elevated)] text-[var(--text-primary)] px-3 py-2 rounded-lg border border-[var(--border)] text-sm"
                 >
                     <option value="auto">Auto (SHAP preferred)</option>
                     <option value="shap">SHAP</option>
@@ -153,7 +154,7 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
                     )}
 
                     {/* Natural Language Explanation */}
-                    <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
+                    <div className="bg-[var(--bg-surface)] rounded-xl p-5 border border-[var(--border)]">
                         <div className="flex items-start gap-3">
                             <Lightbulb className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
                             <p className="text-slate-300 leading-relaxed">
@@ -163,8 +164,8 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
                     </div>
 
                     {/* Feature Importance Summary */}
-                    <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700">
-                        <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                    <div className="bg-[var(--bg-surface)] rounded-xl p-5 border border-[var(--border)]">
+                        <h4 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
                             <BarChart3 className="w-5 h-5 text-blue-400" />
                             Feature Importance Breakdown
                         </h4>
@@ -239,10 +240,10 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
 
                     {/* Expandable Waterfall Data */}
                     {explanation.waterfall_data?.shap_values && (
-                        <div className="border-t border-slate-700 pt-4">
+                        <div className="border-t border-[var(--border)] pt-4">
                             <button
                                 onClick={() => setExpanded(!expanded)}
-                                className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                                className="flex items-center gap-2 text-slate-400 hover:text-[var(--text-primary)] transition-colors"
                             >
                                 {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                 <span className="text-sm">
@@ -258,7 +259,7 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
                                         exit={{ height: 0, opacity: 0 }}
                                         className="mt-4 overflow-hidden"
                                     >
-                                        <div className="bg-slate-900 rounded-lg p-4 font-mono text-xs">
+                                        <div className="bg-[var(--bg-elevated)] rounded-lg p-4 font-mono text-xs">
                                             <p className="text-slate-400 mb-2">
                                                 Base value: {explanation.waterfall_data.base_value?.toFixed(4)}
                                             </p>
@@ -278,7 +279,7 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
                     {/* Method Badge */}
                     <div className="flex items-center justify-end gap-2 text-xs text-slate-500">
                         <span>Explained using</span>
-                        <span className="px-2 py-1 bg-slate-800 rounded-md text-slate-400 uppercase">
+                        <span className="px-2 py-1 bg-[var(--bg-elevated)] rounded-md text-slate-400 uppercase">
                             {explanation.explanation_method}
                         </span>
                     </div>

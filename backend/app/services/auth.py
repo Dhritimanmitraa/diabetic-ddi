@@ -6,7 +6,8 @@ from fastapi import Header, HTTPException, status
 
 
 def require_api_key(x_api_key: str = Header(None, convert_underscores=False)) -> None:
-    expected = os.getenv("API_KEY")
+    from app.config import get_settings
+    expected = get_settings().API_KEY
     if expected and x_api_key == expected:
         return
     raise HTTPException(

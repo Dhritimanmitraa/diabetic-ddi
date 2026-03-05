@@ -4,14 +4,14 @@ import {
   Brain, BarChart3, TrendingUp,
   RefreshCw, Award
 } from 'lucide-react'
+import usePageTitle from '../hooks/usePageTitle'
+import { getMLModelInfo, getMLComparison } from '../services/api'
 
 /**
- * ModelDashboard Component
- * 
- * Displays ML model performance metrics, optimization comparison results,
- * and feature importance visualization.
+ * ModelDashboard — ML model performance metrics and optimization comparison
  */
 function ModelDashboard() {
+  usePageTitle('ML Dashboard')
   const [modelInfo, setModelInfo] = useState(null)
   const [comparison, setComparison] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -26,14 +26,10 @@ function ModelDashboard() {
     setError(null)
 
     try {
-      // Fetch model info
-      const infoRes = await fetch('http://localhost:8000/ml/model-info')
-      const infoData = await infoRes.json()
+      const infoData = await getMLModelInfo()
       setModelInfo(infoData)
 
-      // Fetch comparison data
-      const compRes = await fetch('http://localhost:8000/ml/comparison')
-      const compData = await compRes.json()
+      const compData = await getMLComparison()
       setComparison(compData)
     } catch (err) {
       setError('Failed to load model data')
@@ -45,10 +41,10 @@ function ModelDashboard() {
 
   if (loading) {
     return (
-      <div className="glass rounded-3xl p-8 max-w-4xl mx-auto">
+      <div className="glass rounded-2xl p-8 max-w-4xl mx-auto mt-24">
         <div className="flex items-center justify-center py-12">
           <div className="spinner"></div>
-          <span className="ml-4 text-slate-400">Loading model data...</span>
+          <span className="ml-4 text-[var(--text-secondary)] text-sm">Loading model data...</span>
         </div>
       </div>
     )
@@ -56,16 +52,16 @@ function ModelDashboard() {
 
   if (error || modelInfo?.status === 'not_loaded') {
     return (
-      <div className="glass rounded-3xl p-8 max-w-4xl mx-auto">
+      <div className="glass rounded-2xl p-8 max-w-4xl mx-auto mt-24">
         <div className="text-center py-12">
-          <Brain className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">
+          <Brain className="w-14 h-14 text-[var(--text-muted)] mx-auto mb-4" />
+          <h3 className="text-lg font-display font-semibold text-[var(--text-primary)] mb-2">
             ML Models Not Yet Trained
           </h3>
-          <p className="text-slate-400 mb-6">
+          <p className="text-[var(--text-secondary)] text-sm mb-6">
             Train the machine learning models to see predictions and metrics.
           </p>
-          <code className="px-4 py-2 bg-slate-800 rounded-lg text-medical-400 text-sm">
+          <code className="px-4 py-2 bg-[var(--bg-elevated)] rounded-lg text-medical-400 text-sm border border-[var(--border)]">
             python -m scripts.train_models
           </code>
         </div>
@@ -76,79 +72,74 @@ function ModelDashboard() {
   const models = modelInfo?.models?.model_metrics || {}
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-5 pt-24 pb-12 space-y-6">
       {/* Header */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center"
+        className="text-center mb-8"
       >
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 mb-4">
-          <Brain className="w-5 h-5 text-purple-400" />
-          <span className="text-purple-400 font-medium">ML Model Dashboard</span>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/8 border border-purple-500/12 mb-4">
+          <Brain className="w-4 h-4 text-purple-400" />
+          <span className="text-purple-400 text-xs font-medium tracking-wide">ML Model Dashboard</span>
         </div>
-        <h2 className="text-3xl font-display font-bold text-white mb-2">
+        <h2 className="text-2xl sm:text-3xl font-display font-bold text-[var(--text-primary)] mb-2 tracking-tight">
           Model Performance & Optimization
         </h2>
-        <p className="text-slate-400">
+        <p className="text-[var(--text-secondary)] text-sm">
           Bayesian-optimized models for drug interaction prediction
         </p>
       </motion.div>
 
       {/* Model Performance Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {Object.entries(models).map(([modelName, metrics], index) => (
           <ModelCard
             key={modelName}
             name={modelName}
             metrics={metrics}
-            delay={0.1 + index * 0.1}
+            delay={0.05 + index * 0.08}
           />
         ))}
-      </motion.div>
+      </div>
 
       {/* Optimization Comparison */}
       {comparison && comparison.status === 'loaded' && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="glass rounded-3xl p-8"
+          transition={{ delay: 0.2 }}
+          className="glass rounded-2xl p-6 sm:p-8"
         >
-          <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
-            <TrendingUp className="w-6 h-6 text-purple-400" />
+          <h3 className="text-base font-display font-semibold text-[var(--text-primary)] mb-5 flex items-center gap-2.5">
+            <TrendingUp className="w-5 h-5 text-purple-400" />
             Optimization Method Comparison
           </h3>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="p-4 bg-slate-800/30 rounded-xl">
-              <p className="text-slate-400 text-sm mb-1">Bayesian Wins</p>
-              <p className="text-2xl font-bold text-purple-400">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+            <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)]">
+              <p className="text-[var(--text-muted)] text-[10px] mb-1 uppercase tracking-wider font-medium">Bayesian Wins</p>
+              <p className="text-xl font-bold text-purple-400">
                 {comparison.bayesian_wins}/{comparison.total_models_compared}
               </p>
             </div>
-            <div className="p-4 bg-slate-800/30 rounded-xl">
-              <p className="text-slate-400 text-sm mb-1">Avg. Trial Reduction</p>
-              <p className="text-2xl font-bold text-green-400">
+            <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)]">
+              <p className="text-[var(--text-muted)] text-[10px] mb-1 uppercase tracking-wider font-medium">Avg. Trial Reduction</p>
+              <p className="text-xl font-bold text-green-400">
                 {comparison.average_trial_reduction_percent?.toFixed(1)}%
               </p>
             </div>
-            <div className="p-4 bg-slate-800/30 rounded-xl">
-              <p className="text-slate-400 text-sm mb-1">Optimization Method</p>
-              <p className="text-lg font-bold text-white">
+            <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)]">
+              <p className="text-[var(--text-muted)] text-[10px] mb-1 uppercase tracking-wider font-medium">Optimization Method</p>
+              <p className="text-base font-bold text-[var(--text-primary)]">
                 TPE (Bayesian)
               </p>
             </div>
           </div>
 
           {/* Detailed Comparison */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             {comparison.detailed_comparisons?.map((comp, index) => (
               <ComparisonRow key={index} data={comp} />
             ))}
@@ -159,13 +150,13 @@ function ModelDashboard() {
       {/* Feature Importance */}
       {modelInfo?.feature_importance && Object.keys(modelInfo.feature_importance).length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="glass rounded-3xl p-8"
+          transition={{ delay: 0.3 }}
+          className="glass rounded-2xl p-6 sm:p-8"
         >
-          <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-3">
-            <BarChart3 className="w-6 h-6 text-purple-400" />
+          <h3 className="text-base font-display font-semibold text-[var(--text-primary)] mb-5 flex items-center gap-2.5">
+            <BarChart3 className="w-5 h-5 text-purple-400" />
             Feature Importance
           </h3>
 
@@ -181,9 +172,9 @@ function ModelDashboard() {
       <div className="text-center">
         <button
           onClick={fetchData}
-          className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl transition-colors flex items-center gap-2 mx-auto"
+          className="px-5 py-2.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl transition-colors flex items-center gap-2 mx-auto border border-[var(--border)] text-sm font-medium"
         >
-          <RefreshCw className="w-5 h-5" />
+          <RefreshCw className="w-4 h-4" />
           Refresh Data
         </button>
       </div>
@@ -193,39 +184,41 @@ function ModelDashboard() {
 
 function ModelCard({ name, metrics, delay }) {
   const modelConfig = {
-    random_forest: { icon: '', color: 'green', label: 'Random Forest' },
-    xgboost: { icon: '', color: 'orange', label: 'XGBoost' },
-    lightgbm: { icon: '', color: 'yellow', label: 'LightGBM' },
+    random_forest: { color: 'green', label: 'Random Forest' },
+    xgboost: { color: 'orange', label: 'XGBoost' },
+    lightgbm: { color: 'amber', label: 'LightGBM' },
   }
 
-  const config = modelConfig[name] || { icon: '', color: 'purple', label: name }
+  const config = modelConfig[name] || { color: 'purple', label: name }
   const aucRoc = metrics?.auc_roc || 0
   const f1Score = metrics?.f1_score || 0
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      className="glass rounded-2xl p-6 card-hover"
+      transition={{ delay, duration: 0.3 }}
+      className="glass rounded-2xl p-5 card-hover"
     >
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl">{config.icon}</span>
+        <div className="w-9 h-9 rounded-lg bg-purple-500/8 border border-purple-500/12 flex items-center justify-center">
+          <Brain className="w-4.5 h-4.5 text-purple-400" />
+        </div>
         <div>
-          <h4 className="text-white font-semibold">{config.label}</h4>
-          <p className="text-slate-500 text-sm">Classification Model</p>
+          <h4 className="text-[var(--text-primary)] font-semibold text-sm">{config.label}</h4>
+          <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider">Classification</p>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         <MetricBar label="AUC-ROC" value={aucRoc} color="purple" />
         <MetricBar label="F1-Score" value={f1Score} color="medical" />
         <MetricBar label="Accuracy" value={metrics?.accuracy || 0} color="blue" />
       </div>
 
       {aucRoc >= 0.8 && (
-        <div className="mt-4 flex items-center gap-2 text-green-400 text-sm">
-          <Award className="w-4 h-4" />
+        <div className="mt-3.5 flex items-center gap-1.5 text-green-400 text-xs font-medium">
+          <Award className="w-3.5 h-3.5" />
           <span>High Performance</span>
         </div>
       )}
@@ -244,15 +237,15 @@ function MetricBar({ label, value, color }) {
 
   return (
     <div>
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-slate-400">{label}</span>
-        <span className="text-white font-mono">{(value * 100).toFixed(1)}%</span>
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-[var(--text-muted)]">{label}</span>
+        <span className="text-[var(--text-primary)] font-mono">{(value * 100).toFixed(1)}%</span>
       </div>
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
           className={`h-full rounded-full ${colorClasses[color] || colorClasses.purple}`}
         />
       </div>
@@ -265,29 +258,29 @@ function ComparisonRow({ data }) {
   const methods = summary.methods || {}
 
   return (
-    <div className="p-4 bg-slate-800/30 rounded-xl">
+    <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)]">
       <div className="flex items-center justify-between mb-3">
-        <h4 className="text-white font-medium capitalize">{data.model}</h4>
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${summary.winner === 'bayesian'
-          ? 'bg-purple-500/20 text-purple-400'
-          : 'bg-slate-600/20 text-slate-400'
+        <h4 className="text-[var(--text-primary)] font-medium text-sm capitalize">{data.model}</h4>
+        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider border ${summary.winner === 'bayesian'
+          ? 'bg-purple-500/10 text-purple-400 border-purple-500/15'
+          : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] border-[var(--border)]'
           }`}>
           Winner: {summary.winner || 'N/A'}
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 text-sm">
+      <div className="grid grid-cols-3 gap-3 text-sm">
         {['bayesian', 'random_search', 'grid_search'].map(method => {
           const methodData = methods[method] || {}
           return (
             <div key={method} className="text-center">
-              <p className="text-slate-500 text-xs mb-1 capitalize">
+              <p className="text-[var(--text-muted)] text-[10px] mb-1 capitalize tracking-wider">
                 {method.replace('_', ' ')}
               </p>
-              <p className="text-white font-mono">
+              <p className="text-[var(--text-primary)] font-mono text-sm">
                 {(methodData.best_score * 100 || 0).toFixed(1)}%
               </p>
-              <p className="text-slate-500 text-xs">
+              <p className="text-[var(--text-muted)] text-[10px]">
                 {methodData.n_trials || 0} trials
               </p>
             </div>
@@ -299,7 +292,6 @@ function ComparisonRow({ data }) {
 }
 
 function FeatureImportanceChart({ model, features }) {
-  // Sort features by importance
   const sortedFeatures = Object.entries(features)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
@@ -314,20 +306,20 @@ function FeatureImportanceChart({ model, features }) {
 
   return (
     <div>
-      <h4 className="text-white font-medium mb-4">{modelLabels[model] || model}</h4>
+      <h4 className="text-[var(--text-primary)] font-medium text-sm mb-3.5">{modelLabels[model] || model}</h4>
       <div className="space-y-2">
         {sortedFeatures.map(([feature, importance]) => (
           <div key={feature} className="flex items-center gap-2">
-            <span className="w-40 text-xs text-slate-400 truncate" title={feature}>
+            <span className="w-36 text-[10px] text-[var(--text-muted)] truncate" title={feature}>
               {feature.replace(/_/g, ' ')}
             </span>
-            <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-[var(--bg-elevated)] rounded-full overflow-hidden">
               <div
-                className="h-full bg-purple-500 rounded-full"
+                className="h-full bg-purple-500 rounded-full transition-all"
                 style={{ width: `${(importance / maxImportance) * 100}%` }}
               />
             </div>
-            <span className="w-12 text-xs text-slate-400 text-right">
+            <span className="w-10 text-[10px] text-[var(--text-muted)] text-right font-mono">
               {(importance * 100).toFixed(1)}%
             </span>
           </div>
@@ -338,4 +330,3 @@ function FeatureImportanceChart({ model, features }) {
 }
 
 export default ModelDashboard
-

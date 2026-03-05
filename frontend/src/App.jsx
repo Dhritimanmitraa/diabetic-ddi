@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,13 +11,14 @@ import CameraCapture from './components/CameraCapture'
 import ResultsDisplay from './components/ResultsDisplay'
 import AlternativesDisplay from './components/AlternativesDisplay'
 import MLPrediction from './components/MLPrediction'
-import ModelDashboard from './components/ModelDashboard'
-import DiabetesManager from './components/DiabetesManager'
-import PrescriptionRAG from './components/PrescriptionRAG'
-import PatientPrescriptionScanner from './components/PatientPrescriptionScanner'
 import Footer from './components/Footer'
 import FloatingElements from './components/FloatingElements'
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary'
+
+const ModelDashboard = lazy(() => import('./components/ModelDashboard'))
+const DiabetesManager = lazy(() => import('./components/DiabetesManager'))
+const PrescriptionRAG = lazy(() => import('./components/PrescriptionRAG'))
+const PatientPrescriptionScanner = lazy(() => import('./components/PatientPrescriptionScanner'))
 
 function App() {
   const [results, setResults] = useState(null)
@@ -25,14 +26,14 @@ function App() {
   const [mlPrediction, setMlPrediction] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [mlLoading, setMlLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('text') // 'text' or 'camera'
+  const [activeTab, setActiveTab] = useState('text')
 
   return (
     <ThemeProvider>
       <RouteErrorBoundary>
         <Router>
-          <div className="min-h-screen animated-gradient grid-bg relative overflow-hidden">
-            {/* Floating background elements */}
+          <div className="min-h-screen relative overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+            {/* Ambient background */}
             <FloatingElements />
 
             {/* Toast notifications */}
@@ -41,20 +42,23 @@ function App() {
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: '#172033',
-                  color: '#e2e8f0',
-                  border: '1px solid rgba(20, 184, 154, 0.2)',
+                  background: 'var(--bg-elevated)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
                 },
                 success: {
                   iconTheme: {
-                    primary: '#14b89a',
-                    secondary: '#0d1321',
+                    primary: '#14b8a6',
+                    secondary: 'var(--bg-elevated)',
                   },
                 },
                 error: {
                   iconTheme: {
                     primary: '#ef4444',
-                    secondary: '#0d1321',
+                    secondary: 'var(--bg-elevated)',
                   },
                 },
               }}
@@ -67,239 +71,206 @@ function App() {
 
             {/* Main content */}
             <main className="relative z-10">
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <ErrorBoundary>
-                      <>
-                        <Hero />
+              <Suspense fallback={
+                <div className="flex items-center justify-center min-h-[60vh]">
+                  <div className="text-center">
+                    <div className="spinner" />
+                    <p className="text-[var(--text-muted)] text-sm mt-4">Loading...</p>
+                  </div>
+                </div>
+              }>
+                <Routes>
+                  <Route
+                    path="/"
+                    element={
+                      <ErrorBoundary>
+                        <>
+                          <Hero />
 
-                        {/* Tab switcher */}
-                        <section className="max-w-4xl mx-auto px-4 py-8">
-                          <div
-                            className="flex justify-center gap-4 mb-8"
-                            role="tablist"
-                            aria-label="Input method selection"
-                          >
-                            <button
-                              onClick={() => setActiveTab('text')}
-                              role="tab"
-                              aria-selected={activeTab === 'text'}
-                              aria-controls="text-panel"
-                              id="text-tab"
-                              className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-medical-500/50 ${activeTab === 'text'
-                                ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
-                                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
-                                }`}
+                          {/* Input method tabs */}
+                          <section className="max-w-3xl mx-auto px-5 py-6">
+                            <div
+                              className="flex justify-center gap-2 mb-8 p-1 bg-[var(--bg-elevated)]/60 rounded-xl w-fit mx-auto border border-[var(--border)]"
+                              role="tablist"
+                              aria-label="Input method"
                             >
-                              <span className="flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Type Drug Names
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => setActiveTab('camera')}
-                              role="tab"
-                              aria-selected={activeTab === 'camera'}
-                              aria-controls="camera-panel"
-                              id="camera-tab"
-                              className={`px-6 py-3 rounded-xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-medical-500/50 ${activeTab === 'camera'
-                                ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
-                                : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
-                                }`}
-                            >
-                              <span className="flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                Scan with Camera
-                              </span>
-                            </button>
-                          </div>
-
-                          {/* Input section */}
-                          <AnimatePresence mode="wait">
-                            {activeTab === 'text' ? (
-                              <motion.div
-                                key="text"
-                                id="text-panel"
-                                role="tabpanel"
-                                aria-labelledby="text-tab"
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.3 }}
+                              <button
+                                onClick={() => setActiveTab('text')}
+                                role="tab"
+                                aria-selected={activeTab === 'text'}
+                                aria-controls="text-panel"
+                                id="text-tab"
+                                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'text'
+                                  ? 'bg-medical-500 text-white shadow-sm'
+                                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                  }`}
                               >
-                                <ErrorBoundary>
-                                  <InteractionChecker
-                                    setResults={setResults}
-                                    setAlternatives={setAlternatives}
-                                    setIsLoading={setIsLoading}
-                                    setMlPrediction={setMlPrediction}
-                                    setMlLoading={setMlLoading}
-                                  />
-                                </ErrorBoundary>
+                                <span className="flex items-center gap-2">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  Type Names
+                                </span>
+                              </button>
+                              <button
+                                onClick={() => setActiveTab('camera')}
+                                role="tab"
+                                aria-selected={activeTab === 'camera'}
+                                aria-controls="camera-panel"
+                                id="camera-tab"
+                                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'camera'
+                                  ? 'bg-medical-500 text-white shadow-sm'
+                                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                  }`}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  Scan Label
+                                </span>
+                              </button>
+                            </div>
+
+                            {/* Input section */}
+                            <AnimatePresence mode="wait">
+                              {activeTab === 'text' ? (
+                                <motion.div
+                                  key="text"
+                                  id="text-panel"
+                                  role="tabpanel"
+                                  aria-labelledby="text-tab"
+                                  initial={{ opacity: 0, y: 12 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -12 }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                  <ErrorBoundary>
+                                    <InteractionChecker
+                                      setResults={setResults}
+                                      setAlternatives={setAlternatives}
+                                      setIsLoading={setIsLoading}
+                                      setMlPrediction={setMlPrediction}
+                                      setMlLoading={setMlLoading}
+                                    />
+                                  </ErrorBoundary>
+                                </motion.div>
+                              ) : (
+                                <motion.div
+                                  key="camera"
+                                  id="camera-panel"
+                                  role="tabpanel"
+                                  aria-labelledby="camera-tab"
+                                  initial={{ opacity: 0, y: 12 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -12 }}
+                                  transition={{ duration: 0.2 }}
+                                >
+                                  <ErrorBoundary>
+                                    <CameraCapture
+                                      setResults={setResults}
+                                      setAlternatives={setAlternatives}
+                                      setIsLoading={setIsLoading}
+                                      setMlPrediction={setMlPrediction}
+                                      setMlLoading={setMlLoading}
+                                    />
+                                  </ErrorBoundary>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </section>
+
+                          {/* Loading overlay */}
+                          <AnimatePresence>
+                            {isLoading && (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 z-50 flex items-center justify-center"
+                                style={{ backgroundColor: 'var(--loading-overlay-bg, rgba(10, 15, 28, 0.85))', backdropFilter: 'blur(8px)' }}
+                                role="status"
+                                aria-live="polite"
+                                aria-label="Loading"
+                              >
+                                <div className="text-center">
+                                  <div className="flex flex-col items-center gap-5">
+                                    <div className="spinner" />
+                                    <div>
+                                      <p className="text-medical-400 font-medium text-sm">Analyzing interactions...</p>
+                                      <p className="text-[var(--text-muted)] text-xs mt-1.5">Checking 42M+ interactions</p>
+                                    </div>
+                                  </div>
+                                </div>
                               </motion.div>
-                            ) : (
+                            )}
+                          </AnimatePresence>
+
+                          {/* Results */}
+                          <AnimatePresence>
+                            {results && (
                               <motion.div
-                                key="camera"
-                                id="camera-panel"
-                                role="tabpanel"
-                                aria-labelledby="camera-tab"
-                                initial={{ opacity: 0, y: 20 }}
+                                initial={{ opacity: 0, y: 24 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.3 }}
+                                exit={{ opacity: 0, y: 24 }}
+                                transition={{ duration: 0.35 }}
                               >
                                 <ErrorBoundary>
-                                  <CameraCapture
-                                    setResults={setResults}
-                                    setAlternatives={setAlternatives}
-                                    setIsLoading={setIsLoading}
-                                    setMlPrediction={setMlPrediction}
-                                    setMlLoading={setMlLoading}
-                                  />
+                                  <ResultsDisplay results={results} />
+                                </ErrorBoundary>
+
+                                <section className="max-w-3xl mx-auto px-5 py-4">
+                                  <ErrorBoundary>
+                                    <MLPrediction prediction={mlPrediction} isLoading={mlLoading} />
+                                  </ErrorBoundary>
+                                </section>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Alternatives */}
+                          <AnimatePresence>
+                            {alternatives && results?.has_interaction && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 24 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 24 }}
+                                transition={{ duration: 0.35, delay: 0.1 }}
+                              >
+                                <ErrorBoundary>
+                                  <AlternativesDisplay alternatives={alternatives} />
                                 </ErrorBoundary>
                               </motion.div>
                             )}
                           </AnimatePresence>
-                        </section>
+                        </>
+                      </ErrorBoundary>
+                    }
+                  />
 
-                        {/* Loading state */}
-                        <AnimatePresence>
-                          {isLoading && (
-                            <motion.div
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center"
-                              role="status"
-                              aria-live="polite"
-                              aria-label="Loading"
-                            >
-                              <div className="text-center">
-                                <div className="flex flex-col items-center gap-4">
-                                  {/* Animated pills */}
-                                  <div className="flex gap-3" aria-hidden="true">
-                                    <motion.div
-                                      animate={{ y: [0, -15, 0] }}
-                                      transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                                      className="pill-loader"
-                                    />
-                                    <motion.div
-                                      animate={{ y: [0, -15, 0] }}
-                                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                                      className="pill-loader"
-                                    />
-                                    <motion.div
-                                      animate={{ y: [0, -15, 0] }}
-                                      transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                                      className="pill-loader"
-                                    />
-                                  </div>
-                                  <p className="text-medical-400 font-medium">Analyzing drug interactions...</p>
-                                  <p className="text-slate-500 text-sm">Checking 42M+ interactions database</p>
-                                </div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Results section */}
-                        <AnimatePresence>
-                          {results && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 40 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 40 }}
-                              transition={{ duration: 0.5 }}
-                            >
-                              <ErrorBoundary>
-                                <ResultsDisplay results={results} />
-                              </ErrorBoundary>
-
-                              {/* ML Prediction */}
-                              <section className="max-w-4xl mx-auto px-4 py-4">
-                                <ErrorBoundary>
-                                  <MLPrediction prediction={mlPrediction} isLoading={mlLoading} />
-                                </ErrorBoundary>
-                              </section>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Alternatives section */}
-                        <AnimatePresence>
-                          {alternatives && results?.has_interaction && (
-                            <motion.div
-                              initial={{ opacity: 0, y: 40 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 40 }}
-                              transition={{ duration: 0.5, delay: 0.2 }}
-                            >
-                              <ErrorBoundary>
-                                <AlternativesDisplay alternatives={alternatives} />
-                              </ErrorBoundary>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </>
-                    </ErrorBoundary>
-                  }
-                />
-
-                {/* ML Dashboard Route */}
-                <Route
-                  path="/ml-dashboard"
-                  element={
-                    <ErrorBoundary>
-                      <ModelDashboard />
-                    </ErrorBoundary>
-                  }
-                />
-
-                {/* Diabetic Patient DDI Route */}
-                <Route
-                  path="/diabetes"
-                  element={
-                    <ErrorBoundary>
-                      <DiabetesManager />
-                    </ErrorBoundary>
-                  }
-                />
-
-                {/* Prescription RAG Route */}
-                <Route
-                  path="/prescription"
-                  element={
-                    <ErrorBoundary>
-                      <PrescriptionRAG />
-                    </ErrorBoundary>
-                  }
-                />
-
-                {/* Patient Prescription Scanner (Integrated) */}
-                <Route
-                  path="/patient-prescription"
-                  element={
-                    <ErrorBoundary>
-                      <PatientPrescriptionScanner />
-                    </ErrorBoundary>
-                  }
-                />
-              </Routes>
+                  <Route path="/ml-dashboard" element={<ErrorBoundary><ModelDashboard /></ErrorBoundary>} />
+                  <Route path="/diabetes" element={<ErrorBoundary><DiabetesManager /></ErrorBoundary>} />
+                  <Route path="/prescription" element={<ErrorBoundary><PrescriptionRAG /></ErrorBoundary>} />
+                  <Route path="/patient-prescription" element={<ErrorBoundary><PatientPrescriptionScanner /></ErrorBoundary>} />
+                  <Route path="*" element={
+                    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-5">
+                      <h1 className="text-6xl font-bold text-medical-400 mb-4">404</h1>
+                      <p className="text-[var(--text-secondary)] text-lg mb-6">Page not found</p>
+                      <a href="/" className="px-5 py-2.5 bg-medical-500 hover:bg-medical-400 text-white rounded-xl text-sm font-medium transition-colors">
+                        Back to Home
+                      </a>
+                    </div>
+                  } />
+                </Routes>
+              </Suspense>
             </main>
 
-            {/* Footer */}
             <Footer />
           </div>
         </Router>
       </RouteErrorBoundary>
-    </ThemeProvider >
+    </ThemeProvider>
   )
 }
 

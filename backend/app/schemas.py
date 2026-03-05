@@ -1,5 +1,5 @@
 """Pydantic schemas for API request/response validation."""
-from pydantic import BaseModel, Field, field_validator, constr
+from pydantic import BaseModel, ConfigDict, Field, field_validator, constr
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -39,13 +39,15 @@ class DrugCreate(DrugBase):
 
 class DrugResponse(DrugBase):
     """Schema for drug response."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     drugbank_id: Optional[str] = None
+    mechanism: Optional[str] = None
+    indication: Optional[str] = None
+    molecular_weight: Optional[float] = None
     is_approved: bool = True
     created_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class DrugSearch(BaseModel):
@@ -75,6 +77,8 @@ class InteractionCreate(InteractionBase):
 
 class InteractionResponse(InteractionBase):
     """Schema for interaction response."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     drug1: DrugResponse
     drug2: DrugResponse
@@ -82,9 +86,6 @@ class InteractionResponse(InteractionBase):
     evidence_level: Optional[str] = None
     confidence_score: float
     created_at: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class InteractionCheckRequest(BaseModel):

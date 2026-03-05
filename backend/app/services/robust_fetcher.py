@@ -124,7 +124,8 @@ class RobustDrugFetcher:
     PUBCHEM_BASE = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
     
     def __init__(self, api_key_openfda: Optional[str] = None):
-        self.api_key_openfda = api_key_openfda or os.getenv("OPENFDA_API_KEY", "")
+        from app.config import get_settings
+        self.api_key_openfda = api_key_openfda or get_settings().OPENFDA_API_KEY
         self.client = get_api_client()
     
     # ========== DailyMed (Primary Source) ==========

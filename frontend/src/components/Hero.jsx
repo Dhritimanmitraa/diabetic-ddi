@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Shield, Zap, Search, AlertTriangle, Database, Activity, Clock } from 'lucide-react'
+import { Shield, Zap, Search, AlertTriangle, Database, Activity, Sparkles, ArrowRight } from 'lucide-react'
 
 function AnimatedCounter({ target, suffix = '', duration = 2000 }) {
   const [count, setCount] = useState(0)
@@ -17,330 +17,238 @@ function AnimatedCounter({ target, suffix = '', duration = 2000 }) {
     return () => clearInterval(timer)
   }, [target, duration])
 
-  return <span className="counter-animate">{count.toLocaleString()}{suffix}</span>
+  return <span>{count.toLocaleString()}{suffix}</span>
 }
 
 function Hero() {
   return (
-    <section className="pt-32 pb-16 px-4">
-      <div className="max-w-6xl mx-auto text-center">
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-medical-500/10 border border-medical-500/20 mb-8"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-medical-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-medical-500"></span>
-          </span>
-          <span className="text-medical-400 text-sm font-medium">
-            Powered by AI & 42M+ Drug Interactions Database
-          </span>
-        </motion.div>
+    <section className="pt-28 pb-8 px-5">
+      <div className="max-w-5xl mx-auto">
+        {/* Top section — centered intro */}
+        <div className="text-center mb-20">
+          {/* Status badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-medical-500/8 border border-medical-500/15 mb-7"
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-medical-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-medical-500"></span>
+            </span>
+            <span className="text-medical-400 text-xs font-medium tracking-wide">
+              42M+ Drug Interactions Database
+            </span>
+          </motion.div>
 
-        {/* Main heading */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="font-display font-bold text-5xl md:text-7xl text-white mb-6 leading-tight"
-        >
-          Check Drug Interactions
-          <br />
-          <span className="gradient-text">Stay Safe</span>
-        </motion.h1>
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+            className="font-display font-extrabold text-4xl sm:text-5xl md:text-6xl text-[var(--text-primary)] mb-5 leading-[1.1] tracking-tight"
+          >
+            Verify Drug Interactions.
+            <br />
+            <span className="gradient-text">Protect Patient Safety.</span>
+          </motion.h1>
 
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-xl text-slate-400 max-w-2xl mx-auto mb-8 font-body"
-        >
-          Instantly verify if your medications are safe to use together.
-          Get AI-powered recommendations for safer alternatives when needed.
-        </motion.p>
+          {/* Subtitle */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-base sm:text-lg text-[var(--text-secondary)] max-w-xl mx-auto mb-10 leading-relaxed"
+          >
+            Check if your medications are safe together. Get AI-powered severity
+            analysis and safer alternatives — instantly.
+          </motion.p>
 
-        {/* Animated Statistics */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.25 }}
-          className="flex flex-wrap justify-center gap-8 mb-12"
-        >
-          <div className="flex items-center gap-3 px-4 py-2">
-            <div className="w-10 h-10 rounded-lg bg-medical-500/10 flex items-center justify-center">
-              <Database className="w-5 h-5 text-medical-400" />
-            </div>
-            <div className="text-left">
-              <div className="text-2xl font-bold text-white">
-                <AnimatedCounter target={42} suffix="M+" duration={1500} />
-              </div>
-              <div className="text-xs text-slate-500">Interactions</div>
-            </div>
+          {/* Stats row */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="flex flex-wrap justify-center gap-8 sm:gap-12"
+          >
+            <Stat icon={<Database className="w-4 h-4" />} value={<AnimatedCounter target={42} suffix="M+" duration={1500} />} label="Interactions" />
+            <Stat icon={<Activity className="w-4 h-4" />} value={<AnimatedCounter target={100} suffix="K+" duration={1500} />} label="Drugs Indexed" />
+            <Stat icon={<Shield className="w-4 h-4" />} value="99.9%" label="Uptime" />
+          </motion.div>
+        </div>
+
+        {/* How it Works */}
+        <div id="how-it-works" className="mb-24">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="font-display font-bold text-2xl sm:text-3xl text-[var(--text-primary)] mb-3 tracking-tight">
+              How <span className="gradient-text">DrugGuard</span> Works
+            </h2>
+            <p className="text-[var(--text-secondary)] text-sm max-w-lg mx-auto">
+              Three steps to safer medication management.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <StepCard
+              number="01"
+              title="Enter Medications"
+              description="Type drug names or scan labels. Our system recognizes thousands of medications and their variants."
+              icon={<Search className="w-5 h-5" />}
+              delay={0.1}
+            />
+            <StepCard
+              number="02"
+              title="AI Analysis"
+              description="A hybrid system: clinical rules check 42M+ interactions first, then ML models assess personalized risk."
+              icon={<Sparkles className="w-5 h-5" />}
+              delay={0.2}
+            />
+            <StepCard
+              number="03"
+              title="Clear Results"
+              description="Get severity levels, plain-language explanations, and safe alternative suggestions when needed."
+              icon={<Shield className="w-5 h-5" />}
+              delay={0.3}
+            />
           </div>
-          <div className="flex items-center gap-3 px-4 py-2">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <Activity className="w-5 h-5 text-purple-400" />
-            </div>
-            <div className="text-left">
-              <div className="text-2xl font-bold text-white">
-                <AnimatedCounter target={100} suffix="K+" duration={1500} />
-              </div>
-              <div className="text-xs text-slate-500">Drugs Indexed</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 px-4 py-2">
-            <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-green-400" />
-            </div>
-            <div className="text-left">
-              <div className="text-2xl font-bold text-white">99.9%</div>
-              <div className="text-xs text-slate-500">Uptime</div>
-            </div>
-          </div>
-        </motion.div>
+        </div>
 
-        {/* Feature cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto"
-        >
-          <FeatureCard
-            icon={<Search className="w-6 h-6" />}
-            title="Type or Scan"
-            description="Enter drug names or use your camera to scan medication labels"
-            delay={0.4}
-          />
-          <FeatureCard
-            icon={<Zap className="w-6 h-6" />}
-            title="Instant Results"
-            description="Get real-time interaction analysis with severity levels"
-            delay={0.5}
-          />
-          <FeatureCard
-            icon={<Shield className="w-6 h-6" />}
-            title="Safe Alternatives"
-            description="Receive AI-recommended safer medication substitutes"
-            delay={0.6}
-          />
-        </motion.div>
+        {/* Features */}
+        <div id="features" className="mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="font-display font-bold text-2xl sm:text-3xl text-[var(--text-primary)] mb-3 tracking-tight">
+              Built for <span className="gradient-text">Medication Safety</span>
+            </h2>
+            <p className="text-[var(--text-secondary)] text-sm max-w-lg mx-auto">
+              Combining AI, clinical rules, and real-time data analysis.
+            </p>
+          </motion.div>
 
-        {/* Warning notice */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FeatureCard
+              icon={<Database className="w-5 h-5" />}
+              title="42M+ Interactions"
+              description="TWOSIDES, OFFSIDES, and DrugBank databases combined."
+              delay={0.1}
+            />
+            <FeatureCard
+              icon={<Zap className="w-5 h-5" />}
+              title="ML Predictions"
+              description="XGBoost and Random Forest trained on clinical data."
+              delay={0.15}
+            />
+            <FeatureCard
+              icon={<Search className="w-5 h-5" />}
+              title="SHAP Explainability"
+              description="Understand why a drug pair is flagged as risky."
+              delay={0.2}
+            />
+            <FeatureCard
+              icon={<AlertTriangle className="w-5 h-5" />}
+              title="Diabetic Safety"
+              description="eGFR monitoring and nephropathy considerations."
+              delay={0.25}
+            />
+            <FeatureCard
+              icon={<Shield className="w-5 h-5" />}
+              title="Rules-First"
+              description="Clinical contraindications always override ML."
+              delay={0.3}
+            />
+            <FeatureCard
+              icon={<Sparkles className="w-5 h-5" />}
+              title="LLM Explanations"
+              description="Complex findings translated to plain language."
+              delay={0.35}
+            />
+          </div>
+        </div>
+
+        {/* Disclaimer */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-12 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-warning-500/10 border border-warning-500/20"
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-warning-500/6 border border-warning-500/12 text-center"
         >
-          <AlertTriangle className="w-4 h-4 text-warning-400" />
-          <span className="text-warning-400 text-sm">
-            This tool is for informational purposes only. Always consult a healthcare professional.
+          <AlertTriangle className="w-3.5 h-3.5 text-warning-500 flex-shrink-0" />
+          <span className="text-warning-600 dark:text-warning-400 text-xs">
+            For informational purposes only. Always consult a healthcare professional.
           </span>
         </motion.div>
       </div>
-
-      {/* How it Works Section */}
-      <div id="how-it-works" className="max-w-6xl mx-auto px-4 py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="font-display font-bold text-3xl md:text-4xl text-white mb-4">
-            How <span className="gradient-text">DrugGuard</span> Works
-          </h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
-            A simple 3-step process to check your medications for potential interactions.
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <StepCard
-            number="1"
-            title="Enter Your Medications"
-            description="Type the names of the drugs you're taking or scan their labels using your camera. Our system recognizes thousands of medication names."
-            delay={0.1}
-          />
-          <StepCard
-            number="2"
-            title="AI Analyzes Interactions"
-            description="Our hybrid system checks 42M+ interactions using clinical rules first, then ML models for personalized risk assessment."
-            delay={0.2}
-          />
-          <StepCard
-            number="3"
-            title="Get Clear Results"
-            description="Receive instant results with severity levels, explanations you can understand, and safe alternative suggestions when needed."
-            delay={0.3}
-          />
-        </div>
-
-        {/* Visual flow diagram */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-12 glass-light rounded-2xl p-8 border border-slate-700/50"
-        >
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4 text-center">
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-medical-500/20 flex items-center justify-center text-medical-400 mb-2">
-                <Search className="w-8 h-8" />
-              </div>
-              <span className="text-white font-medium">Input</span>
-            </div>
-            <div className="text-medical-400 text-2xl hidden md:block">→</div>
-            <div className="text-medical-400 text-2xl md:hidden">↓</div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-danger-500/20 flex items-center justify-center text-danger-400 mb-2">
-                <Shield className="w-8 h-8" />
-              </div>
-              <span className="text-white font-medium">Rules Check</span>
-            </div>
-            <div className="text-medical-400 text-2xl hidden md:block">→</div>
-            <div className="text-medical-400 text-2xl md:hidden">↓</div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-warning-500/20 flex items-center justify-center text-warning-400 mb-2">
-                <Zap className="w-8 h-8" />
-              </div>
-              <span className="text-white font-medium">ML Analysis</span>
-            </div>
-            <div className="text-medical-400 text-2xl hidden md:block">→</div>
-            <div className="text-medical-400 text-2xl md:hidden">↓</div>
-            <div className="flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-success-500/20 flex items-center justify-center text-success-400 mb-2">
-                <AlertTriangle className="w-8 h-8" />
-              </div>
-              <span className="text-white font-medium">Results</span>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Features Section */}
-      <div id="features" className="max-w-6xl mx-auto px-4 py-20">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <h2 className="font-display font-bold text-3xl md:text-4xl text-white mb-4">
-            Powerful Features for <span className="gradient-text">Medication Safety</span>
-          </h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
-            DrugGuard combines AI, clinical rules, and real-time data to protect you from harmful drug interactions.
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <FeatureBox
-            icon={<Shield className="w-8 h-8" />}
-            title="42M+ Drug Interactions"
-            description="Powered by TWOSIDES, OFFSIDES, and DrugBank databases with over 42 million verified drug-drug interactions."
-            delay={0.1}
-          />
-          <FeatureBox
-            icon={<Zap className="w-8 h-8" />}
-            title="ML-Powered Predictions"
-            description="XGBoost and Random Forest models trained on real clinical data to predict interaction severity."
-            delay={0.2}
-          />
-          <FeatureBox
-            icon={<Search className="w-8 h-8" />}
-            title="SHAP Explainability"
-            description="Understand WHY a drug is risky with feature attribution that shows contributing factors."
-            delay={0.3}
-          />
-          <FeatureBox
-            icon={<AlertTriangle className="w-8 h-8" />}
-            title="Diabetic Patient Safety"
-            description="Specialized module for diabetic patients with eGFR monitoring and nephropathy considerations."
-            delay={0.4}
-          />
-          <FeatureBox
-            icon={<Shield className="w-8 h-8" />}
-            title="Rules-First Architecture"
-            description="Clinical rules ALWAYS take priority over ML predictions for contraindications and fatal combinations."
-            delay={0.5}
-          />
-          <FeatureBox
-            icon={<Zap className="w-8 h-8" />}
-            title="Patient-Friendly Explanations"
-            description="LLM-powered explanations translate complex medical findings into simple, understandable language."
-            delay={0.6}
-          />
-        </div>
-      </div>
     </section>
+  )
+}
+
+/* -------------------------------------------------- */
+/*  Sub-components                                     */
+/* -------------------------------------------------- */
+
+function Stat({ icon, value, label }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="w-9 h-9 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center justify-center text-medical-400">
+        {icon}
+      </div>
+      <div className="text-left">
+        <div className="text-xl font-bold text-[var(--text-primary)] tracking-tight">{value}</div>
+        <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider font-medium">{label}</div>
+      </div>
+    </div>
+  )
+}
+
+function StepCard({ number, title, description, icon, delay }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay }}
+      className="glass-subtle rounded-2xl p-6 group card-hover"
+    >
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-xs font-bold text-medical-500 bg-medical-500/8 px-2.5 py-1 rounded-md tracking-wider">
+          {number}
+        </span>
+        <div className="w-8 h-8 rounded-lg bg-medical-500/8 flex items-center justify-center text-medical-400">
+          {icon}
+        </div>
+      </div>
+      <h3 className="font-display font-semibold text-base text-[var(--text-primary)] mb-2">{title}</h3>
+      <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{description}</p>
+    </motion.div>
   )
 }
 
 function FeatureCard({ icon, title, description, delay }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
-      whileHover={{ y: -4, scale: 1.02 }}
-      className="glass-light rounded-2xl p-6 text-left card-hover"
-    >
-      <div className="w-12 h-12 rounded-xl bg-medical-500/10 flex items-center justify-center text-medical-400 mb-4">
-        {icon}
-      </div>
-      <h3 className="font-display font-semibold text-lg text-white mb-2">{title}</h3>
-      <p className="text-slate-400 text-sm">{description}</p>
-    </motion.div>
-  )
-}
-
-function FeatureBox({ icon, title, description, delay }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.5, delay }}
-      whileHover={{ y: -4, borderColor: 'rgba(20, 184, 154, 0.5)' }}
-      className="glass-light rounded-2xl p-6 border border-slate-700/50 hover:border-medical-500/50 transition-all duration-300"
+      transition={{ duration: 0.35, delay }}
+      className="glass-subtle rounded-xl p-5 group card-hover"
     >
-      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-medical-500/20 to-medical-600/20 flex items-center justify-center text-medical-400 mb-4">
+      <div className="w-10 h-10 rounded-lg bg-medical-500/8 flex items-center justify-center text-medical-400 mb-3.5">
         {icon}
       </div>
-      <h3 className="font-display font-semibold text-xl text-white mb-3">{title}</h3>
-      <p className="text-slate-400">{description}</p>
-    </motion.div>
-  )
-}
-
-function StepCard({ number, title, description, delay }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.5, delay }}
-      className="glass-light rounded-2xl p-6 border border-slate-700/50 text-center relative"
-    >
-      <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-medical-500 text-white flex items-center justify-center font-bold text-lg shadow-lg shadow-medical-500/30">
-        {number}
-      </div>
-      <div className="pt-4">
-        <h3 className="font-display font-semibold text-xl text-white mb-3">{title}</h3>
-        <p className="text-slate-400">{description}</p>
-      </div>
+      <h3 className="font-display font-semibold text-sm text-[var(--text-primary)] mb-1.5">{title}</h3>
+      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">{description}</p>
     </motion.div>
   )
 }
 
 export default Hero
-

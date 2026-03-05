@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getSideEffects as fetchSideEffects } from '../services/api'
 
 /**
  * SideEffects Component
@@ -11,20 +12,14 @@ function SideEffects({ drugName }) {
     const [error, setError] = useState(null)
     const [isExpanded, setIsExpanded] = useState(false)
 
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
     useEffect(() => {
         if (!drugName) return
 
-        const fetchSideEffects = async () => {
+        const loadSideEffects = async () => {
             setLoading(true)
             setError(null)
             try {
-                const response = await fetch(
-                    `${API_BASE}/drugs/${encodeURIComponent(drugName)}/side-effects?limit=30`
-                )
-                if (!response.ok) throw new Error('Failed to fetch side effects')
-                const data = await response.json()
+                const data = await fetchSideEffects(drugName, 30)
                 setSideEffects(data)
             } catch (err) {
                 setError(err.message)
@@ -33,8 +28,8 @@ function SideEffects({ drugName }) {
             }
         }
 
-        fetchSideEffects()
-    }, [drugName, API_BASE])
+        loadSideEffects()
+    }, [drugName])
 
     if (!drugName) return null
 

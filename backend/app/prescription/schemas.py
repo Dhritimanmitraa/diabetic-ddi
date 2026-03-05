@@ -1,7 +1,7 @@
 """
 Pydantic schemas for Prescription RAG Module.
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
@@ -39,13 +39,12 @@ class MedicineCreate(MedicineBase):
 
 class MedicineResponse(MedicineBase):
     """Medicine response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     prescription_id: int
     extraction_confidence: Optional[float] = None
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 # ============== Prescription Schemas ==============
@@ -59,6 +58,8 @@ class PrescriptionCreate(BaseModel):
 
 class PrescriptionResponse(BaseModel):
     """Prescription response schema."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     filename: Optional[str] = None
     file_type: Optional[str] = None
@@ -69,9 +70,6 @@ class PrescriptionResponse(BaseModel):
     processed_at: Optional[datetime] = None
     medicines: List[MedicineResponse] = []
     error_message: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class PrescriptionUploadResponse(BaseModel):

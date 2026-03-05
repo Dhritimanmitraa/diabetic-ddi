@@ -12,7 +12,7 @@ import aiohttp
 import json
 import os
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from app.services.cache import cache_get_json, cache_set_json
@@ -366,7 +366,7 @@ class DrugDataFetcher:
             "drugs": all_drugs,
             "interactions": all_interactions,
             "metadata": {
-                "fetched_at": datetime.utcnow().isoformat(),
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
                 "sources": ["openfda", "rxnorm"],
                 "drug_count": len(all_drugs),
                 "interaction_count": len(all_interactions)

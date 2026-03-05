@@ -6,7 +6,8 @@ import {
     AlertTriangle, Shield, Camera, User, Loader2, XCircle, SwitchCamera
 } from 'lucide-react'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { getApiBaseUrl } from '../utils/platform'
+const API_URL = getApiBaseUrl()
 
 /**
  * PatientPrescriptionScanner Component
@@ -316,10 +317,10 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center mb-8"
             >
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
                     <span className="text-medical-400">Patient</span> Prescription Scanner
                 </h2>
-                <p className="text-slate-400">
+                <p className="text-[var(--text-secondary)]">
                     Scan prescriptions and get personalized drug risk analysis for diabetic patients
                 </p>
             </motion.div>
@@ -351,7 +352,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                     ? 'bg-medical-500 text-white'
                                     : isPast
                                         ? 'bg-medical-500/20 text-medical-400'
-                                        : 'bg-slate-800/50 text-slate-500'
+                                        : 'bg-[var(--bg-elevated)]/50 text-[var(--text-muted)]'
                                     } ${step.id !== 'select' && !selectedPatient ? 'opacity-50 cursor-not-allowed' : ''}`}
                             >
                                 <Icon className="w-4 h-4" />
@@ -375,7 +376,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                         exit={{ opacity: 0, y: -20 }}
                         className="glass rounded-2xl p-6"
                     >
-                        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
                             <User className="w-5 h-5 text-medical-400" />
                             Select Diabetic Patient
                         </h3>
@@ -385,7 +386,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                 <Loader2 className="w-8 h-8 animate-spin text-medical-400 mx-auto" />
                             </div>
                         ) : patients.length === 0 ? (
-                            <div className="text-center py-8 text-slate-400">
+                            <div className="text-center py-8 text-[var(--text-secondary)]">
                                 <p>No patients found. Create a patient in the Diabetes Manager first.</p>
                             </div>
                         ) : (
@@ -396,13 +397,13 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                         onClick={() => handlePatientSelect(patient)}
                                         className={`p-4 rounded-xl text-left transition-all border ${selectedPatient?.id === patient.id
                                             ? 'bg-medical-500/20 border-medical-500'
-                                            : 'bg-slate-800/50 border-slate-700/50 hover:border-medical-500/50'
+                                            : 'bg-[var(--bg-elevated)]/50 border-[var(--border)]/50 hover:border-medical-500/50'
                                             }`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="font-medium text-white">{patient.name || patient.patient_id}</p>
-                                                <p className="text-sm text-slate-400">
+                                                <p className="font-medium text-[var(--text-primary)]">{patient.name || patient.patient_id}</p>
+                                                <p className="text-sm text-[var(--text-secondary)]">
                                                     {(patient.diabetes_type || 'type_2').replace('_', ' ').toUpperCase()}
                                                     {patient.age && ` • ${patient.age} years`}
                                                 </p>
@@ -442,8 +443,8 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                         <User className="w-5 h-5 text-medical-400" />
                                     </div>
                                     <div>
-                                        <p className="font-medium text-white">{selectedPatient.name || selectedPatient.patient_id}</p>
-                                        <p className="text-xs text-slate-400">
+                                        <p className="font-medium text-[var(--text-primary)]">{selectedPatient.name || selectedPatient.patient_id}</p>
+                                        <p className="text-xs text-[var(--text-secondary)]">
                                             {selectedPatient.diabetes_type?.replace('_', ' ').toUpperCase()}
                                             {selectedPatient.egfr && ` • eGFR: ${selectedPatient.egfr}`}
                                         </p>
@@ -514,15 +515,15 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                     <button
                                         onClick={startCamera}
                                         disabled={isUploading}
-                                        className="glass rounded-2xl p-8 text-center hover:bg-slate-800/50 transition-all border-2 border-transparent hover:border-medical-500/30 disabled:opacity-50"
+                                        className="glass rounded-2xl p-8 text-center hover:bg-[var(--bg-elevated)]/50 transition-all border-2 border-transparent hover:border-medical-500/30 disabled:opacity-50"
                                     >
                                         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-medical-500/10 flex items-center justify-center">
                                             <Camera className="w-8 h-8 text-medical-400" />
                                         </div>
-                                        <h3 className="text-lg font-semibold text-white mb-1">
+                                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
                                             Take Photo
                                         </h3>
-                                        <p className="text-slate-500 text-sm">
+                                        <p className="text-[var(--text-muted)] text-sm">
                                             Use camera to capture
                                         </p>
                                     </button>
@@ -532,7 +533,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                         onClick={() => !isUploading && fileInputRef.current?.click()}
                                         className={`glass rounded-2xl p-8 text-center cursor-pointer border-2 border-transparent transition-all ${isUploading
                                             ? 'opacity-50 cursor-not-allowed'
-                                            : 'hover:bg-slate-800/50 hover:border-purple-500/30'
+                                            : 'hover:bg-[var(--bg-elevated)]/50 hover:border-purple-500/30'
                                             }`}
                                     >
                                         <input
@@ -545,10 +546,10 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/10 flex items-center justify-center">
                                             <Upload className="w-8 h-8 text-purple-400" />
                                         </div>
-                                        <h3 className="text-lg font-semibold text-white mb-1">
+                                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
                                             Upload File
                                         </h3>
-                                        <p className="text-slate-500 text-sm">
+                                        <p className="text-[var(--text-muted)] text-sm">
                                             JPEG, PNG, or PDF
                                         </p>
                                     </div>
@@ -559,14 +560,14 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                     <div className="glass rounded-2xl p-8 text-center">
                                         <Loader2 className="w-12 h-12 text-medical-400 animate-spin mx-auto mb-4" />
                                         <p className="text-medical-400 font-medium">Processing prescription...</p>
-                                        <p className="text-slate-500 text-sm mt-1">Extracting medicines with AI</p>
+                                        <p className="text-[var(--text-muted)] text-sm mt-1">Extracting medicines with AI</p>
                                     </div>
                                 )}
 
                                 {/* Tips */}
                                 <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl">
                                     <p className="text-amber-400 text-sm font-medium mb-2">Tips for best results:</p>
-                                    <ul className="text-slate-400 text-sm space-y-1">
+                                    <ul className="text-[var(--text-secondary)] text-sm space-y-1">
                                         <li>• Ensure good lighting and clear focus</li>
                                         <li>• Include all medicines in the frame</li>
                                         <li>• Handwritten prescriptions work too!</li>
@@ -590,12 +591,12 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                         <div className="glass rounded-xl p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <Shield className="w-5 h-5 text-medical-400" />
-                                <span className="text-white font-medium">
+                                <span className="text-[var(--text-primary)] font-medium">
                                     Analyzing for: {selectedPatient?.name || selectedPatient?.patient_id}
                                 </span>
                             </div>
                             {isCheckingRisks && (
-                                <span className="flex items-center gap-2 text-sm text-slate-400">
+                                <span className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     Checking patient-specific risks...
                                 </span>
@@ -605,7 +606,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                         {/* Medicines with Risk Assessments */}
                         <div className="glass rounded-2xl p-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
                                     <Pill className="w-5 h-5 text-medical-400" />
                                     Extracted Medicines ({prescription.medicines?.length || 0})
                                 </h3>
@@ -623,11 +624,11 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                     const riskColor = assessment ? getRiskColor(assessment.risk_level) : null
 
                                     return (
-                                        <div key={idx} className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                                        <div key={idx} className="p-4 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)]/50">
                                             <div className="flex items-start justify-between mb-2">
                                                 <div>
-                                                    <h4 className="font-semibold text-white">{med.name}</h4>
-                                                    <p className="text-sm text-slate-400">
+                                                    <h4 className="font-semibold text-[var(--text-primary)]">{med.name}</h4>
+                                                    <p className="text-sm text-[var(--text-secondary)]">
                                                         {med.dosage && <span>{med.dosage}</span>}
                                                         {med.frequency && <span> • {med.frequency}</span>}
                                                     </p>
@@ -640,18 +641,18 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                                 )}
 
                                                 {isCheckingRisks && !assessment && (
-                                                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                                                    <Loader2 className="w-4 h-4 animate-spin text-[var(--text-secondary)]" />
                                                 )}
                                             </div>
 
                                             {/* Risk Factors */}
                                             {assessment?.risk_factors?.length > 0 && (
-                                                <div className="mt-3 pt-3 border-t border-slate-700/50">
-                                                    <p className="text-xs text-slate-500 mb-2">Risk Factors:</p>
+                                                <div className="mt-3 pt-3 border-t border-[var(--border)]/50">
+                                                    <p className="text-xs text-[var(--text-muted)] mb-2">Risk Factors:</p>
                                                     <ul className="space-y-1">
                                                         {assessment.risk_factors.slice(0, 3).map((factor, i) => (
                                                             <li key={i} className="text-sm text-slate-300 flex items-start gap-2">
-                                                                <AlertTriangle className={`w-3 h-3 mt-1 flex-shrink-0 ${riskColor?.text || 'text-slate-400'}`} />
+                                                                <AlertTriangle className={`w-3 h-3 mt-1 flex-shrink-0 ${riskColor?.text || 'text-[var(--text-secondary)]'}`} />
                                                                 {factor}
                                                             </li>
                                                         ))}
@@ -662,7 +663,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                                             {/* Recommendations */}
                                             {assessment?.recommendations?.length > 0 && (
                                                 <div className="mt-2">
-                                                    <p className="text-xs text-slate-500 mb-1">Recommendation:</p>
+                                                    <p className="text-xs text-[var(--text-muted)] mb-1">Recommendation:</p>
                                                     <p className="text-sm text-slate-300">{assessment.recommendations[0]}</p>
                                                 </div>
                                             )}
@@ -675,7 +676,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                         {/* Summary */}
                         {riskAssessments.length > 0 && (
                             <div className="glass rounded-xl p-4">
-                                <h4 className="text-sm font-medium text-slate-400 mb-3">Summary</h4>
+                                <h4 className="text-sm font-medium text-[var(--text-secondary)] mb-3">Summary</h4>
                                 <div className="flex flex-wrap gap-3">
                                     {['safe', 'caution', 'high_risk', 'contraindicated', 'fatal'].map(level => {
                                         const count = riskAssessments.filter(a => a.risk_level === level).length

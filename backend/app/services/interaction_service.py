@@ -234,20 +234,20 @@ class InteractionService:
     
     def _create_unknown_drug_response(self, drug_name: str, position: str) -> InteractionCheckResponse:
         """Create response for unknown drug."""
-        from datetime import datetime
+        from datetime import datetime, timezone
         
         unknown_drug = DrugResponse(
             id=0,
             name=drug_name,
             is_approved=False,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         
         placeholder_drug = DrugResponse(
             id=0,
             name="Unknown",
             is_approved=False,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         
         if position == "first":
@@ -397,18 +397,26 @@ class InteractionService:
         result = await self.db.execute(stmt)
         similarities = result.scalars().all()
         
+        # Batch fetch all related drugs (fix N+1 query pattern)
+        other_ids = []
         for sim in similarities:
             other_id = sim.drug2_id if sim.drug1_id == drug.id else sim.drug1_id
-            
-            # Get the drug
-            stmt = select(Drug).where(Drug.id == other_id)
+            other_ids.append(other_id)
+        
+        if other_ids:
+            # Single query to fetch all related drugs
+            stmt = select(Drug).where(Drug.id.in_(other_ids))
             result = await self.db.execute(stmt)
-            other_drug = result.scalar_one_or_none()
+            drugs_by_id = {d.id: d for d in result.scalars().all()}
             
-            if other_drug:
-                # Check if not already in list
-                if not any(d[0].id == other_drug.id for d in similar_drugs):
-                    similar_drugs.append((other_drug, sim.overall_similarity))
+            for sim in similarities:
+                other_id = sim.drug2_id if sim.drug1_id == drug.id else sim.drug1_id
+                other_drug = drugs_by_id.get(other_id)
+                
+                if other_drug:
+                    # Check if not already in list
+                    if not any(d[0].id == other_drug.id for d in similar_drugs):
+                        similar_drugs.append((other_drug, sim.overall_similarity))
         
         # Sort by similarity
         similar_drugs.sort(key=lambda x: x[1], reverse=True)
@@ -465,32 +473,50 @@ class InteractionService:
         alternatives1: List[AlternativeDrug],
         alternatives2: List[AlternativeDrug]
     ) -> List[Dict]:
-        """Find safe combinations from alternatives."""
+        """Find safe combinations from alternatives using batch query."""
+        if not alternatives1 or not alternatives2:
+            return []
+
+        pairs = [
+            (alt1.drug.id, alt2.drug.id)
+            for alt1 in alternatives1
+            for alt2 in alternatives2
+        ]
+
+        all_ids = list({id for pair in pairs for id in pair})
+        conditions = []
+        for d1_id, d2_id in pairs:
+            conditions.append(
+                and_(DrugInteraction.drug1_id == d1_id, DrugInteraction.drug2_id == d2_id)
+            )
+            conditions.append(
+                and_(DrugInteraction.drug1_id == d2_id, DrugInteraction.drug2_id == d1_id)
+            )
+
+        interactions_map = {}
+        if conditions:
+            stmt = select(DrugInteraction).where(or_(*conditions))
+            result = await self.db.execute(stmt)
+            for inter in result.scalars().all():
+                key1 = (inter.drug1_id, inter.drug2_id)
+                key2 = (inter.drug2_id, inter.drug1_id)
+                interactions_map[key1] = inter
+                interactions_map[key2] = inter
+
         safe_combinations = []
-        
         for alt1 in alternatives1:
             for alt2 in alternatives2:
-                # Check interaction between alternatives
-                interaction = await self._get_interaction(alt1.drug.id, alt2.drug.id)
-                
+                interaction = interactions_map.get((alt1.drug.id, alt2.drug.id))
                 if not interaction or interaction.severity == "minor":
                     safe_combinations.append({
-                        "drug1": {
-                            "name": alt1.drug.name,
-                            "id": alt1.drug.id
-                        },
-                        "drug2": {
-                            "name": alt2.drug.name,
-                            "id": alt2.drug.id
-                        },
+                        "drug1": {"name": alt1.drug.name, "id": alt1.drug.id},
+                        "drug2": {"name": alt2.drug.name, "id": alt2.drug.id},
                         "combined_similarity": (alt1.similarity_score + alt2.similarity_score) / 2,
                         "interaction_status": "minor" if interaction else "none"
                     })
         
-        # Sort by combined similarity
         safe_combinations.sort(key=lambda x: x["combined_similarity"], reverse=True)
-        
-        return safe_combinations[:10]  # Return top 10 combinations
+        return safe_combinations[:10]
     
     async def get_all_interactions_for_drug(
         self,

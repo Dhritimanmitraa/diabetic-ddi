@@ -1,7 +1,7 @@
 """Database models for drugs and interactions."""
 from sqlalchemy import Column, Integer, String, Text, Float, ForeignKey, Table, Boolean, DateTime
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import Base
 
 
@@ -36,8 +36,8 @@ class Drug(Base):
     
     # Status
     is_approved = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     categories = relationship("Category", secondary=drug_categories, back_populates="drugs")
@@ -85,7 +85,7 @@ class DrugInteraction(Base):
     # Confidence score (0-1)
     confidence_score = Column(Float, default=0.8)
     
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     drug1 = relationship("Drug", foreign_keys=[drug1_id], back_populates="interactions_as_drug1")
@@ -144,7 +144,7 @@ class ComparisonLog(Base):
     # Metadata
     ip_address = Column(String(50), nullable=True)
     user_agent = Column(String(500), nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     # Relationships
     drug1 = relationship("Drug", foreign_keys=[drug1_id])
@@ -181,7 +181,7 @@ class MLPrediction(Base):
     prediction_correct = Column(Boolean, nullable=True)
     
     # Metadata
-    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     
     def __repr__(self):
         return f"<MLPrediction({self.drug1_name} + {self.drug2_name} = {self.interaction_probability:.2f})>"
@@ -213,7 +213,7 @@ class ModelMetrics(Base):
     hyperparameters = Column(Text, nullable=True)
     
     # Timestamps
-    trained_at = Column(DateTime, default=datetime.utcnow)
+    trained_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     def __repr__(self):
         return f"<ModelMetrics({self.model_type}, AUC={self.auc_roc:.4f})>"
@@ -241,7 +241,7 @@ class OptimizationResult(Base):
     trial_history = Column(Text, nullable=True)
     
     # Timestamp
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     def __repr__(self):
         return f"<OptimizationResult({self.model_type}, {self.optimization_method}, score={self.best_score:.4f})>"
@@ -259,7 +259,7 @@ class TwosidesInteraction(Base):
     source = Column(String(100), default="twosides")  # twosides or offsides
     evidence = Column(Text, nullable=True)  # optional evidence text / score
     raw_row = Column(Text, nullable=True)  # JSON of original row
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     def __repr__(self):
         return f"<TwosidesInteraction({self.drug1_name}+{self.drug2_name} effect={self.effect})>"
@@ -276,7 +276,7 @@ class OffsidesEffect(Base):
     source = Column(String(100), default="offsides")
     evidence = Column(Text, nullable=True)
     raw_row = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     def __repr__(self):
         return f"<OffsidesEffect({self.drug_name} effect={self.effect})>"

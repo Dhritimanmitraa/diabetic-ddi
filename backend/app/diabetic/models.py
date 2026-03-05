@@ -5,7 +5,7 @@ Stores patient profiles, medications, and risk assessments.
 """
 from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 
 from app.database import Base
@@ -80,8 +80,8 @@ class DiabeticPatient(Base):
     comorbidities = Column(Text, nullable=True)  # JSON list
     
     # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
     medications = relationship("DiabeticMedication", back_populates="patient", cascade="all, delete-orphan")
@@ -148,7 +148,7 @@ class DiabeticMedication(Base):
     end_date = Column(DateTime, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     patient = relationship("DiabeticPatient", back_populates="medications")
@@ -186,7 +186,7 @@ class DiabeticDrugRisk(Base):
     interaction_severity = Column(String(50), nullable=True)
     
     # Context
-    assessed_at = Column(DateTime, default=datetime.utcnow)
+    assessed_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     labs_at_assessment = Column(Text, nullable=True)  # JSON snapshot of labs
     
     # Relationships
@@ -237,8 +237,8 @@ class DiabeticDrugRule(Base):
     evidence_level = Column(String(50), nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     def __repr__(self):
         return f"<DiabeticDrugRule({self.drug_name}, base_risk={self.base_risk_level})>"

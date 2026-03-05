@@ -6,7 +6,7 @@ Saves to both database and JSON file for easy access.
 """
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc, and_, or_
@@ -97,7 +97,7 @@ class ComparisonLogger:
             ml_decision_source=ml_decision_source,
             ml_model_version=ml_model_version,
             rule_override_reason=rule_override_reason,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         
         self.db.add(log_entry)
@@ -165,7 +165,7 @@ class ComparisonLogger:
             logger.error(f"Error writing to JSON log: {e}")
     
     async def _calculate_summary(self) -> Dict:
-        """Calculate summary statistics."""
+        """Calculate summary statistics with minimal queries."""
         total = await self.db.execute(select(func.count(ComparisonLog.id)))
         total_count = total.scalar()
         
@@ -173,26 +173,23 @@ class ComparisonLogger:
             select(func.count(ComparisonLog.id)).where(ComparisonLog.is_safe == True)
         )
         safe_count = safe.scalar()
+        unsafe_count = total_count - safe_count
         
-        unsafe = await self.db.execute(
-            select(func.count(ComparisonLog.id)).where(ComparisonLog.is_safe == False)
+        sev_query = await self.db.execute(
+            select(ComparisonLog.severity, func.count(ComparisonLog.id))
+            .where(ComparisonLog.severity.isnot(None))
+            .group_by(ComparisonLog.severity)
         )
-        unsafe_count = unsafe.scalar()
-        
-        # Count by severity
-        severity_counts = {}
+        severity_counts = {sev: cnt for sev, cnt in sev_query.all()}
         for sev in ["minor", "moderate", "major", "contraindicated"]:
-            count = await self.db.execute(
-                select(func.count(ComparisonLog.id)).where(ComparisonLog.severity == sev)
-            )
-            severity_counts[sev] = count.scalar()
+            severity_counts.setdefault(sev, 0)
         
         return {
             "total_comparisons": total_count,
             "safe_combinations": safe_count,
             "unsafe_combinations": unsafe_count,
             "by_severity": severity_counts,
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
     
     async def get_comparisons(

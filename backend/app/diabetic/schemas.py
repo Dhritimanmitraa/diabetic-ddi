@@ -1,7 +1,7 @@
 """
 Pydantic schemas for Diabetic Patient DDI Module.
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
@@ -105,6 +105,8 @@ class DiabeticPatientUpdate(BaseModel):
 
 class DiabeticPatientResponse(BaseModel):
     """Patient profile response."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     patient_id: str
     name: Optional[str]
@@ -156,9 +158,6 @@ class DiabeticPatientResponse(BaseModel):
     # Metadata
     created_at: datetime
     updated_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 # Medication Schemas
@@ -176,6 +175,8 @@ class MedicationCreate(BaseModel):
 
 class MedicationResponse(BaseModel):
     """Medication response."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     drug_name: str
     generic_name: Optional[str]
@@ -187,9 +188,6 @@ class MedicationResponse(BaseModel):
     is_diabetes_medication: bool
     is_active: bool
     start_date: Optional[datetime]
-    
-    class Config:
-        from_attributes = True
 
 
 # Risk Assessment Schemas

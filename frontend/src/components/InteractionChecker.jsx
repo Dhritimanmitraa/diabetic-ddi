@@ -1,94 +1,132 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, X, ArrowRight, Loader2 } from 'lucide-react'
+import { Search, X, ArrowDown, Loader2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { searchDrugs, checkInteraction, getAlternatives, getMLPrediction } from '../services/api'
 import { useDebouncedSearch } from '../hooks'
 
 /**
- * DrugSearchInput - Reusable drug search input with autocomplete
+ * DrugSearchInput — Search with autocomplete, keyboard nav, and error display
  */
-function DrugSearchInput({
-  label,
-  placeholder,
-  searchState,
-  onSelect,
-  inputId,
-}) {
-  const {
-    query,
-    setQuery,
-    results,
-    isLoading,
-    showResults,
-    setShowResults,
-    clear
-  } = searchState
+function DrugSearchInput({ label, placeholder, searchState, onSelect, inputId }) {
+  const { query, setQuery, results, isLoading, showResults, setShowResults, error, clear } = searchState
+  const [highlightIndex, setHighlightIndex] = useState(-1)
+  const containerRef = useRef(null)
+  const isOpen = showResults && results.length > 0
+
+  useEffect(() => { setHighlightIndex(-1) }, [results])
+
+  const handleKeyDown = (e) => {
+    if (!isOpen) return
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault()
+        setHighlightIndex(i => (i + 1) % results.length)
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        setHighlightIndex(i => (i <= 0 ? results.length - 1 : i - 1))
+        break
+      case 'Enter':
+        if (highlightIndex >= 0 && highlightIndex < results.length) {
+          e.preventDefault()
+          onSelect(results[highlightIndex])
+          setHighlightIndex(-1)
+        }
+        break
+      case 'Escape':
+        setShowResults(false)
+        setHighlightIndex(-1)
+        break
+    }
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setShowResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [setShowResults])
+
+  const activeDescendant = highlightIndex >= 0 ? `${inputId}-option-${highlightIndex}` : undefined
 
   return (
-    <div className="relative">
-      <label
-        htmlFor={inputId}
-        className="block text-sm font-medium text-slate-400 mb-2"
-      >
+    <div className="relative" ref={containerRef}>
+      <label htmlFor={inputId} className="block text-xs font-semibold text-[var(--text-muted)] mb-2 uppercase tracking-wider">
         {label}
       </label>
       <div className="relative">
-        <Search
-          className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500"
-          aria-hidden="true"
-        />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" aria-hidden="true" />
         <input
           id={inputId}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => query.length >= 2 && setShowResults(true)}
-          onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full pl-12 pr-12 py-4 bg-slate-800/50 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:border-medical-500/50 focus:outline-none focus:ring-2 focus:ring-medical-500/20 transition-colors"
+          className="w-full pl-11 pr-11 py-3.5 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] text-sm transition-all duration-200 focus:border-medical-500/40"
           autoComplete="off"
           aria-autocomplete="list"
           aria-controls={`${inputId}-suggestions`}
-          aria-expanded={showResults && results.length > 0}
+          aria-expanded={isOpen}
+          aria-activedescendant={activeDescendant}
         />
         {query && (
           <button
             type="button"
             onClick={clear}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5"
             aria-label={`Clear ${label.toLowerCase()}`}
           >
             {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
             ) : (
-              <X className="w-5 h-5" aria-hidden="true" />
+              <X className="w-4 h-4" aria-hidden="true" />
             )}
           </button>
         )}
       </div>
 
+      {error && (
+        <div className="flex items-center gap-1.5 mt-1.5 text-red-400 text-xs" role="alert">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span>Search failed. Check your connection and try again.</span>
+        </div>
+      )}
+
       {/* Suggestions dropdown */}
       <AnimatePresence>
-        {showResults && results.length > 0 && (
+        {isOpen && (
           <motion.ul
             id={`${inputId}-suggestions`}
             role="listbox"
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-2xl max-h-80 overflow-y-auto"
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 w-full mt-1.5 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl overflow-hidden shadow-xl max-h-64 overflow-y-auto"
           >
             {results.map((drug, index) => (
-              <li key={drug.id || index} role="option">
+              <li
+                key={drug.id || index}
+                id={`${inputId}-option-${index}`}
+                role="option"
+                aria-selected={highlightIndex === index}
+              >
                 <button
                   type="button"
-                  onClick={() => onSelect(drug)}
-                  className="w-full px-4 py-3 text-left hover:bg-medical-500/10 transition-colors border-b border-slate-700/50 last:border-b-0 focus:bg-medical-500/10 focus:outline-none"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { onSelect(drug); setHighlightIndex(-1) }}
+                  className={`w-full px-4 py-3 text-left transition-colors border-b border-[var(--border)] last:border-b-0 ${highlightIndex === index ? 'bg-medical-500/12' : 'hover:bg-medical-500/8'
+                    }`}
                 >
-                  <p className="text-white font-medium">{drug.name}</p>
+                  <p className="text-medical-300 font-semibold text-sm">{drug.name}</p>
                   {drug.generic_name && (
-                    <p className="text-slate-400 text-sm">{drug.generic_name}</p>
+                    <p className="text-[var(--text-muted)] text-xs mt-0.5">{drug.generic_name}</p>
                   )}
                 </button>
               </li>
@@ -101,30 +139,29 @@ function DrugSearchInput({
 }
 
 /**
- * InteractionChecker - Main component for checking drug interactions
+ * InteractionChecker — Main drug pair input form
  */
 function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPrediction, setMlLoading }) {
-  // Use the custom hook for both drug searches
   const drug1Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
   const drug2Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
 
-  // Handle drug selection
   const handleSelectDrug1 = useCallback((drug) => {
     drug1Search.selectItem(drug)
-  }, [drug1Search])
+  }, [drug1Search.selectItem])
 
   const handleSelectDrug2 = useCallback((drug) => {
     drug2Search.selectItem(drug)
-  }, [drug2Search])
+  }, [drug2Search.selectItem])
 
-  // Swap drugs
   const handleSwap = useCallback(() => {
-    const temp = drug1Search.query
-    drug1Search.setQuery(drug2Search.query)
-    drug2Search.setQuery(temp)
-  }, [drug1Search, drug2Search])
+    const temp1Query = drug1Search.query
+    const temp2Query = drug2Search.query
+    // Use selectItem to mark as selected, preventing re-search
+    drug1Search.selectItem({ name: temp2Query })
+    drug2Search.selectItem({ name: temp1Query })
+  }, [drug1Search.query, drug2Search.query, drug1Search.selectItem, drug2Search.selectItem])
 
-  // Keyboard shortcut: Ctrl+Enter to check interaction
+  // Ctrl+Enter shortcut
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -136,6 +173,22 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [drug1Search.query, drug2Search.query])
+
+  // Ctrl+K or "/" shortcut to focus search
+  useEffect(() => {
+    const handleFocus = (e) => {
+      const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        document.getElementById('drug1-input')?.focus()
+      } else if (e.key === '/' && !isTyping) {
+        e.preventDefault()
+        document.getElementById('drug1-input')?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleFocus)
+    return () => window.removeEventListener('keydown', handleFocus)
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -159,28 +212,19 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
     if (setMlPrediction) setMlPrediction(null)
 
     try {
-      // Check interaction
       const interactionResult = await checkInteraction(drug1, drug2)
       setResults(interactionResult)
 
-      // Fetch ML prediction in parallel (if available)
       if (setMlPrediction && setMlLoading) {
         setMlLoading(true)
         getMLPrediction(drug1, drug2)
           .then(mlResult => {
-            if (!mlResult.error) {
-              setMlPrediction(mlResult)
-            }
+            if (!mlResult.error) setMlPrediction(mlResult)
           })
-          .catch(err => {
-            console.log('ML prediction not available:', err.message)
-          })
-          .finally(() => {
-            setMlLoading(false)
-          })
+          .catch(err => console.log('ML prediction not available:', err.message))
+          .finally(() => setMlLoading(false))
       }
 
-      // If there's an interaction, fetch alternatives
       if (interactionResult.has_interaction && interactionResult.interaction?.severity !== 'minor') {
         try {
           const alternativesResult = await getAlternatives(drug1, drug2)
@@ -190,7 +234,6 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
         }
       }
 
-      // Show appropriate toast based on severity
       showInteractionToast(interactionResult)
     } catch (error) {
       console.error('Error checking interaction:', error)
@@ -200,89 +243,82 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
     }
   }
 
-  // Quick example buttons
   const quickExamples = [
-    { drug1: 'Aspirin', drug2: 'Warfarin', severity: 'major', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
-    { drug1: 'Simvastatin', drug2: 'Clarithromycin', severity: 'major', color: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
-    { drug1: 'Metformin', drug2: 'Lisinopril', severity: 'safe', color: 'text-medical-400 bg-medical-500/10 border-medical-500/30' },
+    { drug1: 'Aspirin', drug2: 'Warfarin', severity: 'major' },
+    { drug1: 'Simvastatin', drug2: 'Clarithromycin', severity: 'major' },
+    { drug1: 'Metformin', drug2: 'Lisinopril', severity: 'safe' },
   ]
 
   const handleExampleClick = useCallback((example) => {
     drug1Search.setQuery(example.drug1)
     drug2Search.setQuery(example.drug2)
-  }, [drug1Search, drug2Search])
+  }, [drug1Search.setQuery, drug2Search.setQuery])
+
+  const severityColors = {
+    major: 'text-orange-400 bg-orange-500/8 border-orange-500/20',
+    safe: 'text-emerald-400 bg-emerald-500/8 border-emerald-500/20',
+  }
 
   return (
-    <div className="glass rounded-3xl p-8 max-w-2xl mx-auto">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Drug 1 Input */}
+    <div className="glass rounded-2xl p-6 sm:p-8 max-w-2xl mx-auto">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <DrugSearchInput
           label="First Drug"
-          placeholder="Enter first drug name (e.g., Aspirin)"
+          placeholder="e.g., Aspirin"
           searchState={drug1Search}
           onSelect={handleSelectDrug1}
           inputId="drug1-input"
         />
 
-        {/* Swap button between inputs */}
+        {/* Swap button */}
         <div className="flex justify-center">
-          <motion.button
+          <button
             type="button"
             onClick={handleSwap}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="w-12 h-12 rounded-full bg-slate-800/50 hover:bg-medical-500/20 border border-slate-700/50 hover:border-medical-500/50 flex items-center justify-center transition-colors swap-rotate group"
+            className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] hover:border-medical-500/30 flex items-center justify-center transition-all swap-rotate group"
             aria-label="Swap drug names"
           >
-            <ArrowRight
-              className="w-5 h-5 text-slate-400 group-hover:text-medical-400 rotate-90 transition-colors"
-              aria-hidden="true"
-            />
-          </motion.button>
+            <ArrowDown className="w-4 h-4 text-[var(--text-muted)] group-hover:text-medical-400 transition-colors" aria-hidden="true" />
+          </button>
         </div>
 
-        {/* Drug 2 Input */}
         <DrugSearchInput
           label="Second Drug"
-          placeholder="Enter second drug name (e.g., Warfarin)"
+          placeholder="e.g., Warfarin"
           searchState={drug2Search}
           onSelect={handleSelectDrug2}
           inputId="drug2-input"
         />
 
-        {/* Submit button */}
-        <motion.button
+        {/* Submit */}
+        <button
           id="check-interaction-btn"
           type="submit"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full py-4 bg-gradient-to-r from-medical-500 to-medical-600 hover:from-medical-400 hover:to-medical-500 text-white font-semibold rounded-xl shadow-lg shadow-medical-500/25 transition-all btn-hover relative group"
+          className="w-full py-3.5 bg-gradient-to-r from-medical-500 to-medical-600 hover:from-medical-400 hover:to-medical-500 text-white font-semibold text-sm rounded-xl shadow-md shadow-medical-500/15 transition-all btn-hover relative group"
         >
           <span>Check Interaction</span>
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-white/50 hidden md:inline group-hover:text-white/70 transition-colors">
-            Ctrl + Enter
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 hidden md:inline group-hover:text-white/60 transition-colors font-medium">
+            Ctrl+Enter
           </span>
-        </motion.button>
+        </button>
       </form>
 
       {/* Quick examples */}
-      <div className="mt-6 pt-6 border-t border-slate-700/50">
-        <p className="text-sm text-slate-500 mb-3">Quick examples:</p>
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Quick example drug pairs">
+      <div className="mt-5 pt-5 border-t border-[var(--border)]">
+        <p className="text-[10px] text-[var(--text-muted)] mb-2.5 uppercase tracking-wider font-medium">Try an example</p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Example drug pairs">
           {quickExamples.map((example, index) => (
-            <motion.button
+            <button
               key={index}
               onClick={() => handleExampleClick(example)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-3 py-2 text-xs bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 rounded-xl transition-colors flex items-center gap-2 border border-slate-700/50 hover:border-slate-600/50"
-              aria-label={`Try ${example.drug1} and ${example.drug2} - ${example.severity} interaction`}
+              className="px-3 py-1.5 text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] rounded-lg transition-colors flex items-center gap-2 border border-[var(--border)] hover:border-[var(--border-hover)]"
+              aria-label={`Try ${example.drug1} and ${example.drug2}`}
             >
               <span>{example.drug1} + {example.drug2}</span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium uppercase border ${example.color}`}>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase border ${severityColors[example.severity]}`}>
                 {example.severity}
               </span>
-            </motion.button>
+            </button>
           ))}
         </div>
       </div>
@@ -290,31 +326,18 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
   )
 }
 
-/**
- * Show toast notification based on interaction severity
- */
 function showInteractionToast(result) {
   if (!result.has_interaction) {
     toast.success('No known interaction found!')
     return
   }
-
   const severity = result.interaction?.severity
   switch (severity) {
-    case 'minor':
-      toast('Minor interaction detected')
-      break
-    case 'moderate':
-      toast.error('Moderate interaction detected')
-      break
-    case 'major':
-      toast.error('Major interaction detected!')
-      break
-    case 'contraindicated':
-      toast.error('CONTRAINDICATED - Do not use together!')
-      break
-    default:
-      toast('Interaction detected')
+    case 'minor': toast('Minor interaction detected'); break
+    case 'moderate': toast.error('Moderate interaction detected'); break
+    case 'major': toast.error('Major interaction detected!'); break
+    case 'contraindicated': toast.error('CONTRAINDICATED — Do not use together!'); break
+    default: toast('Interaction detected')
   }
 }
 

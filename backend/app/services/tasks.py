@@ -21,7 +21,8 @@ except ImportError:
 from app.database import async_session
 from app.ml.trainer import train_from_database
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+from app.config import get_settings as _get_settings
+REDIS_URL = _get_settings().REDIS_URL
 
 
 def get_queue():

@@ -1,15 +1,21 @@
 """Application configuration settings."""
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from functools import lru_cache
 import os
 
 
 class Settings(BaseSettings):
     """Application settings."""
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
+    )
     
     APP_NAME: str = "Drug-Drug Interaction Predictor"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./drug_interactions.db"
@@ -29,7 +35,7 @@ class Settings(BaseSettings):
     API_CACHE_TTL_SECONDS: int = 3600  # 1 hour
     
     # OCR Settings
-    TESSERACT_CMD: str = r"C:\Program Files\Tesseract-OCR\tesseract.exe"  # Windows default
+    TESSERACT_CMD: str = os.getenv("TESSERACT_PATH", "tesseract")
     
     # Prescription RAG Settings
     GOOGLE_API_KEY: str = ""  # Set in .env file
@@ -45,11 +51,6 @@ class Settings(BaseSettings):
     
     # File paths
     DATA_DIR: str = "./data"
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore"  # Ignore extra fields in .env
 
 
 @lru_cache()

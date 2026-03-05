@@ -72,7 +72,7 @@ class ErrorBoundary extends React.Component {
               <AlertTriangle className="w-8 h-8 text-red-400" aria-hidden="true" />
             </div>
 
-            <h2 className="text-xl font-semibold text-white mb-2">
+            <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
               Something went wrong
             </h2>
 
@@ -139,7 +139,7 @@ class RouteErrorBoundary extends ErrorBoundary {
               <AlertTriangle className="w-10 h-10 text-red-400" aria-hidden="true" />
             </div>
 
-            <h1 className="text-2xl font-bold text-white mb-3">
+            <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-3">
               Oops! Something went wrong
             </h1>
 

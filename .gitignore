@@ -30,13 +30,14 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDEs
+# IDEs & Editor Config
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+pyrightconfig.json
 
 # Environment variables - NEVER commit these!
 .env
@@ -51,6 +52,7 @@ venv.bak/
 *.db
 *.sqlite
 *.sqlite3
+*.sqbpro
 backend/data/*.db
 backend/data/*.sqlite
 
@@ -58,27 +60,25 @@ backend/data/*.sqlite
 *.log
 logs/
 *.log.*
+backend/logs/
 
-# ML Models (large files - exclude from repo)
+# ML Models (large binary files)
 backend/models/*.pkl
+backend/models/*.joblib
 backend/models/*.json
 !backend/models/optimal_threshold.json.example
 
-# Data files (large datasets - exclude from repo)
+# Data files (large datasets)
 backend/data/twosides/
 backend/data/offsides/
 backend/data/mimiciv/
 *.csv.gz
 *.csv
 !backend/data/diabetic/training/*.csv
-# Exclude large training CSVs (too big for GitHub)
 backend/data/training/train.csv
 backend/data/training/test.csv
 backend/data/training/val.csv
-
-# Large JSON files
 backend/data/real_drug_data.json
-backend/logs/
 
 # Node
 node_modules/
@@ -91,6 +91,10 @@ yarn-error.log*
 frontend/dist/
 frontend/build/
 frontend/.vite/
+
+# Lint artifacts
+eslint-output*.json
+frontend/build_output.txt
 
 # OS
 Thumbs.db
@@ -117,11 +121,10 @@ dmypy.json
 
 # Helper scripts (keep essential startup scripts)
 *.ps1
-!start_app.bat
 !run_app.bat
 !build_all.bat
-!setup_conda.bat
-!start_app_conda.bat
+!ralph_loop.bat
+!ralph_loop.sh
 
 # Android build artifacts
 frontend/android/.gradle/
@@ -130,17 +133,26 @@ frontend/android/build/
 *.keystore
 !frontend/android/app/debug.keystore
 
-# APK files (too large)
+# APK files (too large for git)
 *.apk
 
 # PDF reports (generated)
 *.pdf
 patient_reports/
 
-# Keep only README in root
+# Documentation archive (moved out of repo)
+abstract/
+
+# Standalone ML experiments
+ml-standalone/
+
+# Temp verification scripts
+backend/check_import.py
+backend/verify_active_server.py
+
+# Root-level documentation (keep only README.md)
 /APPLICATION_WORKFLOW.md
 /LLM_INTEGRATION_GUIDE.md
 /PROJECT_DOCUMENTATION.md
 /STAGE5_RULE_BASED_FILES.md
-
-ml-standalone/
+/DrugGuard_Base_Paper.md

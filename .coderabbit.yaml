@@ -1,0 +1,106 @@
+# =============================================================================
+# CodeRabbit Configuration
+# =============================================================================
+# AI-powered code review for pull requests.
+# Requires CodeRabbit GitHub App installed: https://coderabbit.ai
+# Docs: https://docs.coderabbit.ai/guides/configuration
+# =============================================================================
+
+language: "en-US"
+
+reviews:
+  # Review profile: "chill" = thorough but not overly strict
+  profile: "chill"
+
+  # Automatically review all PRs
+  auto_review:
+    enabled: true
+    # Don't review draft PRs
+    drafts: false
+    # Review on every push to the PR (incremental)
+    base_branches:
+      - main
+      - dev
+      - master
+
+  # High-level summary at top of review
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+
+  # Show review status in PR body
+  review_status: true
+
+  # Poem in review (fun touch)
+  poem: false
+
+  # Collapse walkthrough after a certain length
+  collapse_walkthrough: true
+
+  # Request changes instead of just commenting
+  request_changes_workflow: true
+
+  # Path-level review instructions
+  path_instructions:
+    - path: "backend/app/diabetic/**"
+      instructions: |
+        This is safety-critical medical code. Pay extra attention to:
+        - Drug interaction severity levels must never be downgraded silently
+        - All patient data must be validated before processing
+        - Rule-based checks must not be bypassed
+        - LLM outputs must always be clearly marked as AI-generated
+
+    - path: "backend/app/ml/**"
+      instructions: |
+        ML model code. Check for:
+        - Data leakage between train/test splits
+        - Proper handling of missing features
+        - Model versioning and threshold configurations
+        - SHAP/LIME explainability consistency
+
+    - path: "backend/app/prescription/**"
+      instructions: |
+        Prescription RAG module. Verify:
+        - OCR/Vision outputs are sanitized before DB storage
+        - RAG retrieval uses appropriate similarity thresholds
+        - Chat history is properly scoped per prescription
+
+    - path: "frontend/src/**"
+      instructions: |
+        React frontend. Check for:
+        - Proper error boundaries around API calls
+        - Accessible UI patterns (ARIA labels, keyboard nav)
+        - No hardcoded API URLs (use environment config)
+        - Framer Motion animations should not block interaction
+
+    - path: "**/*.env*"
+      instructions: |
+        CRITICAL: Ensure no API keys, secrets, or credentials are committed.
+
+  # Path filters — ignore these from review
+  path_filters:
+    - "!**/*.lock"
+    - "!**/node_modules/**"
+    - "!**/venv/**"
+    - "!**/__pycache__/**"
+    - "!**/*.db"
+    - "!**/*.sqlite"
+    - "!**/*.pkl"
+    - "!**/*.apk"
+    - "!**/*.pdf"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!frontend/android/**"
+
+  # Tools to use for code analysis
+  tools:
+    eslint:
+      enabled: true
+    ruff:
+      enabled: true
+    biome:
+      enabled: false
+    markdownlint:
+      enabled: true
+
+chat:
+  auto_reply: true

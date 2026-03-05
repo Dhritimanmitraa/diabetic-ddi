@@ -1,332 +1,21 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { ArrowLeft, X, Plus, Check } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import usePageTitle from '../hooks/usePageTitle'
 import MedicationSchedule from './MedicationSchedule'
 import DosageCalculator from './DosageCalculator'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+import { getApiBaseUrl } from '../utils/platform'
+import PatientCard from './diabetes/PatientCard'
+import DrugRiskCard, { RiskBadge } from './diabetes/DrugRiskCard'
 
-// Risk level badge component
-const RiskBadge = ({ level }) => {
-  const config = {
-    safe: { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'Safe' },
-    caution: { bg: 'bg-amber-500/20', text: 'text-amber-400', border: 'border-amber-500/30', label: 'Caution' },
-    high_risk: { bg: 'bg-orange-500/20', text: 'text-orange-400', border: 'border-orange-500/30', label: 'High Risk' },
-    contraindicated: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', label: 'Contraindicated' },
-    fatal: { bg: 'bg-red-900/40', text: 'text-red-300', border: 'border-red-700', label: 'Fatal Risk' },
-  }
-  const { bg, text, border, label } = config[level] || config.caution
-  return (
-    <span className={`px-3 py-1 rounded-full text-sm font-medium ${bg} ${text} border ${border}`}>
-      {label}
-    </span>
-  )
-}
-
-const MLBadge = ({ mlRisk, mlProb, source }) => {
-  if (!mlRisk && mlProb == null) return null
-  const probText = mlProb != null ? `p=${Math.round(mlProb * 100)}%` : ''
-  const src = source ? source.replace('_', ' ') : ''
-  return (
-    <div className="flex items-center gap-2 text-xs text-slate-400">
-      <span className="px-2 py-1 rounded-full bg-slate-700/70 border border-slate-600 text-slate-200">
-        ML: {mlRisk || 'n/a'} {probText && `(${probText})`}
-      </span>
-      {src && (
-        <span
-          className={`px-2 py-1 rounded-full border ${source === 'rule_override'
-            ? 'border-red-500/50 text-red-300 bg-red-500/10'
-            : 'border-slate-700 bg-slate-800/70'
-            }`}
-        >
-          {src}
-        </span>
-      )}
-    </div>
-  )
-}
-
-// Health gauge component for visualizing metrics
-const HealthGauge = ({ value, min, max, label, unit, goodRange, cautionRange }) => {
-  if (value == null) return null
-  const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))
-
-  let color = 'bg-emerald-500'
-  let textColor = 'text-emerald-400'
-  if (goodRange && (value < goodRange[0] || value > goodRange[1])) {
-    if (cautionRange && value >= cautionRange[0] && value <= cautionRange[1]) {
-      color = 'bg-amber-500'
-      textColor = 'text-amber-400'
-    } else {
-      color = 'bg-red-500'
-      textColor = 'text-red-400'
-    }
-  }
-
-  return (
-    <div className="flex-1 min-w-[80px]">
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-slate-400">{label}</span>
-        <span className={`font-medium ${textColor}`}>{value}{unit}</span>
-      </div>
-      <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-        <div className={`h-full ${color} transition-all duration-500`} style={{ width: `${percentage}%` }} />
-      </div>
-    </div>
-  )
-}
-
-// Skeleton loader for LLM analysis
-const LLMSkeleton = () => (
-  <div className="mt-4 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg animate-pulse">
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-4 h-4 bg-purple-500/30 rounded" />
-      <div className="h-4 w-24 bg-purple-500/20 rounded" />
-      <div className="h-5 w-16 bg-purple-500/10 rounded-full" />
-    </div>
-    <div className="space-y-2">
-      <div className="h-3 bg-slate-700/50 rounded w-full" />
-      <div className="h-3 bg-slate-700/50 rounded w-4/5" />
-      <div className="h-3 bg-slate-700/50 rounded w-3/5" />
-    </div>
-    <div className="flex gap-2 mt-3">
-      <div className="h-6 w-20 bg-purple-500/10 rounded-full" />
-      <div className="h-6 w-24 bg-purple-500/10 rounded-full" />
-    </div>
-  </div>
-)
-
-// Patient card component with health gauges
-const PatientCard = ({ patient, onSelect, isSelected }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    onClick={() => onSelect(patient)}
-    className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${isSelected
-      ? 'bg-medical-500/20 border-2 border-medical-500'
-      : 'bg-slate-800/50 border border-slate-700/50 hover:border-medical-500/50'
-      }`}
-  >
-    <div className="flex items-center justify-between mb-3">
-      <div>
-        <h4 className="font-semibold text-white">{patient.name || patient.patient_id}</h4>
-        <p className="text-sm text-slate-400">
-          {patient.diabetes_type.replace('_', ' ').toUpperCase()} • {patient.years_with_diabetes || '?'} years
-        </p>
-      </div>
-      <div className="text-right">
-        <div className={`font-medium ${patient.hba1c && patient.hba1c < 7 ? 'text-emerald-400' :
-          patient.hba1c && patient.hba1c < 8 ? 'text-amber-400' : 'text-red-400'
-          }`}>HbA1c: {patient.hba1c || 'N/A'}%</div>
-        <div className={`text-xs ${patient.egfr && patient.egfr >= 60 ? 'text-emerald-400' :
-          patient.egfr && patient.egfr >= 30 ? 'text-amber-400' : 'text-red-400'
-          }`}>eGFR: {patient.egfr || 'N/A'}</div>
-      </div>
-    </div>
-
-    {/* Health Gauges */}
-    {(patient.hba1c || patient.egfr) && (
-      <div className="flex gap-3 mb-2">
-        <HealthGauge
-          value={patient.hba1c}
-          min={4} max={14}
-          label="HbA1c" unit="%"
-          goodRange={[4, 7]}
-          cautionRange={[7, 8.5]}
-        />
-        <HealthGauge
-          value={patient.egfr}
-          min={0} max={120}
-          label="eGFR" unit=""
-          goodRange={[60, 120]}
-          cautionRange={[30, 60]}
-        />
-      </div>
-    )}
-
-    {(patient.has_nephropathy || patient.has_cardiovascular || patient.has_neuropathy) && (
-      <div className="flex gap-2 flex-wrap">
-        {patient.has_nephropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">Nephropathy</span>}
-        {patient.has_cardiovascular && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">Cardiovascular</span>}
-        {patient.has_neuropathy && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">Neuropathy</span>}
-      </div>
-    )}
-  </motion.div>
-)
-
-// Drug risk assessment card
-const DrugRiskCard = ({ assessment }) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50"
-  >
-    <div className="flex items-center justify-between mb-3">
-      <h4 className="font-semibold text-white text-lg">{assessment.drug_name}</h4>
-      <RiskBadge level={assessment.risk_level} />
-    </div>
-
-    {assessment.severity && (
-      <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-        <span className="px-2 py-1 rounded-full bg-slate-700/70 border border-slate-600">Severity: {assessment.severity}</span>
-      </div>
-    )}
-
-    <div className="mb-3">
-      <MLBadge mlRisk={assessment.ml_risk_level} mlProb={assessment.ml_probability} source={assessment.ml_decision_source} />
-    </div>
-
-    <div className="mb-3">
-      <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-        <div
-          className={`h-full transition-all ${assessment.risk_score < 20 ? 'bg-emerald-500' :
-            assessment.risk_score < 40 ? 'bg-amber-500' :
-              assessment.risk_score < 60 ? 'bg-orange-500' : 'bg-red-500'
-            }`}
-          style={{ width: `${assessment.risk_score}%` }}
-        />
-      </div>
-      <p className="text-xs text-slate-500 mt-1">Risk Score: {assessment.risk_score}/100</p>
-    </div>
-
-    <p className="text-sm text-slate-300 mb-3">{assessment.recommendation}</p>
-
-    {assessment.risk_factors?.length > 0 && (
-      <div className="mb-3">
-        <h5 className="text-xs font-medium text-slate-400 mb-1">Risk Factors:</h5>
-        <ul className="text-sm text-slate-300 space-y-1">
-          {assessment.risk_factors.map((factor, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span className="text-red-400">•</span>
-              {factor}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
-
-    {assessment.rule_references?.length > 0 && (
-      <div className="mb-3">
-        <h5 className="text-xs font-medium text-slate-400 mb-1">Why flagged:</h5>
-        <ul className="text-xs text-slate-400 space-y-1">
-          {assessment.rule_references.map((ref, i) => (
-            <li key={i} className="flex items-start gap-2">
-              <span className="text-slate-500">•</span>
-              {ref}
-            </li>
-          ))}
-        </ul>
-      </div>
-    )}
-
-    {assessment.patient_factors?.length > 0 && (
-      <div className="mb-3">
-        <h5 className="text-xs font-medium text-slate-400 mb-1">Triggering factors:</h5>
-        <div className="flex flex-wrap gap-1">
-          {assessment.patient_factors.map((pf, i) => (
-            <span key={i} className="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded">{pf}</span>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {assessment.evidence_sources?.length > 0 && (
-      <div className="mb-3">
-        <h5 className="text-xs font-medium text-slate-400 mb-1">Sources:</h5>
-        <div className="flex flex-wrap gap-1">
-          {assessment.evidence_sources.map((src, i) => (
-            <span key={i} className="text-xs bg-slate-700/70 text-slate-200 px-2 py-1 rounded border border-slate-600">{src}</span>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {assessment.monitoring?.length > 0 && (
-      <div className="mb-3">
-        <h5 className="text-xs font-medium text-slate-400 mb-1">Monitor:</h5>
-        <div className="flex flex-wrap gap-1">
-          {assessment.monitoring.map((item, i) => (
-            <span key={i} className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">{item}</span>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {assessment.alternatives?.length > 0 && (
-      <div>
-        <h5 className="text-xs font-medium text-slate-400 mb-1">Safer Alternatives:</h5>
-        <div className="flex flex-wrap gap-1">
-          {assessment.alternatives.map((alt, i) => (
-            <span key={i} className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded border border-emerald-500/40">
-              {alt} <span className="text-[10px] text-emerald-200 ml-1">(safer)</span>
-            </span>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {/* LLM Analysis Section */}
-    {assessment.llm_analysis ? (
-      <div className="mt-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-        <div className="flex items-center gap-2 mb-2">
-          <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-          </svg>
-          <h5 className="text-sm font-semibold text-purple-300">LLM Analysis</h5>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30">
-            {assessment.llm_analysis.model_used || 'AI'}
-          </span>
-        </div>
-
-        <div className="mb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <RiskBadge level={assessment.llm_analysis.risk_level} />
-            <span className="text-xs text-slate-400">
-              Risk Score: {assessment.llm_analysis.risk_score || 0}/100
-            </span>
-          </div>
-        </div>
-
-        {assessment.llm_analysis.reasoning && (
-          <p className="text-sm text-slate-300 mb-3 leading-relaxed">
-            {assessment.llm_analysis.reasoning}
-          </p>
-        )}
-
-        {assessment.llm_analysis.key_concerns && assessment.llm_analysis.key_concerns.length > 0 && (
-          <div className="mb-2">
-            <h6 className="text-xs font-medium text-purple-300 mb-1">Key Concerns:</h6>
-            <ul className="text-xs text-slate-300 space-y-1">
-              {assessment.llm_analysis.key_concerns.map((concern, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="text-purple-400 mt-0.5">•</span>
-                  {concern}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {assessment.llm_analysis.monitoring_needed && assessment.llm_analysis.monitoring_needed.length > 0 && (
-          <div>
-            <h6 className="text-xs font-medium text-purple-300 mb-1">Monitoring Recommendations:</h6>
-            <div className="flex flex-wrap gap-1">
-              {assessment.llm_analysis.monitoring_needed.map((monitor, i) => (
-                <span key={i} className="text-xs bg-purple-500/20 text-purple-200 px-2 py-1 rounded border border-purple-500/30">
-                  {monitor}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    ) : (
-      <LLMSkeleton />
-    )}
-  </motion.div>
-)
+const API_URL = getApiBaseUrl()
 
 export default function DiabetesManager() {
+  usePageTitle('Diabetes DDI')
+  const navigate = useNavigate()
   const [patients, setPatients] = useState([])
   const [selectedPatient, setSelectedPatient] = useState(null)
   const [medications, setMedications] = useState([])
@@ -936,10 +625,10 @@ export default function DiabetesManager() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className="text-4xl font-bold text-[var(--text-primary)] mb-2">
             <span className="text-medical-400">Diabetic</span> Patient DDI Checker
           </h1>
-          <p className="text-slate-400">
+          <p className="text-[var(--text-secondary)]">
             Specialized drug interaction analysis for diabetic patients
           </p>
           {modelInfo && (
@@ -948,7 +637,7 @@ export default function DiabetesManager() {
                 Model: {modelInfo.loaded ? 'Loaded' : 'Not loaded'}
               </span>
               {modelInfo.model_version && (
-                <span className="px-2 py-1 rounded-full border border-slate-600 bg-slate-800/70">
+                <span className="px-2 py-1 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)]/70">
                   v{modelInfo.model_version}
                 </span>
               )}
@@ -961,7 +650,7 @@ export default function DiabetesManager() {
           <div className="lg:col-span-1">
             <div className="glass-card p-6 rounded-2xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-white">Patients</h2>
+                <h2 className="text-xl font-semibold text-[var(--text-primary)]">Patients</h2>
                 <div className="flex gap-2">
                   {/* Upload Report Button */}
                   <button
@@ -1020,14 +709,14 @@ export default function DiabetesManager() {
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
                     onSubmit={createPatient}
-                    className="mb-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 space-y-3"
+                    className="mb-4 p-4 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)]/50 space-y-3"
                   >
                     <input
                       type="text"
                       placeholder="Patient ID *"
                       value={newPatient.patient_id}
                       onChange={(e) => setNewPatient({ ...newPatient, patient_id: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-[var(--bg-elevated)]/50 border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm"
                       required
                     />
                     <input
@@ -1035,7 +724,7 @@ export default function DiabetesManager() {
                       placeholder="Name"
                       value={newPatient.name}
                       onChange={(e) => setNewPatient({ ...newPatient, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-[var(--bg-elevated)]/50 border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm"
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <input
@@ -1043,12 +732,12 @@ export default function DiabetesManager() {
                         placeholder="Age"
                         value={newPatient.age}
                         onChange={(e) => setNewPatient({ ...newPatient, age: e.target.value })}
-                        className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
+                        className="px-3 py-2 bg-[var(--bg-elevated)]/50 border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm"
                       />
                       <select
                         value={newPatient.diabetes_type}
                         onChange={(e) => setNewPatient({ ...newPatient, diabetes_type: e.target.value })}
-                        className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
+                        className="px-3 py-2 bg-[var(--bg-elevated)]/50 border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm"
                       >
                         <option value="type_1">Type 1</option>
                         <option value="type_2">Type 2</option>
@@ -1063,14 +752,14 @@ export default function DiabetesManager() {
                         placeholder="HbA1c %"
                         value={newPatient.hba1c}
                         onChange={(e) => setNewPatient({ ...newPatient, hba1c: e.target.value })}
-                        className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
+                        className="px-3 py-2 bg-[var(--bg-elevated)]/50 border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm"
                       />
                       <input
                         type="number"
                         placeholder="eGFR"
                         value={newPatient.egfr}
                         onChange={(e) => setNewPatient({ ...newPatient, egfr: e.target.value })}
-                        className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
+                        className="px-3 py-2 bg-[var(--bg-elevated)]/50 border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm"
                       />
                       <input
                         type="number"
@@ -1078,11 +767,11 @@ export default function DiabetesManager() {
                         placeholder="K+ mEq/L"
                         value={newPatient.potassium}
                         onChange={(e) => setNewPatient({ ...newPatient, potassium: e.target.value })}
-                        className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm"
+                        className="px-3 py-2 bg-[var(--bg-elevated)]/50 border border-[var(--border)] rounded-lg text-[var(--text-primary)] text-sm"
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs text-slate-400">Complications:</label>
+                      <label className="text-xs text-[var(--text-secondary)]">Complications:</label>
                       <div className="flex flex-wrap gap-2">
                         {['nephropathy', 'cardiovascular', 'neuropathy'].map(comp => (
                           <label key={comp} className="flex items-center gap-1 text-sm text-slate-300">
@@ -1090,7 +779,7 @@ export default function DiabetesManager() {
                               type="checkbox"
                               checked={newPatient[`has_${comp}`]}
                               onChange={(e) => setNewPatient({ ...newPatient, [`has_${comp}`]: e.target.checked })}
-                              className="rounded bg-slate-800 border-slate-600"
+                              className="rounded bg-[var(--bg-elevated)] border-[var(--border)]"
                             />
                             {comp.charAt(0).toUpperCase() + comp.slice(1)}
                           </label>
@@ -1117,7 +806,7 @@ export default function DiabetesManager() {
                     exit={{ opacity: 0, height: 0 }}
                     className="mb-4"
                   >
-                    <div className="p-4 bg-gradient-to-br from-purple-900/30 to-slate-800/50 rounded-xl border border-purple-500/30">
+                    <div className="p-4 bg-gradient-to-br from-purple-900/20 to-[var(--bg-elevated)] rounded-xl border border-purple-500/30">
                       <h3 className="text-sm font-medium text-purple-400 mb-3 flex items-center gap-2">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -1132,7 +821,7 @@ export default function DiabetesManager() {
                         onDragLeave={handleDragLeave}
                         className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all cursor-pointer ${dragOver
                           ? 'border-purple-400 bg-purple-500/20'
-                          : 'border-slate-600 hover:border-purple-500/50 bg-slate-900/30'
+                          : 'border-[var(--border)] hover:border-purple-500/50 bg-[var(--bg-elevated)]/50'
                           }`}
                       >
                         <input
@@ -1151,11 +840,11 @@ export default function DiabetesManager() {
                           </div>
                         ) : (
                           <>
-                            <svg className="w-10 h-10 text-slate-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            <p className="text-slate-400 text-sm">Drop lab report here or click to upload</p>
-                            <p className="text-slate-500 text-xs mt-1">JPEG, PNG, or PDF • Max 10MB</p>
+                            <p className="text-[var(--text-secondary)] text-sm">Drop lab report here or click to upload</p>
+                            <p className="text-[var(--text-muted)] text-xs mt-1">JPEG, PNG, or PDF • Max 10MB</p>
                           </>
                         )}
                       </div>
@@ -1165,16 +854,16 @@ export default function DiabetesManager() {
                         <div className="mt-4 space-y-3">
                           {/* Patient Info */}
                           {reportAnalysis.extracted_values?.patient?.name && (
-                            <div className="p-3 bg-slate-800/50 rounded-lg">
+                            <div className="p-3 bg-[var(--bg-elevated)]/50 rounded-lg">
                               <div className="flex items-center justify-between">
-                                <span className="text-white font-medium">
+                                <span className="text-[var(--text-primary)] font-medium">
                                   {reportAnalysis.extracted_values.patient.name}
                                 </span>
                                 <span className="text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded">
                                   {reportAnalysis.patient_created ? 'Patient Created' : 'Extracted'}
                                 </span>
                               </div>
-                              <p className="text-slate-400 text-xs mt-1">
+                              <p className="text-[var(--text-secondary)] text-xs mt-1">
                                 {reportAnalysis.extracted_values.patient.age && `Age: ${reportAnalysis.extracted_values.patient.age}`}
                                 {reportAnalysis.extracted_values.patient.gender && ` • ${reportAnalysis.extracted_values.patient.gender}`}
                               </p>
@@ -1184,39 +873,39 @@ export default function DiabetesManager() {
                           {/* Lab Values Grid */}
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             {reportAnalysis.extracted_values?.glucose?.hba1c && (
-                              <div className="p-2 bg-slate-800/50 rounded">
-                                <span className="text-slate-400">HbA1c:</span>
-                                <span className="text-white ml-1">{reportAnalysis.extracted_values.glucose.hba1c}%</span>
+                              <div className="p-2 bg-[var(--bg-elevated)]/50 rounded">
+                                <span className="text-[var(--text-secondary)]">HbA1c:</span>
+                                <span className="text-[var(--text-primary)] ml-1">{reportAnalysis.extracted_values.glucose.hba1c}%</span>
                               </div>
                             )}
                             {reportAnalysis.extracted_values?.glucose?.fasting_glucose && (
-                              <div className="p-2 bg-slate-800/50 rounded">
-                                <span className="text-slate-400">FBS:</span>
-                                <span className="text-white ml-1">{reportAnalysis.extracted_values.glucose.fasting_glucose}</span>
+                              <div className="p-2 bg-[var(--bg-elevated)]/50 rounded">
+                                <span className="text-[var(--text-secondary)]">FBS:</span>
+                                <span className="text-[var(--text-primary)] ml-1">{reportAnalysis.extracted_values.glucose.fasting_glucose}</span>
                               </div>
                             )}
                             {reportAnalysis.extracted_values?.kidney?.egfr && (
-                              <div className="p-2 bg-slate-800/50 rounded">
-                                <span className="text-slate-400">eGFR:</span>
-                                <span className="text-white ml-1">{reportAnalysis.extracted_values.kidney.egfr}</span>
+                              <div className="p-2 bg-[var(--bg-elevated)]/50 rounded">
+                                <span className="text-[var(--text-secondary)]">eGFR:</span>
+                                <span className="text-[var(--text-primary)] ml-1">{reportAnalysis.extracted_values.kidney.egfr}</span>
                               </div>
                             )}
                             {reportAnalysis.extracted_values?.kidney?.creatinine && (
-                              <div className="p-2 bg-slate-800/50 rounded">
-                                <span className="text-slate-400">Creat:</span>
-                                <span className="text-white ml-1">{reportAnalysis.extracted_values.kidney.creatinine}</span>
+                              <div className="p-2 bg-[var(--bg-elevated)]/50 rounded">
+                                <span className="text-[var(--text-secondary)]">Creat:</span>
+                                <span className="text-[var(--text-primary)] ml-1">{reportAnalysis.extracted_values.kidney.creatinine}</span>
                               </div>
                             )}
                             {reportAnalysis.extracted_values?.lipid?.total_cholesterol && (
-                              <div className="p-2 bg-slate-800/50 rounded">
-                                <span className="text-slate-400">Chol:</span>
-                                <span className="text-white ml-1">{reportAnalysis.extracted_values.lipid.total_cholesterol}</span>
+                              <div className="p-2 bg-[var(--bg-elevated)]/50 rounded">
+                                <span className="text-[var(--text-secondary)]">Chol:</span>
+                                <span className="text-[var(--text-primary)] ml-1">{reportAnalysis.extracted_values.lipid.total_cholesterol}</span>
                               </div>
                             )}
                             {reportAnalysis.extracted_values?.lipid?.triglycerides && (
-                              <div className="p-2 bg-slate-800/50 rounded">
-                                <span className="text-slate-400">TG:</span>
-                                <span className="text-white ml-1">{reportAnalysis.extracted_values.lipid.triglycerides}</span>
+                              <div className="p-2 bg-[var(--bg-elevated)]/50 rounded">
+                                <span className="text-[var(--text-secondary)]">TG:</span>
+                                <span className="text-[var(--text-primary)] ml-1">{reportAnalysis.extracted_values.lipid.triglycerides}</span>
                               </div>
                             )}
                           </div>
@@ -1271,7 +960,7 @@ export default function DiabetesManager() {
               {/* Patient List */}
               <div className="space-y-3 max-h-[500px] overflow-y-auto">
                 {patients.length === 0 ? (
-                  <p className="text-slate-500 text-center py-4">No patients yet. Create one above.</p>
+                  <p className="text-[var(--text-muted)] text-center py-4">No patients yet. Create one above.</p>
                 ) : (
                   patients.map(patient => (
                     <PatientCard
@@ -1290,9 +979,11 @@ export default function DiabetesManager() {
           <div className="lg:col-span-2">
             {!selectedPatient ? (
               <div className="glass-card p-12 rounded-2xl text-center">
-                <div className="text-6xl mb-4">👈</div>
-                <h3 className="text-xl font-semibold text-white mb-2">Select a Patient</h3>
-                <p className="text-slate-400">Choose or create a patient to check drug risks</p>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-medical-500/10 flex items-center justify-center">
+                  <ArrowLeft className="w-8 h-8 text-medical-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">Select a Patient</h3>
+                <p className="text-[var(--text-secondary)]">Choose or create a patient to check drug risks</p>
               </div>
             ) : (
               <div className="space-y-6">
@@ -1300,8 +991,8 @@ export default function DiabetesManager() {
                 <div className="glass-card p-6 rounded-2xl">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-2xl font-bold text-white">{selectedPatient.name || selectedPatient.patient_id}</h2>
-                      <p className="text-slate-400">
+                      <h2 className="text-2xl font-bold text-[var(--text-primary)]">{selectedPatient.name || selectedPatient.patient_id}</h2>
+                      <p className="text-[var(--text-secondary)]">
                         {selectedPatient.diabetes_type.replace('_', ' ')} diabetes •
                         {selectedPatient.age ? ` ${selectedPatient.age} years old` : ''} •
                         HbA1c: {selectedPatient.hba1c || 'N/A'}% •
@@ -1324,7 +1015,7 @@ export default function DiabetesManager() {
                             searchDrugs(e.target.value)
                           }}
                           onKeyDown={(e) => e.key === 'Enter' && checkDrugRisk()}
-                          className="flex-1 px-4 py-2 bg-slate-900/50 border border-slate-600 rounded-xl text-white"
+                          className="flex-1 px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl text-medical-300 placeholder:text-[var(--text-muted)] font-medium"
                         />
                         <button
                           onClick={checkDrugRisk}
@@ -1337,9 +1028,9 @@ export default function DiabetesManager() {
                       {/* Autocomplete dropdown */}
                       {searchQuery.trim().length >= 2 && (
                         <div className="relative">
-                          <div className="absolute z-20 mt-1 w-full bg-slate-900/95 border border-slate-700 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+                          <div className="absolute z-20 mt-1 w-full bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-lg max-h-56 overflow-y-auto">
                             {searchLoading && (
-                              <div className="px-3 py-2 text-sm text-slate-400">Searching...</div>
+                              <div className="px-3 py-2 text-sm text-[var(--text-secondary)]">Searching...</div>
                             )}
                             {searchError && (
                               <div className="px-3 py-2 text-sm text-red-400">{searchError}</div>
@@ -1352,11 +1043,11 @@ export default function DiabetesManager() {
                                 key={d.id}
                                 type="button"
                                 onClick={() => selectDrugFromSearch(d)}
-                                className="w-full text-left px-3 py-2 hover:bg-slate-800 text-sm text-white transition-colors flex justify-between gap-2"
+                                className="w-full text-left px-3 py-2 hover:bg-[var(--bg-elevated)] text-sm transition-colors flex justify-between gap-2"
                               >
-                                <span>{d.name}</span>
+                                <span className="text-medical-300 font-medium">{d.name}</span>
                                 {d.generic_name && (
-                                  <span className="text-xs text-slate-400">{d.generic_name}</span>
+                                  <span className="text-xs text-[var(--text-secondary)]">{d.generic_name}</span>
                                 )}
                               </button>
                             ))}
@@ -1372,7 +1063,7 @@ export default function DiabetesManager() {
                       Browse All Drugs
                     </button>
                     <button
-                      onClick={() => window.location.href = `/patient-prescription?patient=${selectedPatient?.patient_id}`}
+                      onClick={() => navigate(`/patient-prescription?patient=${selectedPatient?.patient_id}`)}
                       disabled={loading}
                       className="px-4 py-2 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-xl hover:bg-indigo-500/30 transition-colors disabled:opacity-50 flex items-center gap-2"
                       title="Scan prescription for this patient"
@@ -1438,7 +1129,7 @@ export default function DiabetesManager() {
                           setSearchQuery(chip.value)
                           searchDrugs(chip.value)
                         }}
-                        className="px-3 py-1 rounded-full text-xs bg-slate-700/60 text-slate-200 border border-slate-600 hover:border-medical-400 transition-colors"
+                        className="px-3 py-1 rounded-full text-xs bg-slate-700/60 text-slate-200 border border-[var(--border)] hover:border-medical-400 transition-colors"
                       >
                         {chip.label}
                       </button>
@@ -1448,7 +1139,7 @@ export default function DiabetesManager() {
                   {/* Recent Drug Searches */}
                   {recentDrugs.length > 0 && (
                     <div className="mb-4">
-                      <h4 className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1">
+                      <h4 className="text-xs font-medium text-[var(--text-muted)] mb-2 flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -1473,10 +1164,10 @@ export default function DiabetesManager() {
                             setRecentDrugs([])
                             localStorage.removeItem('recentDrugs')
                           }}
-                          className="px-2 py-1 rounded-full text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                          className="px-2 py-1 rounded-full text-xs text-[var(--text-muted)] hover:text-slate-300 transition-colors"
                           title="Clear history"
                         >
-                          ✕
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -1484,22 +1175,14 @@ export default function DiabetesManager() {
 
                   {/* Current Medications */}
                   <div>
-                    <h4 className="text-sm font-medium text-slate-400 mb-2">Current Medications ({medications.length})</h4>
+                    <h4 className="text-sm font-medium text-[var(--text-secondary)] mb-2">Current Medications ({medications.length})</h4>
                     <div className="flex flex-wrap gap-2">
                       {medications.map(med => (
-                        <span key={med.id} className="px-3 py-1 bg-slate-700/50 text-slate-300 rounded-full text-sm">
+                        <span key={med.id} className="px-3 py-1 bg-medical-500/15 text-medical-300 border border-medical-500/20 rounded-full text-sm font-medium">
                           {med.drug_name}
                         </span>
                       ))}
-                      <button
-                        onClick={() => {
-                          const name = prompt('Enter medication name:')
-                          if (name) addMedication(name)
-                        }}
-                        className="px-3 py-1 bg-medical-500/20 text-medical-400 rounded-full text-sm hover:bg-medical-500/30"
-                      >
-                        + Add
-                      </button>
+                      <AddMedicationInline onAdd={addMedication} />
                     </div>
                   </div>
                 </div>
@@ -1514,7 +1197,7 @@ export default function DiabetesManager() {
                       className="glass-card p-12 rounded-2xl text-center"
                     >
                       <div className="spinner mx-auto mb-4"></div>
-                      <p className="text-slate-400">Analyzing drug safety...</p>
+                      <p className="text-[var(--text-secondary)]">Analyzing drug safety...</p>
                     </motion.div>
                   )}
 
@@ -1525,7 +1208,7 @@ export default function DiabetesManager() {
                       animate={{ opacity: 1, y: 0 }}
                       className="glass-card p-6 rounded-2xl"
                     >
-                      <h3 className="text-xl font-bold text-white mb-4">Drug Risk Assessment</h3>
+                      <h3 className="text-xl font-bold text-[var(--text-primary)] mb-4">Drug Risk Assessment</h3>
                       <DrugRiskCard assessment={checkResult} />
                     </motion.div>
                   )}
@@ -1538,22 +1221,22 @@ export default function DiabetesManager() {
                       className="glass-card p-6 rounded-2xl"
                     >
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xl font-bold text-white">Medication List Assessment</h3>
+                        <h3 className="text-xl font-bold text-[var(--text-primary)]">Medication List Assessment</h3>
                         <RiskBadge level={checkResult.overall_risk_level} />
                       </div>
 
                       {/* Summary */}
                       <div className="grid grid-cols-5 gap-2 mb-4">
                         {[
-                          { label: 'Safe', count: checkResult.safe_count, color: 'emerald' },
-                          { label: 'Caution', count: checkResult.caution_count, color: 'amber' },
-                          { label: 'High Risk', count: checkResult.high_risk_count, color: 'orange' },
-                          { label: 'Contraind.', count: checkResult.contraindicated_count, color: 'red' },
-                          { label: 'Fatal', count: checkResult.fatal_count, color: 'red' },
+                          { label: 'Safe', count: checkResult.safe_count, bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+                          { label: 'Caution', count: checkResult.caution_count, bg: 'bg-amber-500/10', text: 'text-amber-400' },
+                          { label: 'High Risk', count: checkResult.high_risk_count, bg: 'bg-orange-500/10', text: 'text-orange-400' },
+                          { label: 'Contraind.', count: checkResult.contraindicated_count, bg: 'bg-red-500/10', text: 'text-red-400' },
+                          { label: 'Fatal', count: checkResult.fatal_count, bg: 'bg-red-900/20', text: 'text-red-300' },
                         ].map(item => (
-                          <div key={item.label} className={`p-3 rounded-lg bg-${item.color}-500/10 text-center`}>
-                            <div className={`text-2xl font-bold text-${item.color}-400`}>{item.count}</div>
-                            <div className="text-xs text-slate-400">{item.label}</div>
+                          <div key={item.label} className={`p-3 rounded-lg ${item.bg} text-center`}>
+                            <div className={`text-2xl font-bold ${item.text}`}>{item.count}</div>
+                            <div className="text-xs text-[var(--text-secondary)]">{item.label}</div>
                           </div>
                         ))}
                       </div>
@@ -1571,7 +1254,7 @@ export default function DiabetesManager() {
                       {/* Recommendations */}
                       {checkResult.recommendations?.length > 0 && (
                         <div className="mb-4">
-                          <h4 className="text-sm font-medium text-slate-400 mb-2">Recommendations</h4>
+                          <h4 className="text-sm font-medium text-[var(--text-secondary)] mb-2">Recommendations</h4>
                           {checkResult.recommendations.map((rec, i) => (
                             <p key={i} className="text-sm text-slate-300 mb-1">{rec}</p>
                           ))}
@@ -1595,14 +1278,14 @@ export default function DiabetesManager() {
                       className="glass-card p-6 rounded-2xl"
                     >
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-xl font-bold text-white">Full DDI Report</h3>
+                        <h3 className="text-xl font-bold text-[var(--text-primary)]">Full DDI Report</h3>
                         <div className="text-right">
                           <div className={`text-3xl font-bold ${report.overall_safety_score > 70 ? 'text-emerald-400' :
                             report.overall_safety_score > 40 ? 'text-amber-400' : 'text-red-400'
                             }`}>
                             {report.overall_safety_score}%
                           </div>
-                          <div className="text-xs text-slate-400">Safety Score</div>
+                          <div className="text-xs text-[var(--text-secondary)]">Safety Score</div>
                         </div>
                       </div>
 
@@ -1636,7 +1319,7 @@ export default function DiabetesManager() {
                       {/* Monitoring Plan */}
                       {report.monitoring_plan?.length > 0 && (
                         <div className="mb-4">
-                          <h4 className="text-sm font-medium text-slate-400 mb-2">Monitoring Plan</h4>
+                          <h4 className="text-sm font-medium text-[var(--text-secondary)] mb-2">Monitoring Plan</h4>
                           <div className="flex flex-wrap gap-2">
                             {report.monitoring_plan.map((item, i) => (
                               <span key={i} className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">{item}</span>
@@ -1651,7 +1334,7 @@ export default function DiabetesManager() {
                         medications={medications}
                       />
 
-                      <p className="text-sm text-slate-500 mt-4">
+                      <p className="text-sm text-[var(--text-muted)] mt-4">
                         Report generated: {new Date(report.report_generated_at).toLocaleString()}
                       </p>
                     </motion.div>
@@ -1677,17 +1360,17 @@ export default function DiabetesManager() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl"
+              className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl w-full max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl"
             >
               {/* Header */}
-              <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-white">Browse All Drugs</h2>
-                  <p className="text-sm text-slate-400">Click any drug to check risk for {selectedPatient?.name || 'patient'}</p>
+                  <h2 className="text-xl font-bold text-[var(--text-primary)]">Browse All Drugs</h2>
+                  <p className="text-sm text-[var(--text-secondary)]">Click any drug to check risk for {selectedPatient?.name || 'patient'}</p>
                 </div>
                 <button
                   onClick={() => setShowDrugBrowser(false)}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                  className="p-2 hover:bg-[var(--bg-elevated)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1696,7 +1379,7 @@ export default function DiabetesManager() {
               </div>
 
               {/* Search */}
-              <div className="p-4 border-b border-slate-700">
+              <div className="p-4 border-b border-[var(--border)]">
                 <input
                   type="text"
                   placeholder="Search drugs by name..."
@@ -1705,7 +1388,7 @@ export default function DiabetesManager() {
                     setDrugBrowserSearch(e.target.value)
                     fetchAllDrugs(e.target.value, 0)
                   }}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-medical-500 focus:outline-none"
+                  className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl text-medical-300 placeholder-[var(--text-muted)] focus:border-medical-500 focus:outline-none font-medium"
                 />
               </div>
 
@@ -1714,11 +1397,11 @@ export default function DiabetesManager() {
                 {drugsLoading ? (
                   <div className="text-center py-8">
                     <div className="spinner mx-auto mb-2"></div>
-                    <p className="text-slate-400">Loading drugs...</p>
+                    <p className="text-[var(--text-secondary)]">Loading drugs...</p>
                   </div>
                 ) : allDrugs.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-slate-400">No drugs found. Try a different search.</p>
+                    <p className="text-[var(--text-secondary)]">No drugs found. Try a different search.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -1726,16 +1409,16 @@ export default function DiabetesManager() {
                       <button
                         key={drug.id}
                         onClick={() => checkDrugFromBrowser(drug.name || drug.generic_name)}
-                        className="p-3 bg-slate-800/50 hover:bg-slate-700/70 border border-slate-700 hover:border-medical-500/50 rounded-xl text-left transition-all group"
+                        className="p-3 bg-[var(--bg-elevated)]/50 hover:bg-[var(--bg-elevated)]/80 border border-[var(--border)] hover:border-medical-500/50 rounded-xl text-left transition-all group"
                       >
-                        <div className="font-medium text-white group-hover:text-medical-400 transition-colors">
+                        <div className="font-semibold text-medical-300 group-hover:text-medical-200 transition-colors">
                           {drug.name}
                         </div>
                         {drug.generic_name && drug.generic_name !== drug.name && (
-                          <div className="text-xs text-slate-400">{drug.generic_name}</div>
+                          <div className="text-xs text-[var(--text-secondary)]">{drug.generic_name}</div>
                         )}
                         {drug.drug_class && (
-                          <div className="text-xs text-slate-500 mt-1">{drug.drug_class}</div>
+                          <div className="text-xs text-[var(--text-muted)] mt-1">{drug.drug_class}</div>
                         )}
                       </button>
                     ))}
@@ -1744,7 +1427,7 @@ export default function DiabetesManager() {
               </div>
 
               {/* Pagination */}
-              <div className="p-4 border-t border-slate-700 flex items-center justify-between">
+              <div className="p-4 border-t border-[var(--border)] flex items-center justify-between">
                 <button
                   onClick={() => {
                     const newPage = Math.max(0, drugBrowserPage - 1)
@@ -1752,11 +1435,11 @@ export default function DiabetesManager() {
                     fetchAllDrugs(drugBrowserSearch, newPage)
                   }}
                   disabled={drugBrowserPage === 0}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-[var(--bg-elevated)] text-slate-300 rounded-lg hover:bg-[var(--bg-elevated)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   ← Previous
                 </button>
-                <span className="text-slate-400">
+                <span className="text-[var(--text-secondary)]">
                   Page {drugBrowserPage + 1} • Showing {allDrugs.length} drugs
                 </span>
                 <button
@@ -1766,7 +1449,7 @@ export default function DiabetesManager() {
                     fetchAllDrugs(drugBrowserSearch, newPage)
                   }}
                   disabled={allDrugs.length < 50}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-[var(--bg-elevated)] text-slate-300 rounded-lg hover:bg-[var(--bg-elevated)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next →
                 </button>
@@ -1789,3 +1472,64 @@ export default function DiabetesManager() {
   )
 }
 
+// Inline medication add component — replaces native prompt()
+function AddMedicationInline({ onAdd }) {
+  const [isAdding, setIsAdding] = useState(false)
+  const [name, setName] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (isAdding && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isAdding])
+
+  const handleSubmit = () => {
+    if (name.trim()) {
+      onAdd(name.trim())
+      setName('')
+      setIsAdding(false)
+    }
+  }
+
+  if (!isAdding) {
+    return (
+      <button
+        onClick={() => setIsAdding(true)}
+        className="px-3 py-1 bg-medical-500/20 text-medical-400 rounded-full text-sm hover:bg-medical-500/30 transition-colors flex items-center gap-1"
+      >
+        <Plus className="w-3.5 h-3.5" /> Add
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input
+        ref={inputRef}
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleSubmit()
+          if (e.key === 'Escape') { setIsAdding(false); setName('') }
+        }}
+        placeholder="Medication name..."
+        className="px-3 py-1 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-full text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:border-medical-500 focus:outline-none w-40"
+      />
+      <button
+        onClick={handleSubmit}
+        disabled={!name.trim()}
+        className="p-1 rounded-full bg-medical-500/20 text-medical-400 hover:bg-medical-500/30 disabled:opacity-40 transition-colors"
+      >
+        <Check className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={() => { setIsAdding(false); setName('') }}
+        className="p-1 rounded-full bg-slate-700/50 text-[var(--text-muted)] hover:bg-slate-700 transition-colors"
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  )
+}

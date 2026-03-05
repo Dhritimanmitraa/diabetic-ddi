@@ -33,34 +33,58 @@ export default function VoiceInput({
 
         // Initialize speech recognition
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = true;  // Keep listening for longer speech
         recognition.interimResults = true;
         recognition.lang = 'en-US';
-        recognition.maxAlternatives = 1;
+        recognition.maxAlternatives = 3;  // More alternatives for better accuracy
 
         recognition.onstart = () => {
             setIsListening(true);
             setError(null);
+            console.log('[VoiceInput] Started listening...');
         };
 
         recognition.onend = () => {
-            setIsListening(false);
+            console.log('[VoiceInput] Recognition ended');
+            // Auto-restart if still supposed to be listening (handles browser auto-stop)
+            if (recognitionRef.current && recognitionRef.current._shouldListen) {
+                try {
+                    recognition.start();
+                    console.log('[VoiceInput] Auto-restarting...');
+                } catch (e) {
+                    // Failed to restart, stop listening
+                    setIsListening(false);
+                    recognitionRef.current._shouldListen = false;
+                }
+            } else {
+                setIsListening(false);
+            }
         };
 
         recognition.onerror = (event) => {
-            setIsListening(false);
+            console.log('[VoiceInput] Error:', event.error);
             switch (event.error) {
                 case 'no-speech':
-                    setError('No speech detected. Please try again.');
-                    break;
+                    // Don't stop on no-speech, just show a hint
+                    setError('No speech detected. Keep speaking...');
+                    // Clear error after 2 seconds
+                    setTimeout(() => setError(null), 2000);
+                    return;  // Don't stop listening
                 case 'audio-capture':
                     setError('No microphone found. Please connect a microphone.');
                     break;
                 case 'not-allowed':
                     setError('Microphone access denied. Please allow microphone access.');
                     break;
+                case 'aborted':
+                    // User stopped, don't show error
+                    break;
                 default:
                     setError(`Error: ${event.error}`);
+            }
+            setIsListening(false);
+            if (recognitionRef.current) {
+                recognitionRef.current._shouldListen = false;
             }
         };
 
@@ -102,15 +126,27 @@ export default function VoiceInput({
         if (!recognitionRef.current) return;
 
         if (isListening) {
+            recognitionRef.current._shouldListen = false;
             recognitionRef.current.stop();
+            setIsListening(false);
         } else {
             setTranscript('');
             setInterimTranscript('');
             setError(null);
+            recognitionRef.current._shouldListen = true;
             try {
                 recognitionRef.current.start();
             } catch (e) {
-                // Already started, ignore
+                console.log('[VoiceInput] Start error:', e);
+                // Already started, try to restart
+                recognitionRef.current.stop();
+                setTimeout(() => {
+                    try {
+                        recognitionRef.current?.start();
+                    } catch (e2) {
+                        console.log('[VoiceInput] Restart failed:', e2);
+                    }
+                }, 100);
             }
         }
     }, [isListening]);
@@ -132,8 +168,8 @@ export default function VoiceInput({
                 onClick={toggleListening}
                 disabled={disabled}
                 className={`relative flex items-center justify-center p-3 rounded-xl transition-all duration-300 ${isListening
-                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
-                        : 'bg-slate-800 dark:bg-slate-800 light:bg-slate-200 text-slate-400 hover:text-white hover:bg-slate-700 dark:hover:bg-slate-700 light:hover:bg-slate-300'
+                    ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-300 dark:hover:bg-slate-700'
                     } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 whileHover={{ scale: disabled ? 1 : 1.05 }}
                 whileTap={{ scale: disabled ? 1 : 0.95 }}
@@ -181,7 +217,7 @@ export default function VoiceInput({
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        className="absolute top-full mt-2 left-0 right-0 min-w-[200px] p-3 rounded-lg bg-slate-800 dark:bg-slate-800 light:bg-white border border-slate-700 dark:border-slate-700 light:border-slate-200 shadow-xl z-50"
+                        className="absolute top-full mt-2 left-0 right-0 min-w-[200px] p-3 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl z-50"
                     >
                         {isListening && !interimTranscript && !transcript ? (
                             <div className="flex items-center gap-2 text-slate-400">
@@ -191,7 +227,7 @@ export default function VoiceInput({
                         ) : (
                             <div className="text-sm">
                                 {transcript && (
-                                    <p className="text-white dark:text-white light:text-slate-900 font-medium">
+                                    <p className="text-slate-900 dark:text-white font-medium">
                                         {transcript}
                                     </p>
                                 )}
@@ -239,17 +275,46 @@ export function VoiceInputInline({ onResult, className = "" }) {
         }
 
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
+        recognition.continuous = true;  // Keep listening for longer speech
+        recognition.interimResults = true;  // Get results as user speaks
         recognition.lang = 'en-US';
+        recognition.maxAlternatives = 3;
 
         recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onerror = () => setIsListening(false);
+
+        recognition.onend = () => {
+            // Auto-restart if still supposed to be listening
+            if (recognitionRef.current && recognitionRef.current._shouldListen) {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    setIsListening(false);
+                    recognitionRef.current._shouldListen = false;
+                }
+            } else {
+                setIsListening(false);
+            }
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error === 'no-speech') {
+                // Don't stop on no-speech, keep listening
+                return;
+            }
+            setIsListening(false);
+            if (recognitionRef.current) {
+                recognitionRef.current._shouldListen = false;
+            }
+        };
 
         recognition.onresult = (event) => {
-            const result = event.results[0][0].transcript;
-            onResult?.(result.trim());
+            // Get the most recent final result
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                if (event.results[i].isFinal) {
+                    const result = event.results[i][0].transcript;
+                    onResult?.(result.trim());
+                }
+            }
         };
 
         recognitionRef.current = recognition;
@@ -261,12 +326,23 @@ export function VoiceInputInline({ onResult, className = "" }) {
         if (!recognitionRef.current) return;
 
         if (isListening) {
+            recognitionRef.current._shouldListen = false;
             recognitionRef.current.stop();
+            setIsListening(false);
         } else {
+            recognitionRef.current._shouldListen = true;
             try {
                 recognitionRef.current.start();
             } catch (e) {
-                // Already started
+                // Already started, restart
+                recognitionRef.current.stop();
+                setTimeout(() => {
+                    try {
+                        recognitionRef.current?.start();
+                    } catch (e2) {
+                        // Ignore
+                    }
+                }, 100);
             }
         }
     }, [isListening]);
@@ -278,8 +354,8 @@ export function VoiceInputInline({ onResult, className = "" }) {
             type="button"
             onClick={toggleListening}
             className={`p-2 rounded-lg transition-all ${isListening
-                    ? 'text-red-400 bg-red-500/10 animate-pulse'
-                    : 'text-slate-400 hover:text-medical-400 hover:bg-slate-800/50'
+                ? 'text-red-400 bg-red-500/10 animate-pulse'
+                : 'text-slate-400 hover:text-medical-400 hover:bg-slate-800/50'
                 } ${className}`}
             aria-label={isListening ? 'Stop listening' : 'Voice input'}
             title="Voice input"

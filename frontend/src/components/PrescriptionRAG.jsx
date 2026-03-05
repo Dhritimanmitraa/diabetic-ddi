@@ -7,6 +7,7 @@ import {
   Mic, MicOff, AlertTriangle, Shield, Camera, SwitchCamera, XCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import usePageTitle from '../hooks/usePageTitle'
 import {
   uploadPrescription,
   chatWithPrescription,
@@ -17,6 +18,7 @@ import {
 } from '../services/api'
 
 function PrescriptionRAG() {
+  usePageTitle('Prescription Scanner')
   // State
   const [activeSection, setActiveSection] = useState('upload') // upload, result, history
   const [isUploading, setIsUploading] = useState(false)
@@ -104,6 +106,7 @@ function PrescriptionRAG() {
       setHistory(data.prescriptions || [])
     } catch (err) {
       console.error('Failed to load history:', err)
+      toast.error('Failed to load prescription history')
     }
   }
 
@@ -403,20 +406,37 @@ function PrescriptionRAG() {
   }
 
   const handleDeletePrescription = async (id) => {
-    if (!confirm('Delete this prescription?')) return
-
-    try {
-      await deletePrescription(id)
-      toast.success('Prescription deleted')
-      loadHistory()
-      if (prescription?.id === id) {
-        setPrescription(null)
-        setChatMessages([])
-        setActiveSection('upload')
-      }
-    } catch (err) {
-      toast.error('Failed to delete')
-    }
+    toast((t) => (
+      <div className="flex items-center gap-3">
+        <span className="text-sm">Delete this prescription?</span>
+        <button
+          onClick={async () => {
+            toast.dismiss(t.id)
+            try {
+              await deletePrescription(id)
+              toast.success('Prescription deleted')
+              loadHistory()
+              if (prescription?.id === id) {
+                setPrescription(null)
+                setChatMessages([])
+                setActiveSection('upload')
+              }
+            } catch (err) {
+              toast.error('Failed to delete')
+            }
+          }}
+          className="px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-lg hover:bg-red-600 transition-colors"
+        >
+          Delete
+        </button>
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          className="px-3 py-1 bg-slate-600 text-white text-xs font-medium rounded-lg hover:bg-slate-500 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    ), { duration: 10000 })
   }
 
   const handleSelectFromHistory = async (item) => {
@@ -444,35 +464,48 @@ function PrescriptionRAG() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl font-display font-bold text-white mb-3">
+          <h1 className="text-4xl font-sans font-bold text-[var(--text-primary)] mb-3">
             Prescription <span className="gradient-text">Scanner</span>
           </h1>
-          <p className="text-slate-400 max-w-2xl mx-auto">
+          <p className="text-[var(--text-secondary)] max-w-2xl mx-auto">
             Upload your prescription image or PDF. AI will extract medicine details
             and answer your questions about dosage, timing, and more.
           </p>
         </motion.div>
 
         {/* Tab Navigation */}
-        <div className="flex justify-center gap-2 mb-8">
-          {['upload', 'result', 'history'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveSection(tab)}
-              disabled={tab === 'result' && !prescription}
-              className={`px-5 py-2.5 rounded-xl font-medium capitalize transition-all ${activeSection === tab
-                ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
-                : tab === 'result' && !prescription
-                  ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
-                  : 'bg-slate-800/50 text-slate-400 hover:bg-slate-800 hover:text-white'
-                }`}
-            >
-              {tab === 'upload' && <Upload className="w-4 h-4 inline mr-2" />}
-              {tab === 'result' && <Pill className="w-4 h-4 inline mr-2" />}
-              {tab === 'history' && <FileText className="w-4 h-4 inline mr-2" />}
-              {tab}
-            </button>
-          ))}
+        <div className="flex justify-center gap-2 mb-8" role="tablist" aria-label="Prescription sections">
+          {['upload', 'result', 'history'].map((tab, idx) => {
+            const isDisabled = tab === 'result' && !prescription
+            return (
+              <button
+                key={tab}
+                role="tab"
+                id={`rx-tab-${tab}`}
+                aria-selected={activeSection === tab}
+                aria-controls={`rx-panel-${tab}`}
+                tabIndex={activeSection === tab ? 0 : -1}
+                onClick={() => setActiveSection(tab)}
+                onKeyDown={(e) => {
+                  const tabs = ['upload', 'result', 'history']
+                  if (e.key === 'ArrowRight') { e.preventDefault(); setActiveSection(tabs[(idx + 1) % 3]) }
+                  if (e.key === 'ArrowLeft') { e.preventDefault(); setActiveSection(tabs[(idx + 2) % 3]) }
+                }}
+                disabled={isDisabled}
+                className={`px-5 py-2.5 rounded-xl font-medium capitalize transition-all ${activeSection === tab
+                  ? 'bg-medical-500 text-white shadow-lg shadow-medical-500/25'
+                  : isDisabled
+                    ? 'bg-slate-800/30 text-slate-600 cursor-not-allowed'
+                    : 'bg-[var(--bg-elevated)]/50 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)]'
+                  }`}
+              >
+                {tab === 'upload' && <Upload className="w-4 h-4 inline mr-2" />}
+                {tab === 'result' && <Pill className="w-4 h-4 inline mr-2" />}
+                {tab === 'history' && <FileText className="w-4 h-4 inline mr-2" />}
+                {tab}
+              </button>
+            )
+          })}
         </div>
 
         <AnimatePresence mode="wait">
@@ -487,7 +520,7 @@ function PrescriptionRAG() {
             >
               {/* Camera View */}
               {showCamera ? (
-                <div className="glass rounded-3xl overflow-hidden">
+                <div className="glass rounded-2xl overflow-hidden">
                   {/* Camera Preview */}
                   <div className="relative bg-black aspect-[4/3]">
                     <video
@@ -543,15 +576,15 @@ function PrescriptionRAG() {
                     <button
                       onClick={startCamera}
                       disabled={isUploading}
-                      className="glass rounded-2xl p-8 text-center hover:bg-slate-800/50 transition-all border-2 border-transparent hover:border-medical-500/30 disabled:opacity-50"
+                      className="glass rounded-2xl p-8 text-center hover:bg-[var(--bg-elevated)]/50 transition-all border-2 border-transparent hover:border-medical-500/30 disabled:opacity-50"
                     >
                       <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-medical-500/10 flex items-center justify-center">
                         <Camera className="w-8 h-8 text-medical-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
+                      <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
                         Take Photo
                       </h3>
-                      <p className="text-slate-500 text-sm">
+                      <p className="text-[var(--text-muted)] text-sm">
                         Use camera to capture
                       </p>
                     </button>
@@ -563,7 +596,7 @@ function PrescriptionRAG() {
                       onDragOver={handleDragOver}
                       className={`glass rounded-2xl p-8 text-center cursor-pointer border-2 border-transparent transition-all ${isUploading
                         ? 'opacity-50 cursor-not-allowed'
-                        : 'hover:bg-slate-800/50 hover:border-medical-500/30'
+                        : 'hover:bg-[var(--bg-elevated)]/50 hover:border-medical-500/30'
                         }`}
                     >
                       <input
@@ -576,10 +609,10 @@ function PrescriptionRAG() {
                       <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-500/10 flex items-center justify-center">
                         <Upload className="w-8 h-8 text-purple-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
+                      <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">
                         Upload File
                       </h3>
-                      <p className="text-slate-500 text-sm">
+                      <p className="text-[var(--text-muted)] text-sm">
                         JPEG, PNG, or PDF
                       </p>
                     </div>
@@ -590,7 +623,7 @@ function PrescriptionRAG() {
                     <div className="glass rounded-2xl p-8 text-center">
                       <Loader2 className="w-12 h-12 text-medical-400 animate-spin mx-auto mb-4" />
                       <p className="text-medical-400 font-medium">Processing prescription...</p>
-                      <p className="text-slate-500 text-sm mt-1">Extracting medicine details with AI</p>
+                      <p className="text-[var(--text-muted)] text-sm mt-1">Extracting medicine details with AI</p>
                     </div>
                   )}
                 </>
@@ -600,7 +633,7 @@ function PrescriptionRAG() {
               {!showCamera && (
                 <div className="mt-6 p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl">
                   <p className="text-amber-400 text-sm font-medium mb-2">Tips for best results:</p>
-                  <ul className="text-slate-400 text-sm space-y-1">
+                  <ul className="text-[var(--text-secondary)] text-sm space-y-1">
                     <li>• Ensure good lighting and clear focus</li>
                     <li>• Include all medicines in the frame</li>
                     <li>• Handwritten prescriptions work too!</li>
@@ -624,7 +657,7 @@ function PrescriptionRAG() {
                 {/* Uploaded Prescription Image Preview */}
                 {uploadedImageUrl && (
                   <div className="mb-4">
-                    <div className="rounded-xl overflow-hidden border border-slate-700/50 bg-slate-800/30">
+                    <div className="rounded-xl overflow-hidden border border-[var(--border)]/50 bg-slate-800/30">
                       <img
                         src={uploadedImageUrl}
                         alt="Uploaded prescription"
@@ -635,7 +668,7 @@ function PrescriptionRAG() {
                 )}
 
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-[var(--text-primary)] flex items-center gap-2">
                     <Pill className="w-5 h-5 text-medical-400" />
                     Medicines ({prescription.medicines?.length || 0})
                   </h2>
@@ -663,9 +696,9 @@ function PrescriptionRAG() {
                 )}
 
                 {prescription.extraction_confidence && (
-                  <div className="mt-4 pt-4 border-t border-slate-700/50">
+                  <div className="mt-4 pt-4 border-t border-[var(--border)]/50">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-slate-400">Extraction Confidence</span>
+                      <span className="text-[var(--text-secondary)]">Extraction Confidence</span>
                       <span className={`font-medium ${prescription.extraction_confidence > 0.7 ? 'text-green-400' :
                         prescription.extraction_confidence > 0.4 ? 'text-amber-400' : 'text-red-400'
                         }`}>
@@ -677,14 +710,14 @@ function PrescriptionRAG() {
 
                 {/* Drug Warnings Panel */}
                 {(drugWarnings || isCheckingWarnings) && (
-                  <div className="mt-4 pt-4 border-t border-slate-700/50">
+                  <div className="mt-4 pt-4 border-t border-[var(--border)]/50">
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm font-medium text-white">Drug Interactions</span>
+                      <span className="text-sm font-medium text-[var(--text-primary)]">Drug Interactions</span>
                     </div>
 
                     {isCheckingWarnings ? (
-                      <div className="flex items-center gap-2 text-sm text-slate-400">
+                      <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         Checking interactions...
                       </div>
@@ -696,28 +729,28 @@ function PrescriptionRAG() {
                             className={`p-3 rounded-lg text-sm ${interaction.severity === 'contraindicated' ? 'bg-red-500/10 border border-red-500/30' :
                               interaction.severity === 'major' ? 'bg-orange-500/10 border border-orange-500/30' :
                                 interaction.severity === 'moderate' ? 'bg-amber-500/10 border border-amber-500/30' :
-                                  'bg-slate-700/30 border border-slate-600/30'
+                                  'bg-slate-700/30 border border-[var(--border)]/30'
                               }`}
                           >
                             <div className="flex items-start gap-2">
                               <AlertTriangle className={`w-4 h-4 flex-shrink-0 mt-0.5 ${interaction.severity === 'contraindicated' ? 'text-red-400' :
                                 interaction.severity === 'major' ? 'text-orange-400' :
                                   interaction.severity === 'moderate' ? 'text-amber-400' :
-                                    'text-slate-400'
+                                    'text-[var(--text-secondary)]'
                                 }`} />
                               <div>
-                                <p className="font-medium text-white">
+                                <p className="font-medium text-[var(--text-primary)]">
                                   {interaction.drug1} + {interaction.drug2}
                                 </p>
                                 <p className={`text-xs capitalize ${interaction.severity === 'contraindicated' ? 'text-red-400' :
                                   interaction.severity === 'major' ? 'text-orange-400' :
                                     interaction.severity === 'moderate' ? 'text-amber-400' :
-                                      'text-slate-400'
+                                      'text-[var(--text-secondary)]'
                                   }`}>
                                   {interaction.severity} interaction
                                 </p>
                                 {interaction.description && (
-                                  <p className="text-slate-400 mt-1 text-xs line-clamp-2">
+                                  <p className="text-[var(--text-secondary)] mt-1 text-xs line-clamp-2">
                                     {interaction.description}
                                   </p>
                                 )}
@@ -726,7 +759,7 @@ function PrescriptionRAG() {
                           </div>
                         ))}
                         {drugWarnings.interactions.length > 3 && (
-                          <p className="text-xs text-slate-500 text-center">
+                          <p className="text-xs text-[var(--text-muted)] text-center">
                             +{drugWarnings.interactions.length - 3} more interactions
                           </p>
                         )}
@@ -745,7 +778,7 @@ function PrescriptionRAG() {
               <div className="glass rounded-2xl p-6 flex flex-col">
                 <div className="flex items-center gap-2 mb-4">
                   <MessageSquare className="w-5 h-5 text-purple-400" />
-                  <h2 className="text-xl font-semibold text-white">Ask Questions</h2>
+                  <h2 className="text-xl font-semibold text-[var(--text-primary)]">Ask Questions</h2>
                 </div>
 
                 {/* Chat Messages */}
@@ -766,7 +799,7 @@ function PrescriptionRAG() {
                           <button
                             key={i}
                             onClick={() => setChatInput(q)}
-                            className="text-xs px-3 py-1.5 rounded-full bg-slate-800/50 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
+                            className="text-xs px-3 py-1.5 rounded-full bg-[var(--bg-elevated)]/50 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
                           >
                             {q}
                           </button>
@@ -796,7 +829,7 @@ function PrescriptionRAG() {
                   {isChatLoading && (
                     <div className="flex justify-start">
                       <div className="bg-slate-800 px-4 py-3 rounded-2xl rounded-bl-md">
-                        <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+                        <Loader2 className="w-5 h-5 text-[var(--text-secondary)] animate-spin" />
                       </div>
                     </div>
                   )}
@@ -811,9 +844,9 @@ function PrescriptionRAG() {
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder={isListening ? "Listening..." : "Ask about your prescription..."}
-                    className={`flex-1 px-4 py-3 bg-slate-800/50 border rounded-xl text-white placeholder-slate-500 focus:outline-none transition-all ${isListening
+                    className={`flex-1 px-4 py-3 bg-[var(--bg-elevated)] border rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none transition-all ${isListening
                       ? 'border-red-500/50 animate-pulse'
-                      : 'border-slate-700/50 focus:border-medical-500/50'
+                      : 'border-[var(--border)] focus:border-medical-500/50'
                       }`}
                     disabled={isChatLoading}
                   />
@@ -833,7 +866,7 @@ function PrescriptionRAG() {
                   <button
                     onClick={handleSendChat}
                     disabled={!chatInput.trim() || isChatLoading}
-                    className="px-4 py-3 bg-medical-500 hover:bg-medical-400 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-xl transition-colors"
+                    className="px-4 py-3 bg-medical-500 hover:bg-medical-400 disabled:bg-slate-700 disabled:text-[var(--text-muted)] text-white rounded-xl transition-colors"
                   >
                     <Send className="w-5 h-5" />
                   </button>
@@ -852,8 +885,8 @@ function PrescriptionRAG() {
               className="max-w-3xl mx-auto"
             >
               <div className="glass rounded-2xl p-6">
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-slate-400" />
+                <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[var(--text-secondary)]" />
                   Recent Prescriptions
                 </h2>
 
@@ -862,7 +895,7 @@ function PrescriptionRAG() {
                     {history.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl hover:bg-slate-800/50 transition-colors"
+                        className="flex items-center justify-between p-4 bg-slate-800/30 rounded-xl hover:bg-[var(--bg-elevated)]/50 transition-colors"
                       >
                         <div
                           className="flex-1 cursor-pointer"
@@ -873,10 +906,10 @@ function PrescriptionRAG() {
                               <FileText className="w-5 h-5 text-medical-400" />
                             </div>
                             <div>
-                              <p className="text-white font-medium">
+                              <p className="text-[var(--text-primary)] font-medium">
                                 {item.filename || `Prescription #${item.id}`}
                               </p>
-                              <p className="text-slate-500 text-sm">
+                              <p className="text-[var(--text-muted)] text-sm">
                                 {item.medicines?.length || 0} medicines • {new Date(item.created_at).toLocaleDateString()}
                               </p>
                             </div>
@@ -893,7 +926,7 @@ function PrescriptionRAG() {
                           </span>
                           <button
                             onClick={() => handleDeletePrescription(item.id)}
-                            className="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                            className="p-2 text-[var(--text-muted)] hover:text-red-400 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -922,16 +955,16 @@ function MedicineCard({ medicine, expanded, onToggle }) {
     <div className="bg-slate-800/30 rounded-xl overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-800/50 transition-colors"
+        className="w-full p-4 flex items-center justify-between text-left hover:bg-[var(--bg-elevated)]/50 transition-colors"
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-medical-500/10 flex items-center justify-center">
             <Pill className="w-5 h-5 text-medical-400" />
           </div>
           <div>
-            <p className="text-white font-medium">{medicine.name}</p>
+            <p className="text-[var(--text-primary)] font-medium">{medicine.name}</p>
             {medicine.dosage && (
-              <p className="text-slate-500 text-sm">{medicine.dosage}</p>
+              <p className="text-[var(--text-muted)] text-sm">{medicine.dosage}</p>
             )}
           </div>
         </div>
@@ -996,8 +1029,8 @@ function MedicineCard({ medicine, expanded, onToggle }) {
                 </div>
               )}
               {medicine.instructions && (
-                <div className="pt-2 border-t border-slate-700/50">
-                  <span className="text-slate-500 block mb-1">Instructions</span>
+                <div className="pt-2 border-t border-[var(--border)]/50">
+                  <span className="text-[var(--text-muted)] block mb-1">Instructions</span>
                   <span className="text-slate-300">{medicine.instructions}</span>
                 </div>
               )}

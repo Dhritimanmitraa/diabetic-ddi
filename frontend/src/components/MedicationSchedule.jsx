@@ -111,7 +111,7 @@ function MedicationSchedule({ medications = [] }) {
         <div className="mt-6">
             <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-3 text-lg font-semibold text-white mb-4 hover:text-medical-400 transition-colors"
+                className="flex items-center gap-3 text-lg font-semibold text-[var(--text-primary)] mb-4 hover:text-medical-400 transition-colors"
             >
                 <span className="text-2xl"></span>
                 Medication Schedule
@@ -153,7 +153,7 @@ function MedicationSchedule({ medications = [] }) {
                                     <div className="flex items-center gap-3 mb-3">
                                         <span className="text-2xl">{slot.icon}</span>
                                         <div>
-                                            <h4 className="font-medium text-white">{slot.label}</h4>
+                                            <h4 className="font-medium text-[var(--text-primary)]">{slot.label}</h4>
                                             <p className="text-xs text-slate-400">{slot.time}</p>
                                         </div>
                                         <span className={`ml-auto text-xs px-2 py-1 rounded-full ${slot.medications.length > 0
@@ -171,7 +171,7 @@ function MedicationSchedule({ medications = [] }) {
                                                     key={mIdx}
                                                     className="flex items-center gap-2 px-3 py-2 bg-slate-700/50 rounded-lg border border-slate-600/50"
                                                 >
-                                                    <span className="text-sm font-medium text-white">{med.drug_name}</span>
+                                                    <span className="text-sm font-medium text-[var(--text-primary)]">{med.drug_name}</span>
                                                     {med.dosage && (
                                                         <span className="text-xs text-slate-400">{med.dosage}</span>
                                                     )}
@@ -190,14 +190,14 @@ function MedicationSchedule({ medications = [] }) {
 
                         {/* Edit Schedule */}
                         <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                            <h4 className="font-medium text-white mb-3 flex items-center gap-2">
+                            <h4 className="font-medium text-[var(--text-primary)] mb-3 flex items-center gap-2">
                                 <span></span> Customize Schedule
                             </h4>
                             <div className="space-y-3">
                                 {medications.map((med, idx) => (
                                     <div key={idx} className="p-3 bg-slate-900/50 rounded-lg">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-medium text-white">{med.drug_name}</span>
+                                            <span className="font-medium text-[var(--text-primary)]">{med.drug_name}</span>
                                             <button
                                                 onClick={() => toggleWithFood(med.drug_name)}
                                                 className={`text-xs px-2 py-1 rounded transition-colors ${scheduleTimes[med.drug_name]?.withFood

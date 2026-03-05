@@ -6,27 +6,45 @@ import { getApiBaseUrl } from '../utils/platform'
 
 const API_BASE_URL = getApiBaseUrl()
 
+const DEFAULT_TIMEOUT_MS = 15000
 
 /**
- * Make API request with error handling
+ * Make API request with error handling and timeout
  */
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
 
+  const { signal: externalSignal, timeout = DEFAULT_TIMEOUT_MS, ...restOptions } = options
   const defaultOptions = {
     headers: {
       'Content-Type': 'application/json',
     },
   }
 
-  const response = await fetch(url, { ...defaultOptions, ...options })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'An error occurred' }))
-    throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', () => controller.abort(), { once: true })
   }
 
-  return response.json()
+  try {
+    const response = await fetch(url, { ...defaultOptions, ...restOptions, signal: controller.signal })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'An error occurred' }))
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  } catch (err) {
+    if (err.name === 'AbortError' && !externalSignal?.aborted) {
+      throw new Error('Request timed out. Please try again.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 /**
@@ -35,8 +53,8 @@ async function apiRequest(endpoint, options = {}) {
  * @param {number} limit - Maximum results
  * @returns {Promise<Array>} List of matching drugs
  */
-export async function searchDrugs(query, limit = 10) {
-  return apiRequest(`/drugs/search?query=${encodeURIComponent(query)}&limit=${limit}`)
+export async function searchDrugs(query, limit = 10, options = {}) {
+  return apiRequest(`/drugs/search?query=${encodeURIComponent(query)}&limit=${limit}`, options)
 }
 
 /**
@@ -115,6 +133,16 @@ export async function extractFromImage(imageBase64) {
       image_base64: imageBase64,
     }),
   })
+}
+
+/**
+ * Get known side effects for a drug
+ * @param {string} drugName - Drug name
+ * @param {number} limit - Maximum results
+ * @returns {Promise<Object>} Side effects data
+ */
+export async function getSideEffects(drugName, limit = 30) {
+  return apiRequest(`/drugs/${encodeURIComponent(drugName)}/side-effects?limit=${limit}`)
 }
 
 /**
@@ -315,6 +343,7 @@ export default {
   getDrugInteractions,
   getAlternatives,
   extractFromImage,
+  getSideEffects,
   getStats,
   healthCheck,
   getMLPrediction,

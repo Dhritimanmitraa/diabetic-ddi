@@ -151,12 +151,12 @@ function DosageCalculator({ patient, onClose }) {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto shadow-2xl"
+                className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto shadow-2xl"
             >
                 {/* Header */}
-                <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+                <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2">
                             <span className="text-2xl"></span>
                             Dosage Calculator
                         </h2>
@@ -166,7 +166,7 @@ function DosageCalculator({ patient, onClose }) {
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        className="p-2 hover:bg-[var(--bg-elevated)] rounded-lg text-slate-400 hover:text-[var(--text-primary)] transition-colors"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -175,7 +175,7 @@ function DosageCalculator({ patient, onClose }) {
                 </div>
 
                 {/* Patient Info */}
-                <div className="p-4 bg-slate-800/50 border-b border-slate-700">
+                <div className="p-4 bg-[var(--bg-surface)] border-b border-[var(--border)]">
                     <div className="flex flex-wrap gap-4 text-sm">
                         <div>
                             <span className="text-slate-400">eGFR: </span>
@@ -187,11 +187,11 @@ function DosageCalculator({ patient, onClose }) {
                         </div>
                         <div>
                             <span className="text-slate-400">Age: </span>
-                            <span className="text-white font-medium">{patient?.age || 'Not specified'} years</span>
+                            <span className="text-[var(--text-primary)] font-medium">{patient?.age || 'Not specified'} years</span>
                         </div>
                         <div>
                             <span className="text-slate-400">Diabetes: </span>
-                            <span className="text-white font-medium">
+                            <span className="text-[var(--text-primary)] font-medium">
                                 {(patient?.diabetes_type || 'type_2').replace('_', ' ').toUpperCase()}
                             </span>
                         </div>
@@ -209,7 +209,7 @@ function DosageCalculator({ patient, onClose }) {
                             setSelectedDrug(e.target.value)
                             setResult(null)
                         }}
-                        className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white focus:border-medical-500 focus:outline-none"
+                        className="w-full px-4 py-3 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl text-[var(--text-primary)] focus:border-medical-500 focus:outline-none"
                     >
                         <option value="">-- Select a drug --</option>
                         {Object.entries(dosageGuidelines).map(([key, drug]) => (
@@ -235,13 +235,13 @@ function DosageCalculator({ patient, onClose }) {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="p-4 border-t border-slate-700"
+                            className="p-4 border-t border-[var(--border)]"
                         >
                             <div className={`p-4 rounded-xl border ${riskColors[result.riskLevel].border} ${riskColors[result.riskLevel].bg}`}>
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="font-bold text-white text-lg">{result.drug}</h3>
+                                    <h3 className="font-bold text-[var(--text-primary)] text-lg">{result.drug}</h3>
                                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${riskColors[result.riskLevel].text} ${riskColors[result.riskLevel].bg} border ${riskColors[result.riskLevel].border}`}>
-                                        {result.riskLevel === 'safe' ? '✓ Safe' :
+                                        {result.riskLevel === 'safe' ? <><svg className="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>Safe</> :
                                             result.riskLevel === 'caution' ? 'Caution' : 'Contraindicated'}
                                     </span>
                                 </div>
@@ -265,7 +265,7 @@ function DosageCalculator({ patient, onClose }) {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 p-3 bg-slate-900/50 rounded-lg">
+                                <div className="mt-4 p-3 bg-[var(--bg-elevated)]/50 rounded-lg">
                                     <p className={`text-sm ${riskColors[result.riskLevel].text}`}>
                                         {result.note}
                                     </p>

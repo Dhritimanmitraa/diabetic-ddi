@@ -96,51 +96,20 @@ class DrugOCRService:
         """
         Special preprocessing for medication labels.
         
-        Returns multiple processed versions for better OCR coverage.
+        Returns optimized set of processed versions (reduced to 2 for performance).
         """
         processed_images = []
         
-        # Original grayscale
+        # Standard preprocessing (CLAHE + adaptive threshold) — best general case
+        processed_images.append(self.preprocess_image(image))
+        
+        # High contrast version (OTSU thresholding) — best for clear labels
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
             gray = image.copy()
-        processed_images.append(gray)
-        
-        # Standard preprocessing
-        processed_images.append(self.preprocess_image(image))
-        
-        # High contrast version (OTSU thresholding)
         _, high_contrast = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         processed_images.append(high_contrast)
-        
-        # Inverted version (for dark backgrounds)
-        inverted = cv2.bitwise_not(gray)
-        _, inverted_thresh = cv2.threshold(inverted, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        processed_images.append(inverted_thresh)
-        
-        # Rescaled version (for small text) - 2x scale
-        scale_percent = 200
-        width = int(gray.shape[1] * scale_percent / 100)
-        height = int(gray.shape[0] * scale_percent / 100)
-        resized = cv2.resize(gray, (width, height), interpolation=cv2.INTER_CUBIC)
-        processed_images.append(resized)
-        
-        # Sharpen the image for better text recognition
-        kernel = np.array([[-1,-1,-1],
-                          [-1, 9,-1],
-                          [-1,-1,-1]])
-        sharpened = cv2.filter2D(gray, -1, kernel)
-        processed_images.append(sharpened)
-        
-        # Bilateral filter for noise reduction while preserving edges
-        bilateral = cv2.bilateralFilter(gray, 9, 75, 75)
-        processed_images.append(bilateral)
-        
-        # Morphological operations to enhance text
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-        morph = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel)
-        processed_images.append(morph)
         
         return processed_images
     
@@ -215,15 +184,10 @@ class DrugOCRService:
         # Get multiple preprocessed versions
         preprocessed_images = self.preprocess_for_medication_label(image)
         
-        # Try different Tesseract configurations - optimized for medication labels
+        # Try most effective Tesseract configurations for medication labels (reduced for speed)
         configs = [
-            '--oem 3 --psm 6',   # Assume uniform block of text
+            '--oem 3 --psm 6',   # Assume uniform block of text (best for labels)
             '--oem 3 --psm 3',   # Fully automatic page segmentation
-            '--oem 3 --psm 11',  # Sparse text (good for labels)
-            '--oem 3 --psm 4',   # Single column of text
-            '--oem 3 --psm 7',   # Single text line
-            '--oem 3 --psm 8',   # Single word
-            '--oem 3 --psm 12',  # Sparse text with OSD
         ]
         
         # Extract text from all versions

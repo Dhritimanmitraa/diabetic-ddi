@@ -5,7 +5,7 @@ Stores prescription uploads, extracted medicines, and chat history.
 """
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import Base
 
@@ -36,7 +36,7 @@ class Prescription(Base):
     vision_model_used = Column(String(100), nullable=True)  # gemini-1.5-flash, llava, etc.
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     processed_at = Column(DateTime, nullable=True)
     
     # ChromaDB reference
@@ -76,7 +76,7 @@ class PrescriptionMedicine(Base):
     extraction_confidence = Column(Float, nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     prescription = relationship("Prescription", back_populates="medicines")
@@ -103,7 +103,7 @@ class PrescriptionChat(Base):
     model_used = Column(String(100), nullable=True)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     prescription = relationship("Prescription", back_populates="chat_messages")
