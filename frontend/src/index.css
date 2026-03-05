@@ -7,38 +7,38 @@
    ============================================ */
 :root {
   /* Primary palette */
-  --accent: 160 72% 40%;
-  --accent-h: 160;
+  --accent: 162 72% 40%;
+  --accent-h: 162;
   --accent-s: 72%;
   --accent-l: 40%;
 
   /* Dark theme (default) */
-  --bg-primary: #0a0f1c;
+  --bg-primary: #0c1117;
   --bg-secondary: #111827;
-  --bg-elevated: #1a2236;
-  --bg-surface: rgba(17, 24, 39, 0.65);
+  --bg-elevated: #161d2b;
+  --bg-surface: rgba(22, 29, 43, 0.7);
   --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --border: rgba(148, 163, 184, 0.08);
-  --border-hover: rgba(148, 163, 184, 0.16);
-  --ring: hsla(var(--accent), 0.35);
+  --text-secondary: #8b9ab0;
+  --text-muted: #4a5568;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.13);
+  --ring: hsla(var(--accent), 0.3);
   --shadow-color: 220 60% 2%;
 }
 
 .light {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
   --bg-elevated: #f1f5f9;
-  --bg-surface: rgba(255, 255, 255, 0.8);
+  --bg-surface: rgba(255, 255, 255, 0.85);
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
-  --border: rgba(15, 23, 42, 0.06);
-  --border-hover: rgba(15, 23, 42, 0.12);
-  --ring: hsla(var(--accent), 0.25);
+  --border: rgba(15, 23, 42, 0.08);
+  --border-hover: rgba(15, 23, 42, 0.14);
+  --ring: hsla(var(--accent), 0.2);
   --shadow-color: 220 20% 80%;
-  --loading-overlay-bg: rgba(248, 250, 252, 0.88);
+  --loading-overlay-bg: rgba(255, 255, 255, 0.9);
 }
 
 /* ============================================
@@ -59,26 +59,20 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.6;
-  transition: background-color 0.4s ease, color 0.4s ease;
-}
-
-.light body,
-.light {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ============================================
    SCROLLBAR
    ============================================ */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -98,57 +92,35 @@ body {
    SELECTION
    ============================================ */
 ::selection {
-  background: hsla(var(--accent), 0.2);
+  background: hsla(var(--accent), 0.18);
   color: var(--text-primary);
 }
 
 /* ============================================
    TYPOGRAPHY
    ============================================ */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: 'Inter', system-ui, sans-serif;
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.025em;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 /* ============================================
-   GLASS MORPHISM — tasteful, single variant
+   GLASS — navbar only
    ============================================ */
 .glass {
   background: var(--bg-surface);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid var(--border);
 }
 
 .glass-subtle {
   background: var(--bg-surface);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--border);
-}
-
-/* ============================================
-   GRADIENT TEXT — single clean gradient
-   ============================================ */
-.gradient-text {
-  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 60%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ============================================
-   AMBIENT BACKGROUND — replaces animated-gradient
-   ============================================ */
-.animated-gradient {
-  background: var(--bg-primary);
 }
 
 /* ============================================
@@ -166,160 +138,116 @@ select:focus {
    BUTTONS
    ============================================ */
 .btn-primary {
-  background: linear-gradient(135deg, hsl(160, 72%, 38%), hsl(170, 68%, 35%));
+  background: hsl(162, 72%, 38%);
   color: #fff;
   font-weight: 600;
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
+  transition: all 0.15s ease;
 }
 
 .btn-primary:hover {
-  filter: brightness(1.08);
+  background: hsl(162, 72%, 44%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px hsla(var(--accent), 0.25);
 }
 
 .btn-primary:active {
   transform: translateY(0);
 }
 
-/* Subtle sweep effect on hover */
 .btn-hover {
   position: relative;
   overflow: hidden;
 }
 
-.btn-hover::before {
+.btn-hover::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-  transition: left 0.6s ease;
+  inset: 0;
+  background: rgba(255, 255, 255, 0);
+  transition: background 0.15s ease;
 }
 
-.btn-hover:hover::before {
-  left: 100%;
+.btn-hover:hover::after {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* ============================================
-   CARDS — clean hover, no 3D
+   CARDS
    ============================================ */
 .card-hover {
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: border-color 0.2s ease;
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px hsla(var(--shadow-color), 0.12);
   border-color: var(--border-hover);
 }
 
 /* ============================================
-   SEVERITY INDICATORS — flat, clean badges
+   SEVERITY BADGES
    ============================================ */
 .severity-minor {
   background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.2);
+  border-color: rgba(34, 197, 94, 0.18);
   color: #22c55e;
 }
 
 .severity-moderate {
   background: rgba(245, 158, 11, 0.08);
-  border-color: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.18);
   color: #f59e0b;
 }
 
 .severity-major {
   background: rgba(249, 115, 22, 0.08);
-  border-color: rgba(249, 115, 22, 0.2);
+  border-color: rgba(249, 115, 22, 0.18);
   color: #f97316;
 }
 
 .severity-contraindicated {
   background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.18);
   color: #ef4444;
 }
 
 /* ============================================
-   SEVERITY GLOW — subtle, not pulsing
+   SEVERITY GLOW
    ============================================ */
-.glow-safe {
-  box-shadow: 0 0 0 1px rgba(20, 184, 154, 0.15),
-    0 4px 20px rgba(20, 184, 154, 0.08);
-}
-
-.glow-minor {
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15),
-    0 4px 20px rgba(34, 197, 94, 0.08);
-}
-
-.glow-moderate {
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15),
-    0 4px 20px rgba(245, 158, 11, 0.08);
-}
-
-.glow-major {
-  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.2),
-    0 4px 20px rgba(249, 115, 22, 0.1);
-}
-
-.glow-danger {
-  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2),
-    0 4px 20px rgba(239, 68, 68, 0.12);
-}
+.glow-safe   { box-shadow: 0 0 0 1px rgba(20, 184, 154, 0.12), 0 2px 16px rgba(20, 184, 154, 0.06); }
+.glow-minor  { box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.12), 0 2px 16px rgba(34, 197, 94, 0.06); }
+.glow-moderate { box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.12), 0 2px 16px rgba(245, 158, 11, 0.06); }
+.glow-major  { box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.15), 0 2px 16px rgba(249, 115, 22, 0.08); }
+.glow-danger { box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.15), 0 2px 16px rgba(239, 68, 68, 0.08); }
 
 /* ============================================
    LOADING
    ============================================ */
 .spinner {
-  width: 36px;
-  height: 36px;
-  border: 2.5px solid var(--border);
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--border);
   border-top-color: hsl(var(--accent));
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 0.75s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* Pill loader — simplified */
-.pill-loader {
-  width: 48px;
-  height: 20px;
-  border-radius: 10px;
-  background: linear-gradient(90deg, hsl(160, 72%, 40%) 50%, hsl(160, 72%, 32%) 50%);
-}
-
-/* Shimmer skeleton */
 .shimmer {
   background: linear-gradient(90deg,
-      var(--bg-elevated) 25%,
-      var(--border-hover) 50%,
-      var(--bg-elevated) 75%);
+    var(--bg-elevated) 25%,
+    var(--border-hover) 50%,
+    var(--bg-elevated) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.8s ease infinite;
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-
-  100% {
-    background-position: -200% 0;
-  }
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .skeleton {
@@ -338,69 +266,37 @@ select:focus {
 }
 
 @keyframes skeleton-wave {
-  0% {
-    transform: translateX(-100%);
-  }
-
-  100% {
-    transform: translateX(100%);
-  }
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* ============================================
-   RISK METER — clean gauge
+   RISK METER
    ============================================ */
 .risk-meter {
-  height: 6px;
+  height: 5px;
   border-radius: 3px;
-  background: linear-gradient(90deg,
-      #22c55e 0%, #84cc16 25%, #eab308 50%, #f97316 75%, #ef4444 100%);
+  background: linear-gradient(90deg, #22c55e 0%, #84cc16 25%, #eab308 50%, #f97316 75%, #ef4444 100%);
   position: relative;
 }
 
 /* ============================================
-   CELEBRATION — scale-in for safe results
+   CELEBRATION
    ============================================ */
 .celebrate {
-  animation: celebrate 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: celebrate 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes celebrate {
-  0% {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* ============================================
-   COUNTER / BADGE
-   ============================================ */
-.counter-animate {
-  display: inline-block;
-}
-
-.badge-pulse {
-  display: inline-block;
-  /* intentionally static — no more pulsing animation */
-}
-
-/* ============================================
-   GRID BACKGROUND — extremely subtle
-   ============================================ */
-.grid-bg {
-  display: block;
+  0%   { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* ============================================
    SWAP BUTTON
    ============================================ */
 .swap-rotate {
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .swap-rotate:hover {
@@ -411,23 +307,18 @@ select:focus {
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
-
-  button,
-  .btn-hover {
+  button, .btn-hover {
     min-height: 44px;
     min-width: 44px;
   }
 
-  input,
-  select,
-  textarea {
+  input, select, textarea {
     font-size: 16px;
-    /* Prevents zoom on iOS */
   }
 }
 
 /* ============================================
-   SAFE AREA (Capacitor / notch devices)
+   SAFE AREA (Capacitor)
    ============================================ */
 @supports (padding: env(safe-area-inset-top)) {
   body {
@@ -437,14 +328,11 @@ select:focus {
     padding-right: env(safe-area-inset-right);
   }
 
-  header,
-  nav,
-  .navbar {
+  header, nav, .navbar {
     padding-top: env(safe-area-inset-top);
   }
 
-  footer,
-  .footer {
+  footer, .footer {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
@@ -468,20 +356,7 @@ select:focus {
 
 /* ============================================
    LIGHT MODE OVERRIDES
-   Remap hardcoded dark-mode Tailwind classes
-   to appropriate light-mode equivalents.
    ============================================ */
-
-/* --- Text color overrides --- */
-
-/*
- * text-white override REMOVED.
- * The broad :not() selector broke icons inside colored-bg parents (e.g. Shield in Navbar).
- * Instead, individual heading/label text-white occurrences are fixed directly in their components.
- */
-
-/* --- Select / Option / Input overrides --- */
-/* Browsers render <option> with native styles; force light styling */
 .light select,
 .light select option {
   background-color: #ffffff;
@@ -498,209 +373,62 @@ select:focus {
   color: #94a3b8;
 }
 
-/* slate text shades — map to darker equivalents in light mode */
-.light .text-slate-200 {
-  color: #1e293b !important;
-  /* slate-800 */
-}
+.light .text-slate-200 { color: #1e293b !important; }
+.light .text-slate-300 { color: #334155 !important; }
+.light .text-slate-400 { color: var(--text-secondary) !important; }
+.light .text-slate-500 { color: #64748b !important; }
 
-.light .text-slate-300 {
-  color: #334155 !important;
-  /* slate-700 */
-}
+.light .bg-slate-900 { background-color: #f8fafc !important; }
+.light .bg-slate-800 { background-color: #f1f5f9 !important; }
+.light .bg-slate-700 { background-color: #e2e8f0 !important; }
 
-.light .text-slate-400 {
-  color: var(--text-secondary) !important;
-  /* #475569 */
-}
+.light [class*="bg-slate-900\\/"] { background-color: rgba(248, 250, 252, 0.6) !important; }
+.light [class*="bg-slate-800\\/"] { background-color: rgba(241, 245, 249, 0.65) !important; }
+.light [class*="bg-slate-700\\/"] { background-color: rgba(226, 232, 240, 0.65) !important; }
 
-.light .text-slate-500 {
-  color: #64748b !important;
-  /* slate-500 — stays readable */
-}
+.light .border-slate-600 { border-color: #cbd5e1 !important; }
+.light .border-slate-700 { border-color: #e2e8f0 !important; }
+.light [class*="border-slate-700\\/"] { border-color: rgba(226, 232, 240, 0.65) !important; }
+.light [class*="border-slate-600\\/"] { border-color: rgba(203, 213, 225, 0.65) !important; }
 
-/* --- Background overrides --- */
+.light .hover\:bg-slate-800:hover { background-color: #e2e8f0 !important; }
+.light .hover\:bg-slate-700:hover { background-color: #cbd5e1 !important; }
+.light .hover\:bg-slate-600:hover { background-color: #94a3b8 !important; }
+.light .hover\:text-white:hover    { color: var(--text-primary) !important; }
 
-/* bg-slate-900 → near-white */
-.light .bg-slate-900 {
-  background-color: #f8fafc !important;
-  /* slate-50 */
-}
-
-/* bg-slate-800 → light gray */
-.light .bg-slate-800 {
-  background-color: #f1f5f9 !important;
-  /* slate-100 */
-}
-
-/* bg-slate-700 → lighter gray */
-.light .bg-slate-700 {
-  background-color: #e2e8f0 !important;
-  /* slate-200 */
-}
-
-/* Opacity-variant bg-slate overrides (bg-slate-800/50, bg-slate-900/40, etc.) */
-.light [class*="bg-slate-900\\/"] {
-  background-color: rgba(248, 250, 252, 0.6) !important;
-}
-
-.light [class*="bg-slate-800\\/"] {
-  background-color: rgba(241, 245, 249, 0.65) !important;
-}
-
-.light [class*="bg-slate-700\\/"] {
-  background-color: rgba(226, 232, 240, 0.65) !important;
-}
-
-/* --- Border overrides --- */
-.light .border-slate-600 {
-  border-color: #cbd5e1 !important;
-  /* slate-300 */
-}
-
-.light .border-slate-700 {
-  border-color: #e2e8f0 !important;
-  /* slate-200 */
-}
-
-/* Border opacity variants (border-slate-700/50, etc.) */
-.light [class*="border-slate-700\\/"] {
-  border-color: rgba(226, 232, 240, 0.65) !important;
-}
-
-.light [class*="border-slate-600\\/"] {
-  border-color: rgba(203, 213, 225, 0.65) !important;
-}
-
-/* --- Hover state overrides --- */
-.light .hover\:bg-slate-800:hover {
-  background-color: #e2e8f0 !important;
-}
-
-.light .hover\:bg-slate-700:hover {
-  background-color: #cbd5e1 !important;
-}
-
-.light .hover\:bg-slate-600:hover {
-  background-color: #94a3b8 !important;
-}
-
-.light .hover\:text-white:hover {
-  color: var(--text-primary) !important;
-}
-
-/* --- Specific component helpers --- */
-
-/* Progress bar tracks */
 .light .bg-slate-700.rounded-full,
-.light [class*="bg-slate-700"].rounded-full {
-  background-color: #e2e8f0 !important;
-}
+.light [class*="bg-slate-700"].rounded-full { background-color: #e2e8f0 !important; }
 
-/* Skeleton loaders — handled by .bg-slate-700 override above */
-
-/* Glass surfaces in light mode */
 .light .glass {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .light .glass-subtle {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
-/* Severity badge text — ensure readable on light backgrounds */
-.light .severity-minor {
-  color: #16a34a;
-  background: rgba(34, 197, 94, 0.12);
-}
+.light .severity-minor  { color: #16a34a; background: rgba(34, 197, 94, 0.1); }
+.light .severity-moderate { color: #d97706; background: rgba(245, 158, 11, 0.1); }
+.light .severity-major  { color: #ea580c; background: rgba(249, 115, 22, 0.1); }
+.light .severity-contraindicated { color: #dc2626; background: rgba(239, 68, 68, 0.1); }
 
-.light .severity-moderate {
-  color: #d97706;
-  background: rgba(245, 158, 11, 0.12);
-}
+.light .text-purple-300 { color: #7e22ce !important; }
+.light .text-purple-200 { color: #7c3aed !important; }
+.light .text-purple-400 { color: #9333ea !important; }
+.light .text-indigo-300 { color: #4338ca !important; }
+.light .text-emerald-200 { color: #059669 !important; }
+.light .text-red-300    { color: #dc2626 !important; }
+.light .text-red-400    { color: #dc2626 !important; }
+.light .text-emerald-400 { color: #059669 !important; }
+.light .text-amber-400  { color: #d97706 !important; }
+.light .text-amber-300  { color: #b45309 !important; }
+.light .text-orange-400 { color: #ea580c !important; }
+.light .text-blue-400   { color: #2563eb !important; }
+.light .text-medical-300 { color: #0d947d !important; }
+.light .text-medical-400 { color: #0f7566 !important; }
 
-.light .severity-major {
-  color: #ea580c;
-  background: rgba(249, 115, 22, 0.12);
-}
+.light .text-white\/70  { color: rgba(255, 255, 255, 0.7) !important; }
+.light .text-white\/40  { color: rgba(100, 116, 139, 0.6) !important; }
 
-.light .severity-contraindicated {
-  color: #dc2626;
-  background: rgba(239, 68, 68, 0.12);
-}
-
-/* Purple (LLM) analysis text — darken for light bg */
-.light .text-purple-300 {
-  color: #7e22ce !important;
-}
-
-.light .text-purple-200 {
-  color: #7c3aed !important;
-}
-
-.light .text-purple-400 {
-  color: #9333ea !important;
-}
-
-/* Indigo patient factor badges */
-.light .text-indigo-300 {
-  color: #4338ca !important;
-}
-
-/* Emerald safer-alternative text */
-.light .text-emerald-200 {
-  color: #059669 !important;
-}
-
-/* Colored text shades used as labels — darken for readability */
-.light .text-red-300 {
-  color: #dc2626 !important;
-}
-
-.light .text-red-400 {
-  color: #dc2626 !important;
-}
-
-.light .text-emerald-400 {
-  color: #059669 !important;
-}
-
-.light .text-amber-400 {
-  color: #d97706 !important;
-}
-
-.light .text-amber-300 {
-  color: #b45309 !important;
-}
-
-.light .text-orange-400 {
-  color: #ea580c !important;
-}
-
-.light .text-blue-400 {
-  color: #2563eb !important;
-}
-
-.light .text-medical-300 {
-  color: #0d947d !important;
-}
-
-.light .text-medical-400 {
-  color: #0f7566 !important;
-}
-
-/* Blue badge text */
-.light .text-blue-400 {
-  color: #2563eb !important;
-}
-
-/* Fix white/70 overlays — these are camera/preview overlays, keep them */
-.light .text-white\/70 {
-  color: rgba(255, 255, 255, 0.7) !important;
-}
-
-.light .text-white\/40 {
-  color: rgba(100, 116, 139, 0.6) !important;
-}
