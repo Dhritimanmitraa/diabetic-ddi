@@ -260,7 +260,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
   }
 
   return (
-    <div className="glass rounded-2xl p-6 sm:p-8 max-w-2xl mx-auto">
+    <div className="bg-[var(--bg-elevated)] rounded-2xl p-6 sm:p-8 max-w-2xl mx-auto border border-[var(--border)]">
       <form onSubmit={handleSubmit} className="space-y-5">
         <DrugSearchInput
           label="First Drug"
@@ -275,10 +275,10 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
           <button
             type="button"
             onClick={handleSwap}
-            className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] hover:border-medical-500/30 flex items-center justify-center transition-all swap-rotate group"
+            className="w-9 h-9 rounded-full bg-[var(--bg-primary)] border border-[var(--border)] hover:border-medical-500/30 flex items-center justify-center transition-all swap-rotate group"
             aria-label="Swap drug names"
           >
-            <ArrowDown className="w-4 h-4 text-[var(--text-muted)] group-hover:text-medical-400 transition-colors" aria-hidden="true" />
+            <ArrowDown className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-medical-400 transition-colors" aria-hidden="true" />
           </button>
         </div>
 
@@ -294,7 +294,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
         <button
           id="check-interaction-btn"
           type="submit"
-          className="w-full py-3.5 bg-gradient-to-r from-medical-500 to-medical-600 hover:from-medical-400 hover:to-medical-500 text-white font-semibold text-sm rounded-xl shadow-md shadow-medical-500/15 transition-all btn-hover relative group"
+          className="w-full py-3.5 bg-medical-500 hover:bg-medical-400 text-white font-semibold text-sm rounded-xl transition-colors btn-hover relative group"
         >
           <span>Check Interaction</span>
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 hidden md:inline group-hover:text-white/60 transition-colors font-medium">
@@ -311,7 +311,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
             <button
               key={index}
               onClick={() => handleExampleClick(example)}
-              className="px-3 py-1.5 text-xs bg-[var(--bg-elevated)] hover:bg-[var(--bg-elevated)]/80 text-[var(--text-secondary)] rounded-lg transition-colors flex items-center gap-2 border border-[var(--border)] hover:border-[var(--border-hover)]"
+              className="px-3 py-1.5 text-xs bg-[var(--bg-primary)] hover:bg-[var(--bg-primary)]/80 text-[var(--text-secondary)] rounded-lg transition-colors flex items-center gap-2 border border-[var(--border)] hover:border-[var(--border-hover)]"
               aria-label={`Try ${example.drug1} and ${example.drug2}`}
             >
               <span>{example.drug1} + {example.drug2}</span>

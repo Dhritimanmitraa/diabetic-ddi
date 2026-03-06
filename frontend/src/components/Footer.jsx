@@ -3,32 +3,33 @@ import { Shield, Github, Mail, ExternalLink } from 'lucide-react'
 
 const Footer = memo(function Footer() {
   return (
-    <footer className="relative z-10 mt-24 border-t border-[var(--border)]">
-      <div className="max-w-6xl mx-auto px-5 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+    <footer className="relative z-10 mt-20 border-t border-[var(--border)]">
+      <div className="max-w-6xl mx-auto px-5 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
+
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-medical-500 to-medical-600 flex items-center justify-center">
-                <Shield className="w-4 h-4 text-white" />
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-medical-500 flex items-center justify-center">
+                <Shield className="w-3.5 h-3.5 text-white" />
               </div>
-              <h3 className="font-display font-bold text-lg text-[var(--text-primary)] tracking-tight">
-                Drug<span className="gradient-text">Guard</span>
-              </h3>
+              <span className="font-display font-bold text-base text-[var(--text-primary)] tracking-tight">
+                Drug<span className="text-medical-400">Guard</span>
+              </span>
             </div>
             <p className="text-[var(--text-secondary)] text-sm leading-relaxed mb-5 max-w-sm">
-              AI-powered drug interaction checker. Helping you verify medication
-              safety before potential conflicts become problems.
+              AI-powered drug interaction checker. Verify medication safety before
+              potential conflicts become problems.
             </p>
-            <div className="flex items-center gap-3">
-              <SocialLink href="https://github.com/Dhritimanmitraa/diabetic-ddi" icon={<Github className="w-4 h-4" />} />
-              <SocialLink href="mailto:contact@drugguard.ai" icon={<Mail className="w-4 h-4" />} />
+            <div className="flex items-center gap-2.5">
+              <SocialLink href="https://github.com/Dhritimanmitraa/diabetic-ddi" icon={<Github className="w-4 h-4" />} label="GitHub" />
+              <SocialLink href="mailto:contact@drugguard.ai" icon={<Mail className="w-4 h-4" />} label="Email" />
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-display font-semibold text-sm text-[var(--text-primary)] mb-4 uppercase tracking-wider">Links</h4>
+            <h4 className="text-xs font-semibold text-[var(--text-muted)] mb-4 uppercase tracking-wider">Links</h4>
             <ul className="space-y-2.5">
               <FooterLink href="#how-it-works">How it Works</FooterLink>
               <FooterLink href="#features">Features</FooterLink>
@@ -39,7 +40,7 @@ const Footer = memo(function Footer() {
 
           {/* Resources */}
           <div>
-            <h4 className="font-display font-semibold text-sm text-[var(--text-primary)] mb-4 uppercase tracking-wider">Resources</h4>
+            <h4 className="text-xs font-semibold text-[var(--text-muted)] mb-4 uppercase tracking-wider">Resources</h4>
             <ul className="space-y-2.5">
               <FooterLink href="https://www.drugbank.com" external>DrugBank</FooterLink>
               <FooterLink href="https://www.fda.gov" external>FDA Database</FooterLink>
@@ -50,17 +51,16 @@ const Footer = memo(function Footer() {
         </div>
 
         {/* Disclaimer */}
-        <div className="p-5 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)] mb-10">
-          <h5 className="text-[var(--text-primary)] font-semibold text-sm mb-2">Medical Disclaimer</h5>
+        <div className="p-4 bg-[var(--bg-elevated)]/40 rounded-xl border border-[var(--border)] mb-8">
           <p className="text-[var(--text-muted)] text-xs leading-relaxed">
-            This tool is for informational purposes only and should not replace
-            professional medical advice. Always consult your physician or qualified
-            health provider regarding medication interactions.
+            <span className="font-semibold text-[var(--text-secondary)]">Medical Disclaimer — </span>
+            This tool is for informational purposes only and does not replace professional medical advice.
+            Always consult your physician or qualified health provider regarding medication interactions.
           </p>
         </div>
 
-        {/* Bottom */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 border-t border-[var(--border)]">
+        {/* Bottom bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-[var(--border)]">
           <p className="text-[var(--text-muted)] text-xs">
             &copy; {new Date().getFullYear()} DrugGuard. All rights reserved.
           </p>
@@ -91,13 +91,14 @@ function FooterLink({ href, children, external }) {
   )
 }
 
-function SocialLink({ href, icon }) {
+function SocialLink({ href, icon, label }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="w-9 h-9 rounded-lg bg-[var(--bg-elevated)] hover:bg-medical-500/10 border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:text-medical-400 transition-all"
+      aria-label={label}
+      className="w-8 h-8 rounded-lg bg-[var(--bg-elevated)] hover:bg-medical-500/10 border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:text-medical-400 transition-all"
     >
       {icon}
     </a>
