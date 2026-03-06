@@ -118,30 +118,25 @@ h6 {
 }
 
 /* ============================================
-   GLASS MORPHISM — tasteful, single variant
+   GLASS MORPHISM — clean surface, minimal blur
    ============================================ */
 .glass {
   background: var(--bg-surface);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border);
 }
 
 .glass-subtle {
-  background: var(--bg-surface);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
 }
 
 /* ============================================
-   GRADIENT TEXT — single clean gradient
+   ACCENT TEXT — solid medical teal, purposeful
    ============================================ */
 .gradient-text {
-  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 60%, #3b82f6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #14b89a;
 }
 
 /* ============================================
@@ -212,12 +207,10 @@ select:focus {
    CARDS — clean hover, no 3D
    ============================================ */
 .card-hover {
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: border-color 0.2s ease;
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px hsla(var(--shadow-color), 0.12);
   border-color: var(--border-hover);
 }
 
@@ -601,12 +594,12 @@ select:focus {
 
 /* Glass surfaces in light mode */
 .light .glass {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .light .glass-subtle {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(15, 23, 42, 0.06);
 }
 

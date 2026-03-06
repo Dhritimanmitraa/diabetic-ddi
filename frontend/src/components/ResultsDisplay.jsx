@@ -48,7 +48,7 @@ const ResultsDisplay = memo(function ResultsDisplay({ results }) {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
-        className="glass rounded-2xl p-6 sm:p-8 relative overflow-hidden"
+        className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6 sm:p-8 relative overflow-hidden"
       >
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center gap-5 mb-7">
