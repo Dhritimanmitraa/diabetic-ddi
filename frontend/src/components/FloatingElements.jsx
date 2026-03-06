@@ -1,49 +1,18 @@
 import { memo } from 'react'
-import { motion } from 'framer-motion'
 
 /**
- * FloatingElements — Subtle ambient background
- * 
- * Two soft gradient orbs that drift slowly, creating depth
- * without distracting from content. No particles, no stars.
+ * FloatingElements — Single static ambient gradient at the top of the page.
+ * No animation, no particles — just enough depth to avoid a flat canvas.
  */
 const FloatingElements = memo(function FloatingElements() {
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
-      {/* Primary ambient orb — top left */}
-      <motion.div
-        animate={{
-          y: [0, -30, 0],
-          x: [0, 15, 0],
-          scale: [1, 1.08, 1],
-        }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-        className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full blur-[120px]"
+      {/* Single subtle top-edge glow */}
+      <div
+        className="absolute -top-64 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full"
         style={{
-          background: 'radial-gradient(circle, hsla(160, 70%, 40%, 0.08) 0%, transparent 70%)',
-        }}
-      />
-
-      {/* Secondary ambient orb — bottom right */}
-      <motion.div
-        animate={{
-          y: [0, 20, 0],
-          x: [0, -20, 0],
-          scale: [1, 1.1, 1],
-        }}
-        transition={{
-          duration: 25,
-          repeat: Infinity,
-          ease: 'easeInOut',
-          delay: 5,
-        }}
-        className="absolute -bottom-48 -right-48 w-[500px] h-[500px] rounded-full blur-[120px]"
-        style={{
-          background: 'radial-gradient(circle, hsla(200, 60%, 45%, 0.06) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at center top, hsla(160, 60%, 38%, 0.07) 0%, transparent 65%)',
+          filter: 'blur(60px)',
         }}
       />
     </div>

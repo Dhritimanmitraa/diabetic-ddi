@@ -90,7 +90,7 @@ function App() {
                           {/* Input method tabs */}
                           <section className="max-w-3xl mx-auto px-5 py-6">
                             <div
-                              className="flex justify-center gap-2 mb-8 p-1 bg-[var(--bg-elevated)]/60 rounded-xl w-fit mx-auto border border-[var(--border)]"
+                              className="flex justify-center gap-1 mb-8 p-1 bg-[var(--bg-elevated)] rounded-xl w-fit mx-auto border border-[var(--border)]"
                               role="tablist"
                               aria-label="Input method"
                             >
@@ -101,7 +101,7 @@ function App() {
                                 aria-controls="text-panel"
                                 id="text-tab"
                                 className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'text'
-                                  ? 'bg-medical-500 text-white shadow-sm'
+                                  ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm border border-[var(--border)]'
                                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                   }`}
                               >
@@ -119,7 +119,7 @@ function App() {
                                 aria-controls="camera-panel"
                                 id="camera-tab"
                                 className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'camera'
-                                  ? 'bg-medical-500 text-white shadow-sm'
+                                  ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-sm border border-[var(--border)]'
                                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                   }`}
                               >

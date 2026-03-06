@@ -260,7 +260,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
   }
 
   return (
-    <div className="glass rounded-2xl p-6 sm:p-8 max-w-2xl mx-auto">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-6 sm:p-8 max-w-2xl mx-auto">
       <form onSubmit={handleSubmit} className="space-y-5">
         <DrugSearchInput
           label="First Drug"
