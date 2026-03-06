@@ -12,8 +12,15 @@ from typing import TypedDict, Optional, List, Dict, Any, Annotated, Literal
 import operator
 import json
 
-from langgraph.graph import StateGraph, END
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+try:
+    from langgraph.graph import StateGraph, END
+    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+    LANGGRAPH_AVAILABLE = True
+except ImportError:
+    StateGraph = None
+    END = None
+    HumanMessage = AIMessage = SystemMessage = None
+    LANGGRAPH_AVAILABLE = False
 
 from app.config import get_settings
 from app.prescription.rag_service import get_rag_service
@@ -364,8 +371,11 @@ def should_retry(state: RAGState) -> Literal["retrieve", "end"]:
 # Build the Graph
 # =============================================================================
 
-def build_prescription_graph() -> StateGraph:
-    """Build the LangGraph for prescription RAG."""
+def build_prescription_graph() -> Optional[Any]:
+    """Build the LangGraph for prescription RAG. Returns None when langgraph is not installed."""
+    if not LANGGRAPH_AVAILABLE:
+        logger.warning("LangGraph not available; prescription RAG graph disabled. Install langgraph and langchain-core to enable.")
+        return None
     
     # Create the graph
     graph = StateGraph(RAGState)
@@ -424,7 +434,10 @@ class LangGraphRAGService:
     def __init__(self):
         """Initialize the service."""
         self.graph = build_prescription_graph()
-        logger.info("LangGraph RAG service initialized")
+        if self.graph:
+            logger.info("LangGraph RAG service initialized")
+        else:
+            logger.warning("LangGraph RAG service running in degraded mode (langgraph not installed)")
     
     async def answer_question(
         self,
@@ -459,6 +472,9 @@ class LangGraphRAGService:
         }
         
         try:
+            if self.graph is None:
+                return "Prescription RAG is unavailable. Please install langgraph and langchain-core to enable this feature.", "unavailable"
+            
             # Run the graph
             final_state = self.graph.invoke(initial_state)
             

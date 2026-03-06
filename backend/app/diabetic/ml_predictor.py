@@ -10,8 +10,19 @@ import threading
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-import joblib
-import numpy as np
+try:
+    import joblib
+    JOBLIB_AVAILABLE = True
+except ImportError:
+    joblib = None
+    JOBLIB_AVAILABLE = False
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    np = None
+    NUMPY_AVAILABLE = False
 
 DEFAULT_MODEL_PATH = os.environ.get("DIABETIC_MODEL_PATH", "./models/diabetic_risk_model.pkl")
 
@@ -82,6 +93,10 @@ class DiabeticMLPredictor:
         self._load()
 
     def _load(self):
+        if not JOBLIB_AVAILABLE or not NUMPY_AVAILABLE:
+            import logging
+            logging.getLogger(__name__).warning("joblib or numpy not installed; ML predictions disabled.")
+            return
         if not os.path.exists(self.model_path):
             return
         with self._load_lock:

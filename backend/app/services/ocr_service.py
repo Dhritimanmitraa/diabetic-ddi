@@ -3,10 +3,34 @@ OCR Service for extracting drug names from images.
 
 Uses OpenCV for image preprocessing and Tesseract for OCR.
 """
-import cv2
-import numpy as np
-import pytesseract
-from PIL import Image
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    cv2 = None
+    CV2_AVAILABLE = False
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    np = None
+    NUMPY_AVAILABLE = False
+
+try:
+    import pytesseract
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    pytesseract = None
+    PYTESSERACT_AVAILABLE = False
+
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    Image = None
+    PIL_AVAILABLE = False
+
 import base64
 import io
 import re
@@ -17,6 +41,10 @@ from difflib import SequenceMatcher
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+if not CV2_AVAILABLE:
+    logger.warning("OpenCV (cv2) not installed. OCR image preprocessing will be limited. Install with: pip install opencv-python-headless")
+if not PYTESSERACT_AVAILABLE:
+    logger.warning("pytesseract not installed. OCR will be unavailable. Install with: pip install pytesseract")
 
 class DrugOCRService:
     """
@@ -56,10 +84,10 @@ class DrugOCRService:
         Args:
             tesseract_cmd: Path to tesseract executable (Windows)
         """
-        if tesseract_cmd:
+        if tesseract_cmd and PYTESSERACT_AVAILABLE:
             pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
     
-    def preprocess_image(self, image: np.ndarray) -> np.ndarray:
+    def preprocess_image(self, image: "np.ndarray") -> "np.ndarray":
         """
         Preprocess image for better OCR results.
         
@@ -92,7 +120,7 @@ class DrugOCRService:
         
         return cleaned
     
-    def preprocess_for_medication_label(self, image: np.ndarray) -> List[np.ndarray]:
+    def preprocess_for_medication_label(self, image: "np.ndarray") -> List["np.ndarray"]:
         """
         Special preprocessing for medication labels.
         
@@ -113,7 +141,7 @@ class DrugOCRService:
         
         return processed_images
     
-    def extract_text(self, image: np.ndarray, config: str = '--oem 3 --psm 6') -> str:
+    def extract_text(self, image: "np.ndarray", config: str = '--oem 3 --psm 6') -> str:
         """
         Extract text from preprocessed image using Tesseract.
         
@@ -169,7 +197,7 @@ class DrugOCRService:
         
         return self.extract_drugs_from_image(image_array)
     
-    def extract_drugs_from_image(self, image: np.ndarray) -> Tuple[str, List[str], float]:
+    def extract_drugs_from_image(self, image: "np.ndarray") -> Tuple[str, List[str], float]:
         """
         Extract drug names from an image.
         

@@ -53,8 +53,11 @@ DrugGuard is a clinical decision support system that helps diabetic patients and
 git clone https://github.com/Dhritimanmitraa/diabetic-ddi.git
 cd diabetic-ddi
 
+# Linux/macOS - One-click start
+./start_app.sh
+
 # Windows - One-click start
-start_app.bat
+run_app.bat
 ```
 
 **Manual Setup:**
@@ -68,7 +71,7 @@ pip install -r requirements.txt
 # Create .env file with:
 # GEMINI_API_KEY=your_key_here
 
-uvicorn app.main:app --port 8001 --reload
+uvicorn app.main:app --port 8000 --reload
 
 # Frontend (new terminal)
 cd frontend
@@ -229,7 +232,8 @@ diabetic-ddi/
 │   └── android/                       # Capacitor Android
 ├── ml-standalone/                     # Standalone ML demo
 ├── DrugGuard.apk                      # Android build
-└── start_app.bat                      # One-click launcher
+├── run_app.bat                        # One-click launcher (Windows)
+└── start_app.sh                       # One-click launcher (Linux/macOS)
 ```
 
 ---
