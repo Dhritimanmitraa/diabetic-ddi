@@ -2,15 +2,17 @@
 FastAPI Router for Prescription RAG Module.
 
 Endpoints for uploading prescriptions, extracting medicines, and chatting.
+Includes a WebSocket endpoint for real-time prescription Q&A.
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from pydantic import BaseModel
 import logging
+import json
 
-from app.database import get_db
+from app.database import get_db, async_session
 from app.prescription.service import PrescriptionService
 from app.prescription.schemas import (
     PrescriptionResponse,
@@ -332,3 +334,62 @@ async def prescription_health():
             "gemini_chat": llm.gemini_available,
         }
     }
+
+
+# ============== WebSocket Chat ==============
+
+@router.websocket("/ws/chat/{prescription_id}")
+async def websocket_chat(websocket: WebSocket, prescription_id: int):
+    """
+    Real-time prescription Q&A over WebSocket.
+
+    Protocol (JSON messages):
+      Client → Server: {"message": "When should I take PAN 40?"}
+      Server → Client: {"type": "answer", "message": "...", "sources": [...]}
+      Server → Client: {"type": "error", "message": "..."}
+    """
+    await websocket.accept()
+    logger.info("WebSocket connected", extra={"prescription_id": prescription_id})
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+                continue
+
+            user_msg = data.get("message", "").strip()
+            if not user_msg:
+                await websocket.send_json({"type": "error", "message": "Empty message"})
+                continue
+
+            # Use a fresh DB session per message to avoid stale-object issues.
+            async with async_session() as session:
+                service = PrescriptionService(session)
+                result = await service.chat(
+                    prescription_id=prescription_id,
+                    message=user_msg,
+                )
+
+            if result is None:
+                await websocket.send_json(
+                    {"type": "error", "message": "Prescription not found"}
+                )
+                continue
+
+            await websocket.send_json({
+                "type": "answer",
+                "message": result.answer if hasattr(result, "answer") else str(result),
+                "sources": result.sources if hasattr(result, "sources") else [],
+            })
+
+    except WebSocketDisconnect:
+        logger.info("WebSocket disconnected", extra={"prescription_id": prescription_id})
+    except Exception as e:
+        logger.exception("WebSocket error")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except Exception:
+            pass

@@ -281,3 +281,46 @@ class OffsidesEffect(Base):
     def __repr__(self):
         return f"<OffsidesEffect({self.drug_name} effect={self.effect})>"
 
+
+# ── Medication Adherence Tracking ────────────────────────────────────────
+
+class MedicationSchedule(Base):
+    """A patient's medication schedule entry."""
+    __tablename__ = "medication_schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(255), nullable=False, index=True)
+    drug_name = Column(String(255), nullable=False)
+    dosage = Column(String(100), nullable=True)  # e.g. "500mg"
+    frequency = Column(String(100), nullable=True)  # e.g. "twice daily"
+    time_of_day = Column(String(50), nullable=True)  # morning, afternoon, evening, night
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
+
+    # Relationship
+    logs = relationship("AdherenceLog", back_populates="schedule", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<MedicationSchedule(user={self.user_id}, drug={self.drug_name})>"
+
+
+class AdherenceLog(Base):
+    """Individual dose-taken / dose-missed record."""
+    __tablename__ = "adherence_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    schedule_id = Column(Integer, ForeignKey("medication_schedules.id"), nullable=False, index=True)
+    status = Column(String(20), nullable=False, default="taken")  # taken, missed, skipped
+    logged_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    notes = Column(Text, nullable=True)
+
+    schedule = relationship("MedicationSchedule", back_populates="logs")
+
+    def __repr__(self):
+        return f"<AdherenceLog(schedule={self.schedule_id}, status={self.status})>"
+

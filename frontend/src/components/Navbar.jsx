@@ -50,11 +50,8 @@ function Navbar() {
   const healthLabel = isHealthy === null ? 'Checking' : isHealthy ? 'Online' : 'Offline'
 
   return (
-    <motion.nav
-      initial={{ y: -16, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[var(--bg-primary)]/90 backdrop-blur-xl border-b border-[var(--border)]' : 'bg-transparent'}`}
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${scrolled ? 'bg-[var(--bg-primary)]/95 backdrop-blur-sm border-b border-[var(--border)]' : 'bg-[var(--bg-primary)]'}`}
       role="navigation"
       aria-label="Main navigation"
     >
@@ -77,8 +74,6 @@ function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-0.5" role="menubar">
-            <NavAnchor href="/#how-it-works">How it Works</NavAnchor>
-            <NavAnchor href="/#features">Features</NavAnchor>
             <NavItem to="/prescription" active={isActive('/prescription')} icon={<FileText className="w-3.5 h-3.5" />}>Prescription</NavItem>
             <NavItem to="/diabetes" active={isActive('/diabetes')} icon={<Heart className="w-3.5 h-3.5" />}>Diabetes DDI</NavItem>
             <NavItem to="/ml-dashboard" active={isActive('/ml-dashboard')} icon={<Brain className="w-3.5 h-3.5" />}>ML Dashboard</NavItem>
@@ -122,8 +117,6 @@ function Navbar() {
               className="md:hidden border-t border-[var(--border)] py-3 space-y-0.5"
               role="menu"
             >
-              <MobileAnchor href="/#how-it-works" onClick={() => setMobileMenuOpen(false)}>How it Works</MobileAnchor>
-              <MobileAnchor href="/#features" onClick={() => setMobileMenuOpen(false)}>Features</MobileAnchor>
               <MobileNavItem to="/prescription" onClick={() => setMobileMenuOpen(false)} icon={<FileText className="w-4 h-4" />}>Prescription</MobileNavItem>
               <MobileNavItem to="/diabetes" onClick={() => setMobileMenuOpen(false)} icon={<Heart className="w-4 h-4" />}>Diabetes DDI</MobileNavItem>
               <MobileNavItem to="/ml-dashboard" onClick={() => setMobileMenuOpen(false)} icon={<Brain className="w-4 h-4" />}>ML Dashboard</MobileNavItem>
@@ -131,19 +124,7 @@ function Navbar() {
           )}
         </AnimatePresence>
       </div>
-    </motion.nav>
-  )
-}
-
-function NavAnchor({ href, children }) {
-  return (
-    <a
-      href={href}
-      className="px-3 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors rounded-lg"
-      role="menuitem"
-    >
-      {children}
-    </a>
+    </nav>
   )
 }
 
@@ -160,19 +141,6 @@ function NavItem({ to, active, icon, children }) {
       {icon}
       {children}
     </Link>
-  )
-}
-
-function MobileAnchor({ href, onClick, children }) {
-  return (
-    <a
-      href={href}
-      onClick={onClick}
-      className="block px-4 py-2.5 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] rounded-lg transition-colors"
-      role="menuitem"
-    >
-      {children}
-    </a>
   )
 }
 

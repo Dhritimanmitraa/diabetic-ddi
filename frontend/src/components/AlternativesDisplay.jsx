@@ -1,5 +1,4 @@
 import { memo } from 'react'
-import { motion } from 'framer-motion'
 import {
   Sparkles, ArrowRight, CheckCircle2, AlertCircle,
   Pill, Replace, Shuffle
@@ -18,16 +17,11 @@ const AlternativesDisplay = memo(function AlternativesDisplay({ alternatives }) 
 
   return (
     <section className="max-w-3xl mx-auto px-5 py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="glass rounded-2xl p-6 sm:p-8"
-      >
+      <div className="rounded-2xl p-6 sm:p-8 bg-[var(--bg-elevated)] border border-[var(--border)]">
         {/* Header */}
-        <div className="flex items-center gap-3.5 mb-7">
-          <div className="w-12 h-12 rounded-xl bg-medical-500/10 border border-medical-500/15 flex items-center justify-center">
-            <Sparkles className="w-5.5 h-5.5 text-medical-400" />
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-medical-500/10 border border-medical-500/15 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-medical-400" />
           </div>
           <div>
             <h2 className="font-display text-xl font-bold text-[var(--text-primary)]">
@@ -84,12 +78,9 @@ const AlternativesDisplay = memo(function AlternativesDisplay({ alternatives }) 
             </div>
             <div className="grid gap-2.5">
               {safe_combinations.slice(0, 5).map((combo, index) => (
-                <motion.div
+                <div
                   key={index}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + index * 0.08 }}
-                  className="flex items-center justify-between p-3.5 bg-[var(--bg-elevated)]/50 rounded-xl hover:bg-[var(--bg-elevated)] transition-colors border border-[var(--border)]"
+                  className="flex items-center justify-between p-3.5 bg-[var(--bg-primary)]/50 rounded-xl hover:bg-[var(--bg-primary)] transition-colors border border-[var(--border)]"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
@@ -110,7 +101,7 @@ const AlternativesDisplay = memo(function AlternativesDisplay({ alternatives }) 
                     <CheckCircle2 className="w-4 h-4 text-green-400" />
                     <span className="text-green-400 text-xs font-medium">Safe</span>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>
@@ -129,7 +120,7 @@ const AlternativesDisplay = memo(function AlternativesDisplay({ alternatives }) 
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </section>
   )
 })
@@ -138,12 +129,7 @@ function AlternativeCard({ alternative, delay }) {
   const { drug, similarity_score, reason, has_interaction_with_other } = alternative
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.25 }}
-      className="flex items-center justify-between p-3.5 bg-[var(--bg-elevated)]/50 rounded-xl hover:bg-[var(--bg-elevated)] transition-colors group border border-[var(--border)]"
-    >
+    <div className="flex items-center justify-between p-3.5 bg-[var(--bg-primary)]/50 rounded-xl hover:bg-[var(--bg-primary)] transition-colors group border border-[var(--border)]">
       <div className="flex items-center gap-3.5">
         <div className="w-10 h-10 rounded-xl bg-medical-500/8 flex items-center justify-center">
           <Pill className="w-5 h-5 text-medical-400" />
@@ -186,7 +172,7 @@ function AlternativeCard({ alternative, delay }) {
 
         <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-medical-400 group-hover:translate-x-0.5 transition-all" />
       </div>
-    </motion.div>
+    </div>
   )
 }
 

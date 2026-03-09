@@ -5,7 +5,7 @@ Core business logic for checking drug interactions and finding safe alternatives
 """
 from typing import List, Optional, Dict, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, func
+from sqlalchemy import select, or_, and_, func, case
 from sqlalchemy.orm import selectinload
 from difflib import SequenceMatcher
 import logging
@@ -544,11 +544,12 @@ class InteractionService:
         
         stmt = stmt.order_by(
             # Order by severity (most severe first)
-            func.case(
+            case(
                 (DrugInteraction.severity == 'contraindicated', 1),
                 (DrugInteraction.severity == 'major', 2),
                 (DrugInteraction.severity == 'moderate', 3),
                 (DrugInteraction.severity == 'minor', 4),
+                else_=5,
             )
         )
         

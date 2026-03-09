@@ -11,7 +11,7 @@ const MLPrediction = memo(function MLPrediction({ prediction, isLoading }) {
 
   if (isLoading) {
     return (
-      <div className="glass rounded-2xl p-5 mt-4">
+      <div className="rounded-2xl p-5 mt-4 bg-[var(--bg-elevated)] border border-[var(--border)]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-purple-500/8 flex items-center justify-center">
             <Brain className="w-4.5 h-4.5 text-purple-400 animate-pulse" />
@@ -39,12 +39,7 @@ const MLPrediction = memo(function MLPrediction({ prediction, isLoading }) {
   const probabilityPercent = Math.round(interaction_probability * 100)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="glass rounded-2xl p-5 sm:p-6 mt-4"
-    >
+    <div className="rounded-2xl p-5 sm:p-6 mt-4 bg-[var(--bg-elevated)] border border-[var(--border)]">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
@@ -156,7 +151,7 @@ const MLPrediction = memo(function MLPrediction({ prediction, isLoading }) {
           based on drug properties. Always verify with healthcare professionals.
         </p>
       </div>
-    </motion.div>
+    </div>
   )
 })
 

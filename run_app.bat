@@ -27,7 +27,7 @@ echo [INFO] Starting Backend Server...
 echo.
 
 REM Start Backend in a new terminal window (using venv)
-start "Backend - FastAPI" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+start "Backend - FastAPI" cmd /k "cd /d %~dp0backend && call venv\Scripts\activate && set PYTHONHASHSEED=0&& python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
 
 REM Wait a few seconds for backend to initialize
 echo [INFO] Waiting for backend to initialize...

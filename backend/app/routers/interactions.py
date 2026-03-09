@@ -1,12 +1,14 @@
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
+from itertools import combinations
 
 from app.database import get_db
 from app.schemas import (
     InteractionCheckRequest, InteractionCheckResponse,
-    AlternativeSuggestionResponse, SeverityLevel
+    AlternativeSuggestionResponse, SeverityLevel,
+    BatchInteractionRequest, BatchInteractionItem, BatchInteractionResponse,
 )
 from app.services import create_interaction_service, create_comparison_logger
 
@@ -37,6 +39,8 @@ async def check_interaction(
     ml_probability = None
     ml_severity = None
     ml_predicted = None
+    ml_available = False
+    ml_error = None
     decision_source = "rules_only"
     try:
         from app.ml.predictor import get_predictor
@@ -65,13 +69,17 @@ async def check_interaction(
             }
             predictor = get_predictor("./models")
             if predictor.is_loaded:
+                ml_available = True
                 ml_res = predictor.predict(drug1_dict, drug2_dict)
                 ml_probability = ml_res.interaction_probability
                 ml_severity = ml_res.severity_prediction
                 ml_predicted = ml_res.predicted_interaction
                 decision_source = "ml_primary"
+            else:
+                ml_error = "ML models not loaded"
     except Exception as e:
         logger.error(f"ML prediction failed in /interactions/check: {e}")
+        ml_error = str(e)
 
     # Hybrid gate: rules override for high-risk constraints
     rule_override_reason = None
@@ -93,6 +101,8 @@ async def check_interaction(
     result.ml_probability = ml_probability
     result.ml_severity = ml_severity
     result.ml_decision_source = decision_source
+    result.ml_available = ml_available
+    result.ml_error = ml_error
     
     # Log the comparison with ML audit fields
     comparison_logger = create_comparison_logger(db)
@@ -199,3 +209,53 @@ async def get_alternatives_get(
         return await service.find_alternatives(drug1, drug2)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.post("/interactions/check-batch", response_model=BatchInteractionResponse)
+async def check_batch_interactions(
+    request: BatchInteractionRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Check all pairwise interactions for a list of medications.
+
+    Given N drugs, checks every unique pair (N*(N-1)/2 total).
+    Useful for validating an entire prescription at once.
+    """
+    service = create_interaction_service(db)
+    unique_names = list(dict.fromkeys(request.drug_names))  # dedupe, preserve order
+
+    results: List[BatchInteractionItem] = []
+    interactions_found = 0
+
+    for d1, d2 in combinations(unique_names, 2):
+        try:
+            check = await service.check_interaction(d1, d2)
+            item = BatchInteractionItem(
+                drug1_name=d1,
+                drug2_name=d2,
+                has_interaction=check.has_interaction,
+                is_safe=check.is_safe,
+                severity=check.interaction.severity if check.interaction else None,
+                description=check.interaction.description if check.interaction else None,
+                safety_message=check.safety_message,
+            )
+        except Exception as e:
+            logger.warning(f"Batch check failed for {d1}-{d2}: {e}")
+            item = BatchInteractionItem(
+                drug1_name=d1,
+                drug2_name=d2,
+                has_interaction=False,
+                is_safe=True,
+                safety_message=f"Could not verify: {e}",
+            )
+        results.append(item)
+        if item.has_interaction:
+            interactions_found += 1
+
+    return BatchInteractionResponse(
+        drugs_checked=unique_names,
+        total_pairs=len(results),
+        interactions_found=interactions_found,
+        results=results,
+    )

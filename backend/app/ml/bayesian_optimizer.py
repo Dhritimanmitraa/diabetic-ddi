@@ -125,46 +125,22 @@ class BayesianOptimizer:
             # Get parameter suggestions
             params = self._get_param_suggestions(trial, param_space)
             params['random_state'] = self.random_state
-            
-            # Create and evaluate model
-            model = DDIModelFactory.create(self.model_type, params)
-            
-            # Cross-validation
+
+            # Create a raw sklearn estimator for cross-validation
+            raw_model = DDIModelFactory.create_model(self.model_type, params)
+
             cv = StratifiedKFold(n_splits=self.cv_folds, shuffle=True, random_state=self.random_state)
-            
+
             try:
                 scores = cross_val_score(
-                    model.model if model.model else DDIModelFactory.create(self.model_type, params).model,
-                    X, y,
+                    raw_model, X, y,
                     cv=cv,
                     scoring=self.scoring,
-                    n_jobs=-1
+                    n_jobs=1,          # n_jobs=1 avoids Windows spawn/pickle issues
+                    error_score=0.0,   # return 0 for folds that fail (e.g. single-class)
                 )
-                
-                # Handle the case where model hasn't been initialized
-                if model.model is None:
-                    temp_model = DDIModelFactory.create(self.model_type, params)
-                    # Initialize the underlying sklearn model
-                    if self.model_type == ModelType.RANDOM_FOREST:
-                        from sklearn.ensemble import RandomForestClassifier
-                        temp_model.model = RandomForestClassifier(**params)
-                    elif self.model_type == ModelType.XGBOOST:
-                        import xgboost as xgb
-                        temp_model.model = xgb.XGBClassifier(**params)
-                    elif self.model_type == ModelType.LIGHTGBM:
-                        import lightgbm as lgb
-                        temp_model.model = lgb.LGBMClassifier(**params)
-                    
-                    scores = cross_val_score(
-                        temp_model.model,
-                        X, y,
-                        cv=cv,
-                        scoring=self.scoring,
-                        n_jobs=-1
-                    )
-                
-                return scores.mean()
-                
+                return float(scores.mean())
+
             except Exception as e:
                 logger.warning(f"Trial failed: {e}")
                 return 0.0

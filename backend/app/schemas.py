@@ -120,6 +120,8 @@ class InteractionCheckResponse(BaseModel):
     ml_probability: Optional[float] = None
     ml_severity: Optional[str] = None
     ml_decision_source: Optional[str] = None  # ml_primary | rule_override | rules_only
+    ml_available: bool = False
+    ml_error: Optional[str] = None
 
 
 # Alternative Drug Schemas
@@ -151,6 +153,34 @@ class OCRResponse(BaseModel):
     extracted_text: str
     detected_drugs: List[str]
     confidence: float
+
+
+# Batch interaction check schemas
+class BatchInteractionRequest(BaseModel):
+    """Request to check all pairwise interactions for a list of medications."""
+    drug_names: List[constr(strip_whitespace=True, min_length=2)] = Field(
+        ..., min_length=2, max_length=20,
+        description="List of drug names (2-20) to check pairwise",
+    )
+
+
+class BatchInteractionItem(BaseModel):
+    """Single interaction result within a batch response."""
+    drug1_name: str
+    drug2_name: str
+    has_interaction: bool
+    is_safe: bool
+    severity: Optional[str] = None
+    description: Optional[str] = None
+    safety_message: str
+
+
+class BatchInteractionResponse(BaseModel):
+    """Response with all pairwise interaction results."""
+    drugs_checked: List[str]
+    total_pairs: int
+    interactions_found: int
+    results: List[BatchInteractionItem]
 
 
 # Statistics

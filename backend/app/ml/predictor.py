@@ -24,6 +24,8 @@ import joblib
 import numpy as np
 import numpy.typing as npt
 
+from app.ml.feature_engineering import DrugFeatureExtractor
+
 logger = logging.getLogger(__name__)
 
 
@@ -271,6 +273,7 @@ class DDIPredictor:
         self.use_simple_features: bool = False
         self.optimal_threshold: float = self.DEFAULT_THRESHOLD
         self.threshold_method: str = "default"
+        self.feature_extractor: Optional[DrugFeatureExtractor] = None
         
     def load(self) -> bool:
         """
@@ -325,6 +328,9 @@ class DDIPredictor:
                 logger.error("No models found")
                 return False
             
+            # Load trained feature extractor if available
+            self._load_feature_extractor()
+            
             # Load training results for model info
             self._load_training_results()
             
@@ -356,6 +362,22 @@ class DDIPredictor:
                     metrics: ModelMetricsDict = self.model_info['models'][model_name].get('metrics', {})
                     self.models[model_name]['metrics'] = metrics
     
+    def _load_feature_extractor(self) -> None:
+        """Load the fitted DrugFeatureExtractor if available."""
+        fe_path: str = os.path.join(self.model_dir, "feature_extractor.pkl")
+        if os.path.exists(fe_path):
+            try:
+                self.feature_extractor = DrugFeatureExtractor.load(fe_path)
+                self.use_simple_features = False
+                logger.info("Loaded trained feature extractor — using canonical features")
+            except Exception as e:
+                logger.warning(f"Failed to load feature extractor, falling back to simple features: {e}")
+                self.feature_extractor = None
+                self.use_simple_features = True
+        else:
+            logger.warning("No feature_extractor.pkl found — falling back to simple hash features")
+            self.use_simple_features = True
+
     def _load_optimal_threshold(self) -> None:
         """Load optimal threshold configuration if available."""
         threshold_path: str = os.path.join(self.model_dir, "optimal_threshold.json")
@@ -374,7 +396,12 @@ class DDIPredictor:
     def _extract_features(self, drug1: DrugDict, drug2: DrugDict) -> FeatureArray:
         """
         Extract features from drug pair.
-        
+
+        Uses the trained DrugFeatureExtractor (TF-IDF + categorical +
+        statistical features) when available, otherwise falls back to
+        the legacy 242-dim hash encoder for backward compatibility with
+        pre-existing model artifacts.
+
         Args:
             drug1: First drug dictionary
             drug2: Second drug dictionary
@@ -382,6 +409,8 @@ class DDIPredictor:
         Returns:
             Feature array for model input
         """
+        if self.feature_extractor is not None and self.feature_extractor.is_fitted:
+            return self.feature_extractor.extract_features(drug1, drug2)
         return extract_features_simple(drug1, drug2)
     
     def predict(

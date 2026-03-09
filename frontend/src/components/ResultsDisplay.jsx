@@ -1,6 +1,5 @@
-import { useEffect, memo } from 'react'
+import { memo } from 'react'
 import { motion } from 'framer-motion'
-import confetti from 'canvas-confetti'
 import {
   Shield, ShieldAlert, ShieldX, AlertTriangle,
   CheckCircle2, XCircle, Info, ArrowRight,
@@ -10,29 +9,16 @@ import SideEffects from './SideEffects'
 import { getSeverityConfig } from '../utils/severity'
 
 const SEVERITY_ICONS = {
-  minor: <Info className="w-6 h-6" />,
-  moderate: <AlertTriangle className="w-6 h-6" />,
-  major: <ShieldAlert className="w-6 h-6" />,
-  contraindicated: <ShieldX className="w-6 h-6" />,
-  safe: <Shield className="w-6 h-6" />,
-}
-
-const GLOW_CLASSES = {
-  minor: 'glow-minor',
-  moderate: 'glow-moderate',
-  major: 'glow-major',
-  contraindicated: 'glow-danger',
-  safe: 'glow-safe celebrate',
+  minor: <Info className="w-5 h-5" />,
+  moderate: <AlertTriangle className="w-5 h-5" />,
+  major: <ShieldAlert className="w-5 h-5" />,
+  contraindicated: <ShieldX className="w-5 h-5" />,
+  safe: <Shield className="w-5 h-5" />,
 }
 
 const ResultsDisplay = memo(function ResultsDisplay({ results }) {
   const has_interaction = results?.has_interaction
   const is_safe = results?.is_safe
-
-  useEffect(() => {
-    if (!results || has_interaction || !is_safe) return
-    confetti({ particleCount: 60, spread: 80, origin: { y: 0.6 }, colors: ['#14b8a6', '#06b6d4', '#22c55e'], gravity: 1.2, scalar: 0.8 })
-  }, [results, has_interaction, is_safe])
 
   if (!results) return null
 
@@ -40,26 +26,15 @@ const ResultsDisplay = memo(function ResultsDisplay({ results }) {
   const severity = interaction?.severity || (is_safe ? 'safe' : 'moderate')
   const config = getSeverityConfig(severity)
   const icon = SEVERITY_ICONS[severity] || SEVERITY_ICONS.safe
-  const glowClass = GLOW_CLASSES[severity] || ''
 
   return (
     <section className="max-w-3xl mx-auto px-5 py-8">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="glass rounded-2xl p-6 sm:p-8 relative overflow-hidden"
-      >
+      <div className="rounded-2xl p-6 sm:p-8 relative overflow-hidden bg-[var(--bg-elevated)] border border-[var(--border)]">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-center gap-5 mb-7">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', delay: 0.1, stiffness: 200 }}
-            className={`w-16 h-16 rounded-2xl ${config.bgColor} ${config.borderColor} border flex items-center justify-center ${config.color} ${glowClass}`}
-          >
+        <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
+          <div className={`w-12 h-12 rounded-xl ${config.bgColor} ${config.borderColor} border flex items-center justify-center ${config.color}`}>
             {icon}
-          </motion.div>
+          </div>
 
           <div className="text-center sm:text-left flex-1">
             <div className="flex items-center justify-center sm:justify-start gap-3 mb-1.5">
@@ -89,12 +64,7 @@ const ResultsDisplay = memo(function ResultsDisplay({ results }) {
 
         {/* Interaction details */}
         {has_interaction && interaction && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-3 mb-7"
-          >
+          <div className="space-y-3 mb-6">
             {interaction.effect && (
               <DetailCard icon={<AlertTriangle className="w-4 h-4" />} title="Effect" content={interaction.effect} color="text-amber-400" />
             )}
@@ -104,17 +74,12 @@ const ResultsDisplay = memo(function ResultsDisplay({ results }) {
             {interaction.management && (
               <DetailCard icon={<Stethoscope className="w-4 h-4" />} title="Management" content={interaction.management} color="text-medical-400" />
             )}
-          </motion.div>
+          </div>
         )}
 
         {/* Recommendations */}
         {recommendations && recommendations.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="p-5 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)] mb-6"
-          >
+          <div className="p-5 bg-[var(--bg-primary)]/50 rounded-xl border border-[var(--border)] mb-6">
             <h3 className="font-display font-semibold text-sm text-[var(--text-primary)] mb-3 flex items-center gap-2">
               <Info className="w-4 h-4 text-medical-400" />
               Recommendations
@@ -127,7 +92,7 @@ const ResultsDisplay = memo(function ResultsDisplay({ results }) {
                 </li>
               ))}
             </ul>
-          </motion.div>
+          </div>
         )}
 
         {/* Confidence score */}
@@ -150,12 +115,7 @@ const ResultsDisplay = memo(function ResultsDisplay({ results }) {
 
         {/* Risk gauge */}
         {has_interaction && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-5 p-4 bg-[var(--bg-elevated)]/50 rounded-xl border border-[var(--border)]"
-          >
+          <div className="mt-5 p-4 bg-[var(--bg-primary)]/50 rounded-xl border border-[var(--border)]">
             <div className="flex items-center justify-between mb-2.5">
               <span className="text-xs text-[var(--text-muted)] font-medium">Risk Level</span>
               <span className={`text-xs font-semibold ${config.color}`}>{config.label}</span>
@@ -176,9 +136,9 @@ const ResultsDisplay = memo(function ResultsDisplay({ results }) {
               <span>Major</span>
               <span>Danger</span>
             </div>
-          </motion.div>
+          </div>
         )}
-      </motion.div>
+      </div>
     </section>
   )
 })

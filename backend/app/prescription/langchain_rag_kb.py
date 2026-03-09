@@ -202,9 +202,9 @@ Precautions and Warnings:
                     })
                     ids.append(f"drug_{i}_{j}_{drug.get('name', 'unknown').lower().replace(' ', '_')}")
             
-            # Add to vectorstore
+            # Upsert to vectorstore (idempotent — safe for repeated calls)
             if documents:
-                self.vectorstore.add(
+                self.vectorstore.upsert(
                     documents=documents,
                     metadatas=metadatas,
                     ids=ids

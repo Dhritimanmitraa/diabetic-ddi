@@ -4,6 +4,7 @@ import { Search, X, ArrowDown, Loader2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { searchDrugs, checkInteraction, getAlternatives, getMLPrediction } from '../services/api'
 import { useDebouncedSearch } from '../hooks'
+import useDrugStore from '../stores/useDrugStore'
 
 /**
  * DrugSearchInput — Search with autocomplete, keyboard nav, and error display
@@ -141,7 +142,8 @@ function DrugSearchInput({ label, placeholder, searchState, onSelect, inputId })
 /**
  * InteractionChecker — Main drug pair input form
  */
-function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPrediction, setMlLoading }) {
+function InteractionChecker() {
+  const { setResults, setAlternatives, setIsLoading, setMlPrediction, setMlLoading } = useDrugStore()
   const drug1Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
   const drug2Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
 
@@ -294,7 +296,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
         <button
           id="check-interaction-btn"
           type="submit"
-          className="w-full py-3.5 bg-medical-500 hover:bg-medical-400 text-white font-semibold text-sm rounded-xl transition-colors btn-hover relative group"
+          className="w-full py-3.5 bg-medical-600 hover:bg-medical-500 text-white font-semibold text-sm rounded-xl transition-colors relative group"
         >
           <span>Check Interaction</span>
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/40 hidden md:inline group-hover:text-white/60 transition-colors font-medium">
@@ -305,7 +307,7 @@ function InteractionChecker({ setResults, setAlternatives, setIsLoading, setMlPr
 
       {/* Quick examples */}
       <div className="mt-5 pt-5 border-t border-[var(--border)]">
-        <p className="text-[10px] text-[var(--text-muted)] mb-2.5 uppercase tracking-wider font-medium">Try an example</p>
+        <p className="text-[10px] text-[var(--text-muted)] mb-2.5 uppercase tracking-wider font-medium">Examples</p>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Example drug pairs">
           {quickExamples.map((example, index) => (
             <button

@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     
     # Rate limiting
     RATE_LIMIT_REQUESTS_PER_MIN: int = 60
+
+    # CORS
+    CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost:3001"
     
     # API Reliability Settings
     API_RETRY_ATTEMPTS: int = 3

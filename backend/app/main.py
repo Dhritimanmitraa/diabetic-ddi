@@ -3,12 +3,13 @@ Drug-Drug Interaction Prediction API
 
 Main FastAPI application entry point.
 """
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends, Request, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from contextlib import asynccontextmanager
 import logging
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,10 +27,24 @@ from app.routers.drugs import router as drugs_router
 from app.routers.interactions import router as interactions_router
 from app.routers.ocr import router as ocr_router
 from app.routers.history import router as history_router
+from app.routers.ml_router import router as ml_router
+from app.routers.adherence import router as adherence_router
 
-logging.basicConfig(level=logging.INFO)
+# ── Structured JSON Logging ─────────────────────────────────────────────
+from pythonjsonlogger import jsonlogger
+
+_log_handler = logging.StreamHandler(sys.stdout)
+_log_handler.setFormatter(
+    jsonlogger.JsonFormatter(
+        fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+        rename_fields={"asctime": "timestamp", "levelname": "level"},
+    )
+)
+logging.root.handlers.clear()
+logging.root.addHandler(_log_handler)
+logging.root.setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 settings = get_settings()
 
@@ -47,10 +62,15 @@ async def lifespan(app: FastAPI):
     
     # Seed initial data if empty
     await seed_initial_data()
+
+    # Start model-retraining scheduler
+    from app.ml.scheduler import start_scheduler, stop_scheduler
+    start_scheduler()
     
     yield
     
     # Shutdown
+    stop_scheduler()
     logger.info("Shutting down...")
     from app.services.api_client import close_api_client
     await close_api_client()
@@ -86,37 +106,56 @@ async def log_drug_requests(request: Request, call_next):
     Log all /drugs and /drugs/search calls to console for visibility.
     """
     path = request.url.path
-    if path.startswith("/drugs"):
+    if path.startswith("/v1/drugs") or path.startswith("/drugs"):
         client_ip = request.client.host if request.client else "unknown"
-        info = {
-            "event": "http_request",
-            "path": path,
-            "method": request.method,
-            "query": dict(request.query_params),
-            "client_ip": client_ip,
-        }
-        logger.info(info)
-        # Explicit print to ensure it shows in terminal output
-        print(f"[search-log] {request.method} {path} query={info['query']} ip={client_ip}")
+        logger.info(
+            "http_request",
+            extra={
+                "path": path,
+                "method": request.method,
+                "query": dict(request.query_params),
+                "client_ip": client_ip,
+            },
+        )
     response = await call_next(request)
     return response
 
-# CORS configuration
+# CORS configuration — lock down to known origins
+_allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
-    allow_credentials=False,  # Cannot use True with wildcard origins
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
 
-# Include Routers
+# ── API v1 Router ────────────────────────────────────────────────────────
+v1 = APIRouter(prefix="/v1")
+v1.include_router(diabetic_router)
+v1.include_router(prescription_router)
+v1.include_router(drugs_router)
+v1.include_router(interactions_router)
+v1.include_router(ocr_router)
+v1.include_router(history_router)
+v1.include_router(ml_router)
+v1.include_router(adherence_router)
+app.include_router(v1)
+
+# Backward-compatible un-prefixed routes (deprecated — will be removed in v2)
 app.include_router(diabetic_router)
 app.include_router(prescription_router)
 app.include_router(drugs_router)
 app.include_router(interactions_router)
 app.include_router(ocr_router)
 app.include_router(history_router)
+app.include_router(ml_router)
+app.include_router(adherence_router)
 
 
 # ============== Health & Stats Endpoints ==============

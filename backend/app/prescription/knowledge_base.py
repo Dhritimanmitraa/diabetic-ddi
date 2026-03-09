@@ -118,9 +118,9 @@ Precautions: {drug.get('precautions', '')}
                 })
                 ids.append(f"drug_{i}_{drug.get('name', 'unknown').lower().replace(' ', '_')}")
             
-            # Add to collection
+            # Upsert to collection (idempotent — safe for repeated calls)
             if documents:
-                self.collection.add(
+                self.collection.upsert(
                     documents=documents,
                     metadatas=metadatas,
                     ids=ids

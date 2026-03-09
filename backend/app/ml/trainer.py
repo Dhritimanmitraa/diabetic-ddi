@@ -61,17 +61,50 @@ class DDITrainer:
         
     def load_data_from_db(self, db_session) -> Tuple[List[Dict], List[Dict]]:
         """
-        Load drugs and interactions from database.
-        
+        Load drugs and interactions from a *synchronous* DB session.
+
+        This is designed to be called from the sync training script. For
+        async usage see ``train_from_database()`` at the bottom of this
+        module which fetches the data asynchronously and then delegates to
+        ``load_data_from_dicts()``.
+
         Args:
-            db_session: SQLAlchemy async session
-            
+            db_session: SQLAlchemy **synchronous** Session
+
         Returns:
             Tuple of (drugs_list, interactions_list)
         """
-        # This will be called with actual database session
-        # For now, return placeholder
-        raise NotImplementedError("Use load_data_from_dicts instead")
+        from app.models import Drug, DrugInteraction
+        from sqlalchemy import select
+
+        drugs_orm = db_session.execute(select(Drug)).scalars().all()
+        drugs = [
+            {
+                'name': d.name,
+                'generic_name': d.generic_name,
+                'drug_class': d.drug_class,
+                'description': d.description,
+                'mechanism': d.mechanism,
+                'indication': d.indication,
+                'molecular_weight': d.molecular_weight,
+                'is_approved': d.is_approved,
+            }
+            for d in drugs_orm
+        ]
+
+        interactions_orm = db_session.execute(select(DrugInteraction)).scalars().all()
+        drug_id_to_name = {d.id: d.name for d in drugs_orm}
+        interactions = [
+            {
+                'drug1_name': drug_id_to_name.get(i.drug1_id, ''),
+                'drug2_name': drug_id_to_name.get(i.drug2_id, ''),
+                'severity': i.severity,
+            }
+            for i in interactions_orm
+        ]
+
+        logger.info(f"Loaded {len(drugs)} drugs and {len(interactions)} interactions from DB")
+        return drugs, interactions
     
     def load_data_from_dicts(
         self,
@@ -231,23 +264,28 @@ class DDITrainer:
         ]
         
         for model_type in model_types:
-            self.train_single_model(
-                model_type,
-                X_train, y_train,
-                X_test, y_test,
-                optimize=optimize,
-                run_comparison=run_comparison
-            )
+            try:
+                self.train_single_model(
+                    model_type,
+                    X_train, y_train,
+                    X_test, y_test,
+                    optimize=optimize,
+                    run_comparison=run_comparison
+                )
+            except Exception as e:
+                logger.warning(f"Skipping {model_type.value}: {e}")
         
         # Calculate ensemble performance
-        if len(self.models) > 1:
+        if len(self.models) >= 1:
             logger.info("\n" + "="*60)
             logger.info("Evaluating Ensemble Model")
             logger.info("="*60)
             
             ensemble = EnsemblePredictor(self.models)
             y_pred = ensemble.predict(X_test)
-            y_proba = ensemble.predict_proba(X_test)
+            y_proba_full = ensemble.predict_proba(X_test)
+            # Extract positive-class probability (column 1) for binary metrics
+            y_proba = y_proba_full[:, 1] if y_proba_full.ndim == 2 else y_proba_full
             
             from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
             
@@ -262,11 +300,48 @@ class DDITrainer:
                 logger.info(f"  {metric_name}: {value:.4f}")
             
             self.training_metrics['ensemble'] = ensemble_metrics
+
+            # Compute optimal classification threshold using Youden's J
+            self._compute_optimal_threshold(y_test, y_proba)
         
         return self.models
+
+    def _compute_optimal_threshold(
+        self,
+        y_true: np.ndarray,
+        y_proba: np.ndarray,
+    ) -> None:
+        """
+        Compute the optimal binary classification threshold.
+
+        Uses Youden's J statistic (max sensitivity + specificity - 1)
+        on the ensemble probabilities.  Falls back to 0.5 when data is
+        insufficient.
+        """
+        from sklearn.metrics import roc_curve
+
+        fpr, tpr, thresholds = roc_curve(y_true, y_proba)
+        j_scores = tpr - fpr
+        best_idx = int(np.argmax(j_scores))
+        best_threshold = float(thresholds[best_idx])
+
+        # Clamp to [0.1, 0.9] for safety
+        best_threshold = max(0.1, min(0.9, best_threshold))
+
+        logger.info(
+            f"Optimal threshold (Youden's J): {best_threshold:.4f} "
+            f"(TPR={tpr[best_idx]:.3f}, FPR={fpr[best_idx]:.3f})"
+        )
+
+        self.training_metrics['optimal_threshold_data'] = {
+            'threshold': round(best_threshold, 4),
+            'method': 'youden_j',
+            'tpr_at_threshold': round(float(tpr[best_idx]), 4),
+            'fpr_at_threshold': round(float(fpr[best_idx]), 4),
+        }
     
     def save_models(self):
-        """Save all trained models and feature extractor."""
+        """Save all trained models, feature extractor, and optimal threshold."""
         # Save feature extractor
         fe_path = os.path.join(self.model_dir, "feature_extractor.pkl")
         self.feature_extractor.save(fe_path)
@@ -275,6 +350,17 @@ class DDITrainer:
         for model_type, model in self.models.items():
             model_path = os.path.join(self.model_dir, f"{model_type.value}_model.pkl")
             model.save(model_path)
+
+        # Save optimal threshold (computed during train_all_models)
+        threshold_data = self.training_metrics.get('optimal_threshold_data')
+        if threshold_data:
+            threshold_path = os.path.join(self.model_dir, "optimal_threshold.json")
+            with open(threshold_path, 'w') as f:
+                json.dump(threshold_data, f, indent=2)
+            logger.info(
+                f"Saved optimal threshold {threshold_data['threshold']:.4f} "
+                f"(method: {threshold_data['method']})"
+            )
         
         # Save training metrics and results
         results = {

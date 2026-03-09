@@ -1,9 +1,10 @@
-import { useState, lazy, Suspense } from 'react'
+import { lazy, Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { ThemeProvider } from './context/ThemeContext'
+import useDrugStore from './stores/useDrugStore'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import InteractionChecker from './components/InteractionChecker'
@@ -21,12 +22,13 @@ const PrescriptionRAG = lazy(() => import('./components/PrescriptionRAG'))
 const PatientPrescriptionScanner = lazy(() => import('./components/PatientPrescriptionScanner'))
 
 function App() {
-  const [results, setResults] = useState(null)
-  const [alternatives, setAlternatives] = useState(null)
-  const [mlPrediction, setMlPrediction] = useState(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [mlLoading, setMlLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('text')
+  const results = useDrugStore((s) => s.results)
+  const alternatives = useDrugStore((s) => s.alternatives)
+  const mlPrediction = useDrugStore((s) => s.mlPrediction)
+  const isLoading = useDrugStore((s) => s.isLoading)
+  const mlLoading = useDrugStore((s) => s.mlLoading)
+  const activeTab = useDrugStore((s) => s.activeTab)
+  const setActiveTab = useDrugStore((s) => s.setActiveTab)
 
   return (
     <ThemeProvider>
@@ -90,7 +92,7 @@ function App() {
                           {/* Input method tabs */}
                           <section className="max-w-3xl mx-auto px-5 py-6">
                             <div
-                              className="flex justify-center gap-1 mb-8 p-1 bg-[var(--bg-elevated)] rounded-xl w-fit mx-auto border border-[var(--border)]"
+                              className="flex justify-center gap-1 mb-6 p-1 bg-[var(--bg-elevated)] rounded-lg w-fit mx-auto border border-[var(--border)]"
                               role="tablist"
                               aria-label="Input method"
                             >
@@ -147,13 +149,7 @@ function App() {
                                   transition={{ duration: 0.2 }}
                                 >
                                   <ErrorBoundary>
-                                    <InteractionChecker
-                                      setResults={setResults}
-                                      setAlternatives={setAlternatives}
-                                      setIsLoading={setIsLoading}
-                                      setMlPrediction={setMlPrediction}
-                                      setMlLoading={setMlLoading}
-                                    />
+                                    <InteractionChecker />
                                   </ErrorBoundary>
                                 </motion.div>
                               ) : (
@@ -168,13 +164,7 @@ function App() {
                                   transition={{ duration: 0.2 }}
                                 >
                                   <ErrorBoundary>
-                                    <CameraCapture
-                                      setResults={setResults}
-                                      setAlternatives={setAlternatives}
-                                      setIsLoading={setIsLoading}
-                                      setMlPrediction={setMlPrediction}
-                                      setMlLoading={setMlLoading}
-                                    />
+                                    <CameraCapture />
                                   </ErrorBoundary>
                                 </motion.div>
                               )}
@@ -189,18 +179,15 @@ function App() {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 className="fixed inset-0 z-50 flex items-center justify-center"
-                                style={{ backgroundColor: 'var(--loading-overlay-bg, rgba(10, 15, 28, 0.85))', backdropFilter: 'blur(8px)' }}
+                                style={{ backgroundColor: 'var(--loading-overlay-bg, rgba(10, 15, 28, 0.8))' }}
                                 role="status"
                                 aria-live="polite"
                                 aria-label="Loading"
                               >
                                 <div className="text-center">
-                                  <div className="flex flex-col items-center gap-5">
+                                  <div className="flex flex-col items-center gap-4">
                                     <div className="spinner" />
-                                    <div>
-                                      <p className="text-medical-400 font-medium text-sm">Analyzing interactions...</p>
-                                      <p className="text-[var(--text-muted)] text-xs mt-1.5">Checking 42M+ interactions</p>
-                                    </div>
+                                    <p className="text-[var(--text-secondary)] text-sm">Checking interactions…</p>
                                   </div>
                                 </div>
                               </motion.div>

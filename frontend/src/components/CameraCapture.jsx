@@ -5,6 +5,7 @@ import { Camera, Upload, X, Loader2, RefreshCw, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { extractFromImage, checkInteraction, getAlternatives } from '../services/api'
 import { isNative } from '../utils/platform'
+import useDrugStore from '../stores/useDrugStore'
 
 // Conditionally import Capacitor Camera for native platforms
 let CapacitorCamera = null
@@ -22,7 +23,8 @@ if (typeof window !== 'undefined') {
   })
 }
 
-function CameraCapture({ setResults, setAlternatives, setIsLoading }) {
+function CameraCapture() {
+  const { setResults, setAlternatives, setIsLoading } = useDrugStore()
   const [showCamera, setShowCamera] = useState(false)
   const [capturedImage, setCapturedImage] = useState(null)
   const [detectedDrugs, setDetectedDrugs] = useState([])
