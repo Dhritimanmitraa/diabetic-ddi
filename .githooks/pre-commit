@@ -1,13 +1,12 @@
 #!/bin/sh
-# Block commits that contain likely API keys or private key material.
+# Block commits that contain actual API key values or private key material.
+# Only matches concrete secret patterns, not variable names or placeholders.
 
-PATTERN='AIza[0-9A-Za-z_-]{35}|GOOGLE_API_KEY=|GEMINI_API_KEY=|CLOUD_SPEECH_API_KEY=|-----BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY-----'
+# Google API keys always start with AIza and are 39 chars
+# Private key PEM headers
+PATTERN='AIza[0-9A-Za-z_-]{35}|-----BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY-----'
 
-if git diff --cached --name-only | grep -E '\.(env|pem|key|json)$' >/dev/null 2>&1; then
-  :
-fi
-
-if git diff --cached | grep -E "$PATTERN" >/dev/null 2>&1; then
+if git diff --cached -- ':!*.example' | grep -E "$PATTERN" >/dev/null 2>&1; then
   echo "[pre-commit] Potential secret detected in staged changes. Commit blocked."
   echo "[pre-commit] Move secrets to ignored .env.local files and retry."
   exit 1
