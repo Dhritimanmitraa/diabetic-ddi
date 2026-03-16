@@ -11,6 +11,7 @@ import json
 
 from app.config import get_settings
 from app.prescription.schemas import MedicineCreate
+from app.services.gemini_client import get_gemini_client
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -171,6 +172,8 @@ class PrescriptionRAGService:
                 timing.append("morning")
             if med.afternoon:
                 timing.append("afternoon")
+            if med.evening:
+                timing.append("evening")
             if med.night:
                 timing.append("night")
             
@@ -254,16 +257,10 @@ class PrescriptionLLMService:
     
     def _init_gemini(self):
         """Initialize Google Gemini client."""
-        api_key = settings.GOOGLE_API_KEY
-        if api_key:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=api_key)
-                self.gemini_client = genai.GenerativeModel("gemini-2.0-flash")
-                self.gemini_available = True
-                logger.info("Gemini LLM initialized for chat")
-            except Exception as e:
-                logger.warning(f"Failed to initialize Gemini for chat: {e}")
+        self.gemini_client = get_gemini_client("gemini-2.0-flash")
+        self.gemini_available = self.gemini_client.is_available
+        if self.gemini_available:
+            logger.info(f"Gemini LLM initialized for chat via {self.gemini_client.sdk}")
     
     async def answer_question(
         self, 
@@ -380,8 +377,6 @@ Based on your prescription, here's the relevant information:
         chat_history: Optional[List[Dict[str, str]]] = None
     ) -> tuple[str, str]:
         """Answer using Gemini."""
-        import google.generativeai as genai
-        
         # Build conversation
         messages = [system_prompt]
         
@@ -391,15 +386,13 @@ Based on your prescription, here's the relevant information:
         
         messages.append(f"USER: {question}")
         
-        response = self.gemini_client.generate_content(
+        response = self.gemini_client.generate_text(
             "\n\n".join(messages),
-            generation_config=genai.GenerationConfig(
-                temperature=0.3,
-                max_output_tokens=1024,
-            )
+            temperature=0.3,
+            max_output_tokens=1024,
         )
         
-        return response.text, "gemini-2.0-flash"
+        return response.text, response.model
     
     async def _answer_with_ollama(
         self, 

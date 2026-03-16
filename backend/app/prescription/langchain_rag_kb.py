@@ -424,12 +424,10 @@ Precautions and Warnings:
             "Upgrade-Insecure-Requests": "1",
         }
         
-        # Try multiple URL patterns
+        # Try only top-2 URL patterns to keep total fetch time low
         urls_to_try = [
             f"https://www.drugs.com/{drug_slug}.html",
             f"https://www.drugs.com/mtm/{drug_slug}.html",
-            f"https://www.drugs.com/cdi/{drug_slug}.html",
-            f"https://medlineplus.gov/druginfo/meds/{drug_slug}.html",
         ]
         
         for url in urls_to_try:
@@ -438,7 +436,7 @@ Precautions and Warnings:
                 
                 response = httpx.get(
                     url,
-                    timeout=15.0,
+                    timeout=5.0,
                     headers=HEADERS,
                     follow_redirects=True
                 )
@@ -495,15 +493,41 @@ Precautions and Warnings:
         try:
             # Search for drug in RxNorm
             search_url = f"https://rxnav.nlm.nih.gov/REST/drugs.json?name={drug_name}"
-            logger.info(f"Querying RxNorm API: {search_url}")
+            # Don't log the raw URL as it confuses users when they click empty results
+            logger.info(f"Querying RxNorm API for: {drug_name}")
             
-            response = httpx.get(search_url, timeout=10.0)
+            response = httpx.get(search_url, timeout=5.0)
             
             if response.status_code == 200:
                 data = response.json()
-                
                 concepts = data.get('drugGroup', {}).get('conceptGroup', [])
                 
+                # If exact name fails (returns {"drugGroup":{"name":null}}), try approximate match
+                if not concepts:
+                    approx_url = f"https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term={drug_name}&maxEntries=1"
+                    approx_resp = httpx.get(approx_url, timeout=5.0)
+                    if approx_resp.status_code == 200:
+                        candidates = approx_resp.json().get('approximateGroup', {}).get('candidate', [])
+                        if candidates:
+                            rxcui = candidates[0].get('rxcui')
+                            name_found = candidates[0].get('name')
+                            logger.info(f"Exact match failed. Found approximate RxNorm match: {name_found} (RxCUI: {rxcui})")
+                            
+                            # Build content directly from the approximate RxCUI
+                            approx_content = [f"Drug Name: {drug_name.title()}"]
+                            approx_content.append(f"Standardized Name: {name_found}")
+                            properties = self._fetch_rxnorm_properties(rxcui)
+                            if properties:
+                                approx_content.extend(properties)
+                            
+                            if len(approx_content) > 2:
+                                full_content = "\n".join(approx_content)
+                                self._cache_drug_content(drug_name, full_content, "RxNorm API (Approximate)")
+                                return full_content
+                            else:
+                                logger.info(f"RxNorm couldn't find detailed properties for {name_found}. (Normal for brands/combos).")
+                                return None
+
                 content_parts = [f"Drug Name: {drug_name.title()}"]
                 
                 for group in concepts:
@@ -552,7 +576,7 @@ Precautions and Warnings:
                     class_name = cls.get('rxclassMinConceptItem', {}).get('className', '')
                     if class_name:
                         properties.append(f"Drug Class: {class_name}")
-        except:
+        except Exception:
             pass
         
         return properties
@@ -594,7 +618,7 @@ Precautions and Warnings:
         """
         # Check if any medicines need to be fetched
         if medicines_to_check:
-            for med_name in medicines_to_check[:3]:  # Limit to 3
+            for med_name in medicines_to_check[:2]:  # Limit to 2 to keep latency low
                 med_name_clean = med_name.strip()
                 if len(med_name_clean) < 3:
                     continue

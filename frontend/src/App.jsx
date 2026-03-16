@@ -20,6 +20,7 @@ const ModelDashboard = lazy(() => import('./components/ModelDashboard'))
 const DiabetesManager = lazy(() => import('./components/DiabetesManager'))
 const PrescriptionRAG = lazy(() => import('./components/PrescriptionRAG'))
 const PatientPrescriptionScanner = lazy(() => import('./components/PatientPrescriptionScanner'))
+const SystemStatus = lazy(() => import('./components/SystemStatus'))
 
 function App() {
   const results = useDrugStore((s) => s.results)
@@ -240,6 +241,7 @@ function App() {
                   <Route path="/diabetes" element={<ErrorBoundary><DiabetesManager /></ErrorBoundary>} />
                   <Route path="/prescription" element={<ErrorBoundary><PrescriptionRAG /></ErrorBoundary>} />
                   <Route path="/patient-prescription" element={<ErrorBoundary><PatientPrescriptionScanner /></ErrorBoundary>} />
+                  <Route path="/system-status" element={<ErrorBoundary><SystemStatus /></ErrorBoundary>} />
                   <Route path="*" element={
                     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-5">
                       <h1 className="text-6xl font-bold text-medical-400 mb-4">404</h1>

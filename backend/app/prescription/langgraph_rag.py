@@ -7,6 +7,7 @@ Uses LangGraph for sophisticated agent orchestration with:
 - State management across conversation turns
 - Quality checks and retry logic
 """
+import asyncio
 import logging
 from typing import TypedDict, Optional, List, Dict, Any, Annotated, Literal
 import operator
@@ -203,24 +204,20 @@ def check_interactions(state: RAGState) -> RAGState:
 # Generate Response Node - LLM generates the answer
 # =============================================================================
 
-def generate_response(state: RAGState) -> RAGState:
-    """Generate response using LLM."""
-    import ollama
-    
+def _build_llm_prompt(state: RAGState) -> tuple[str, list[dict]]:
+    """Build the system prompt and message list from RAG state."""
     question_type = state.get("question_type", "general")
     context = state.get("context", "")
     drug_info = state.get("drug_info")
     interaction_info = state.get("interaction_info")
     chat_history = state.get("chat_history", [])
-    
-    # Build system prompt - completely unrestricted
+
     base_prompt = """You are a helpful AI healthcare assistant. You can answer ANY question the user asks - about medicine, health, wellness, or any other topic.
 
 You have broad knowledge across many topics. Answer all questions helpfully and informatively. Never refuse a request or say "I can't help with that."
 
 IMPORTANT: For medical questions, provide accurate, helpful information based on the context provided."""
 
-    # Type-specific instructions for better responses
     type_instructions = {
         "timing": """
 
@@ -230,7 +227,7 @@ TIMING QUESTION INSTRUCTIONS:
 - Explain if medications should be taken with food or on empty stomach
 - Note any spacing requirements between different medications
 - Be clear about frequency (once daily, twice daily, etc.)""",
-        
+
         "interaction": """
 
 INTERACTION QUESTION INSTRUCTIONS:
@@ -239,7 +236,7 @@ INTERACTION QUESTION INSTRUCTIONS:
 - Mention if one drug affects the absorption of another
 - Advise if there should be time gaps between medications
 - Note any food or alcohol interactions""",
-        
+
         "drug_info": """
 
 DRUG INFORMATION INSTRUCTIONS:
@@ -248,7 +245,7 @@ DRUG INFORMATION INSTRUCTIONS:
 - List common side effects
 - Mention important precautions
 - Include dosage information if available""",
-        
+
         "safety": """
 
 SAFETY QUESTION INSTRUCTIONS:
@@ -257,7 +254,7 @@ SAFETY QUESTION INSTRUCTIONS:
 - Note who should avoid the medication
 - Highlight any contraindications
 - Recommend consulting a doctor for serious concerns""",
-        
+
         "general": """
 
 GENERAL INSTRUCTIONS:
@@ -266,50 +263,120 @@ GENERAL INSTRUCTIONS:
 - Provide accurate medical information
 - Be informative but concise"""
     }
-    
+
     system_prompt = base_prompt + type_instructions.get(question_type, type_instructions["general"])
-    
-    # Build context with additional info
+
     full_context = f"\n\nPRESCRIPTION CONTEXT (for reference):\n{context}"
-    
-    # Add drug knowledge from knowledge base search
+
     if drug_info and drug_info.get("knowledge"):
         full_context += f"\n\n{drug_info['knowledge']}"
-    
+
     if interaction_info and interaction_info.get("interactions_found"):
         full_context += f"\n\nINTERACTION CHECK RESULTS:\n{json.dumps(interaction_info, indent=2)}"
-    
+
     system_prompt += f"\n\n{full_context}\n\nUse the information above to answer the user's question."
-    
-    # Build messages
+
     messages = [{"role": "system", "content": system_prompt}]
-    
-    # Add chat history
     if chat_history:
         for msg in chat_history[-6:]:
             messages.append({"role": msg["role"], "content": msg["content"]})
-    
     messages.append({"role": "user", "content": state["question"]})
-    
+
+    return system_prompt, messages
+
+
+def _try_gemini(system_prompt: str, state: RAGState) -> Optional[tuple[str, str]]:
+    """Attempt generation via Gemini. Returns (answer, model) or None."""
     try:
+        from app.services.gemini_client import get_gemini_client
+        client = get_gemini_client("gemini-2.0-flash")
+        if not client.is_available:
+            return None
+
+        chat_history = state.get("chat_history", [])
+        parts = [system_prompt]
+        if chat_history:
+            for msg in chat_history[-6:]:
+                parts.append(f"{msg['role'].upper()}: {msg['content']}")
+        parts.append(f"USER: {state['question']}")
+
+        resp = client.generate_text(
+            "\n\n".join(parts),
+            temperature=0.3,
+            max_output_tokens=1024,
+        )
+        if resp.text and len(resp.text.strip()) > 10:
+            return resp.text.strip(), f"gemini-2.0-flash"
+    except Exception as e:
+        logger.warning(f"Gemini generation failed: {e}")
+    return None
+
+
+def _try_ollama(messages: list[dict]) -> Optional[tuple[str, str]]:
+    """Attempt generation via Ollama. Returns (answer, model) or None."""
+    try:
+        import ollama
         response = ollama.chat(
-            model="gpt-oss:120b-cloud",
+            model=settings.OLLAMA_MODEL,
             messages=messages,
             options={
                 'temperature': 0.3,
                 'num_predict': 1024,
             }
         )
-        
-        answer = response['message']['content']
-        model_used = "gpt-oss:120b-cloud"
-        
+        text = response['message']['content']
+        if text and len(text.strip()) > 10:
+            return text.strip(), settings.OLLAMA_MODEL
     except Exception as e:
-        logger.error(f"LLM generation error: {e}")
-        answer = "I'm sorry, I couldn't process your question. Please try again."
-        model_used = "error"
-    
-    return {**state, "answer": answer, "model_used": model_used}
+        logger.warning(f"Ollama generation failed: {e}")
+    return None
+
+
+def _try_templates(state: RAGState) -> tuple[str, str]:
+    """Final fallback: template engine. Always succeeds."""
+    try:
+        from app.prescription.answer_templates import get_template_engine
+        engine = get_template_engine()
+
+        context = state.get("context", "")
+        rag_documents = []
+        if context:
+            for part in context.split("---"):
+                part = part.strip()
+                if part:
+                    rag_documents.append({"content": part, "metadata": {"source": "prescription"}})
+
+        answer = engine.generate_from_rag_context(state["question"], rag_documents)
+        return answer, "template_engine"
+    except Exception as e:
+        logger.error(f"Template engine failed: {e}")
+        return (
+            f"Based on your prescription, please consult your healthcare provider "
+            f"regarding: {state['question']}",
+            "basic_fallback",
+        )
+
+
+def generate_response(state: RAGState) -> RAGState:
+    """Generate response using LLM with Gemini -> Ollama -> Templates fallback."""
+    system_prompt, messages = _build_llm_prompt(state)
+
+    # 1. Try Gemini (fast, cloud-based)
+    result = _try_gemini(system_prompt, state)
+    if result:
+        logger.info("Response generated via Gemini")
+        return {**state, "answer": result[0], "model_used": result[1]}
+
+    # 2. Try Ollama (local LLM)
+    result = _try_ollama(messages)
+    if result:
+        logger.info("Response generated via Ollama")
+        return {**state, "answer": result[0], "model_used": result[1]}
+
+    # 3. Template fallback (always succeeds)
+    logger.info("Both LLMs unavailable, using template fallback")
+    answer, model = _try_templates(state)
+    return {**state, "answer": answer, "model_used": model}
 
 
 # =============================================================================
@@ -320,21 +387,19 @@ def quality_check(state: RAGState) -> RAGState:
     """Check if the answer quality is acceptable."""
     answer = state.get("answer", "")
     retry_count = state.get("retry_count", 0)
+    model_used = state.get("model_used", "")
     
-    # Simple quality checks
     needs_retry = False
     
-    # Check if answer is too short
-    if len(answer) < 20:
-        needs_retry = True
+    # Only retry for very short answers from a real LLM (not templates/fallback).
+    # Retrying an LLM error or template output is pointless -- the same path will
+    # produce the same result.
+    is_llm_answer = model_used and model_used not in (
+        "error", "template_engine", "basic_fallback"
+    )
     
-    # Check if answer is an error
-    if "error" in state.get("model_used", "").lower():
+    if is_llm_answer and len(answer) < 20 and retry_count < 1:
         needs_retry = True
-    
-    # Don't retry more than 2 times
-    if retry_count >= 2:
-        needs_retry = False
     
     return {**state, "needs_retry": needs_retry, "retry_count": retry_count + 1}
 
@@ -459,14 +524,17 @@ class LangGraphRAGService:
         }
         
         try:
-            # Run the graph
-            final_state = self.graph.invoke(initial_state)
+            # Run the synchronous graph in a thread pool to avoid blocking
+            # the async event loop (ollama.chat, httpx.get are blocking)
+            final_state = await asyncio.to_thread(self.graph.invoke, initial_state)
             
             return final_state["answer"], final_state["model_used"]
             
         except Exception as e:
             logger.error(f"LangGraph execution error: {e}")
-            return "I'm sorry, I couldn't process your question. Please try again.", "error"
+            # Last-resort fallback using templates so the user always gets an answer
+            answer, model = _try_templates(initial_state)
+            return answer, model
 
 
 # =============================================================================

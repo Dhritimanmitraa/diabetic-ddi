@@ -13,6 +13,7 @@ import logging
 import json
 
 from app.database import get_db, async_session
+from app.config import get_settings
 from app.prescription.service import PrescriptionService
 from app.prescription.schemas import (
     PrescriptionResponse,
@@ -22,6 +23,7 @@ from app.prescription.schemas import (
     ChatResponse,
     ChatHistoryResponse,
 )
+from app.services.rate_limiter import rate_limit_dependency
 
 
 class DrugInteractionCheckRequest(BaseModel):
@@ -44,6 +46,7 @@ class DrugInteractionCheckResponse(BaseModel):
     total_interactions: int
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter(
     prefix="/prescription",
@@ -65,7 +68,8 @@ def get_service(db: AsyncSession = Depends(get_db)) -> PrescriptionService:
 async def upload_prescription(
     file: UploadFile = File(..., description="Prescription image (JPEG, PNG) or PDF"),
     user_id: Optional[str] = None,
-    service: PrescriptionService = Depends(get_service)
+    service: PrescriptionService = Depends(get_service),
+    _: None = rate_limit_dependency(limit=settings.HEAVY_RATE_LIMIT_REQUESTS_PER_MIN, key_prefix="prescription_upload"),
 ):
     """
     Upload a prescription image or PDF for extraction.
@@ -115,7 +119,8 @@ async def upload_prescription(
 async def upload_prescription_base64(
     image_base64: str = Form(..., description="Base64 encoded image"),
     filename: str = Form("prescription.jpg", description="Filename"),
-    service: PrescriptionService = Depends(get_service)
+    service: PrescriptionService = Depends(get_service),
+    _: None = rate_limit_dependency(limit=settings.HEAVY_RATE_LIMIT_REQUESTS_PER_MIN, key_prefix="prescription_upload_b64"),
 ):
     """
     Upload a prescription as base64 encoded image.
@@ -328,6 +333,7 @@ async def prescription_health():
     return {
         "status": "healthy",
         "services": {
+            "nvidia_cosmos": vision.nvidia_available,
             "gemini_vision": vision.gemini_available,
             "ollama_fallback": True,  # Always available if Ollama is running
             "chromadb": rag.chroma_client is not None,
@@ -381,8 +387,9 @@ async def websocket_chat(websocket: WebSocket, prescription_id: int):
 
             await websocket.send_json({
                 "type": "answer",
-                "message": result.answer if hasattr(result, "answer") else str(result),
-                "sources": result.sources if hasattr(result, "sources") else [],
+                "message": result.assistant_message,
+                "model_used": result.model_used or "",
+                "context": result.retrieved_context or "",
             })
 
     except WebSocketDisconnect:

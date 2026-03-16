@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useLocation } from 'react-router-dom'
-import { Shield, Brain, Heart, Menu, X, FileText } from 'lucide-react'
+import { Shield, Brain, Heart, Menu, X, FileText, Activity } from 'lucide-react'
 import { healthCheck } from '../services/api'
 import ThemeToggle from './ThemeToggle'
 
@@ -77,6 +77,7 @@ function Navbar() {
             <NavItem to="/prescription" active={isActive('/prescription')} icon={<FileText className="w-3.5 h-3.5" />}>Prescription</NavItem>
             <NavItem to="/diabetes" active={isActive('/diabetes')} icon={<Heart className="w-3.5 h-3.5" />}>Diabetes DDI</NavItem>
             <NavItem to="/ml-dashboard" active={isActive('/ml-dashboard')} icon={<Brain className="w-3.5 h-3.5" />}>ML Dashboard</NavItem>
+            <NavItem to="/system-status" active={isActive('/system-status')} icon={<Activity className="w-3.5 h-3.5" />}>System</NavItem>
           </div>
 
           {/* Right side */}
@@ -120,6 +121,7 @@ function Navbar() {
               <MobileNavItem to="/prescription" onClick={() => setMobileMenuOpen(false)} icon={<FileText className="w-4 h-4" />}>Prescription</MobileNavItem>
               <MobileNavItem to="/diabetes" onClick={() => setMobileMenuOpen(false)} icon={<Heart className="w-4 h-4" />}>Diabetes DDI</MobileNavItem>
               <MobileNavItem to="/ml-dashboard" onClick={() => setMobileMenuOpen(false)} icon={<Brain className="w-4 h-4" />}>ML Dashboard</MobileNavItem>
+              <MobileNavItem to="/system-status" onClick={() => setMobileMenuOpen(false)} icon={<Activity className="w-4 h-4" />}>System</MobileNavItem>
             </motion.div>
           )}
         </AnimatePresence>

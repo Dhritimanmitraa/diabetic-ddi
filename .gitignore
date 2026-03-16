@@ -47,6 +47,10 @@ pyrightconfig.json
 .env.development
 *.env
 !.env.example
+backend/.env
+backend/.env.local
+frontend/.env
+frontend/.env.local
 
 # Database
 *.db

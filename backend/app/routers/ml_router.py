@@ -18,9 +18,14 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import Drug
+from app.config import get_settings
+from app.services.auth import require_api_key
+from app.services.rate_limiter import rate_limit_dependency
+from app.services.tasks import get_job_status, run_tracked_job, start_tracked_job
 
 router = APIRouter(prefix="/ml", tags=["ML"])
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 # Simple in-memory flag so we don't launch two concurrent training runs.
 _training_in_progress: bool = False
@@ -61,6 +66,8 @@ async def trigger_training(
     body: TrainRequest,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_api_key),
+    __: None = rate_limit_dependency(limit=settings.HEAVY_RATE_LIMIT_REQUESTS_PER_MIN, key_prefix="ml_train"),
 ):
     """
     Trigger asynchronous DDI model training.
@@ -74,8 +81,21 @@ async def trigger_training(
         raise HTTPException(status_code=409, detail="Training already in progress")
 
     _training_in_progress = True
-    background_tasks.add_task(_run_training, body.n_trials, body.run_comparison)
-    return TrainResponse(status="started", message="Training started in background")
+    job_id = start_tracked_job(
+        "ml_training",
+        {"n_trials": body.n_trials, "run_comparison": body.run_comparison},
+    )
+    background_tasks.add_task(_run_training, job_id, body.n_trials, body.run_comparison)
+    return TrainResponse(status="started", message=f"Training started in background (job {job_id})")
+
+
+@router.get("/jobs/{job_id}")
+async def training_job_status(job_id: str, _: None = Depends(require_api_key)):
+    """Return status for a tracked ML background job."""
+    job = get_job_status(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
 
 @router.get("/status", response_model=ModelStatusResponse)
@@ -211,9 +231,9 @@ async def _drug_to_dict(db: AsyncSession, name: str) -> dict:
 
 # ── Background task ─────────────────────────────────────────────────────
 
-async def _run_training(n_trials: int, run_comparison: bool) -> None:
+async def _run_training(job_id: str, n_trials: int, run_comparison: bool) -> None:
     global _training_in_progress
-    try:
+    async def _work():
         from app.ml.trainer import train_from_database
         from app.database import async_session
 
@@ -226,11 +246,11 @@ async def _run_training(n_trials: int, run_comparison: bool) -> None:
             )
             logger.info(f"Training finished: {summary}")
 
-        # Reset the cached predictor so the next request picks up new models
         import app.ml.predictor as pred_mod
         pred_mod._predictor = None
+        return summary
 
-    except Exception:
-        logger.exception("Background training failed")
+    try:
+        await run_tracked_job(job_id, _work)
     finally:
         _training_in_progress = False

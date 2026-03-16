@@ -8,7 +8,7 @@ import os
 class Settings(BaseSettings):
     """Application settings."""
     model_config = ConfigDict(
-        env_file=".env",
+        env_file=(".env", ".env.local"),
         case_sensitive=True,
         extra="ignore",
     )
@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "Drug-Drug Interaction Predictor"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
+    APP_ENV: str = "development"
+    STRICT_STARTUP_VALIDATION: bool = False
     
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./drug_interactions.db"
@@ -25,9 +27,13 @@ class Settings(BaseSettings):
     OPENFDA_API_KEY: str = ""
     UMLS_API_KEY: str = ""  # Free registration at https://uts.nlm.nih.gov/uts/signup-login
     API_KEY: str = ""
+    REQUIRE_API_KEY_FOR_ADMIN: bool = True
+    REQUIRE_GEMINI_KEY: bool = False
+    ENABLE_CLOUD_SPEECH: bool = False
     
     # Rate limiting
     RATE_LIMIT_REQUESTS_PER_MIN: int = 60
+    HEAVY_RATE_LIMIT_REQUESTS_PER_MIN: int = 10
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost:3001"
@@ -43,8 +49,14 @@ class Settings(BaseSettings):
     # Prescription RAG Settings
     GOOGLE_API_KEY: str = ""  # Set in .env file
     GEMINI_API_KEY: str = ""  # Set in .env file
+    CLOUD_SPEECH_API_KEY: str = ""  # Optional Google Cloud Speech key
     CHROMA_PERSIST_DIR: str = "./chroma_db"
     OLLAMA_VISION_MODEL: str = "llava"  # Vision-capable model for OCR
+    
+    # NVIDIA Cosmos Vision Model (Cloud API)
+    NVIDIA_API_KEY: str = ""  # Set in .env file — NGC/NIM API key
+    NVIDIA_NIM_BASE_URL: str = "https://integrate.api.nvidia.com/v1"  # Cloud endpoint
+    NVIDIA_COSMOS_MODEL: str = "nvidia/llama-3.1-nemotron-nano-vl-8b-v1"  # Cloud VLM (or cosmos-reason2-8b for local NIM)
     
     # LLM Settings (Ollama)
     OLLAMA_MODEL: str = "gpt-oss:120b-cloud"  # Main LLM model

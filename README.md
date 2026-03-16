@@ -241,6 +241,10 @@ cd backend
 
 # Train diabetic-specific ML models
 python scripts/train_diabetic_model.py
+
+# Run full DDI ML lifecycle:
+# data cleaning -> EDA -> feature engineering -> model -> evaluation -> deployment artifacts
+python -m scripts.run_full_ml_pipeline --trials 30 --no-compare
 ```
 
 The training script uses:

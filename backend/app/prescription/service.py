@@ -208,16 +208,21 @@ class PrescriptionService:
         user_id: Optional[str] = None
     ) -> tuple[List[PrescriptionResponse], int]:
         """List prescriptions with pagination, optionally filtered by user."""
-        # Build base query
-        base_query = select(Prescription)
+        # Build base filter
+        filters = []
         if user_id:
-            base_query = base_query.where(Prescription.user_id == user_id)
+            filters.append(Prescription.user_id == user_id)
         
-        # Get total count
-        count_result = await self.db.execute(
-            base_query.with_only_columns(Prescription.id)
-        )
-        total = len(count_result.all())
+        # Get total count via SQL COUNT (no rows loaded into memory)
+        count_q = select(func.count(Prescription.id))
+        if filters:
+            count_q = count_q.where(*filters)
+        count_result = await self.db.execute(count_q)
+        total = count_result.scalar() or 0
+        
+        base_query = select(Prescription)
+        if filters:
+            base_query = base_query.where(*filters)
         
         # Get prescriptions
         result = await self.db.execute(

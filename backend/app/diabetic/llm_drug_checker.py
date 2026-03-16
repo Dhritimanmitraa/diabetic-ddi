@@ -19,6 +19,7 @@ from dataclasses import dataclass
 import json
 
 from app.diabetic.drug_validator import validate_drug_name, is_valid_drug
+from app.services.gemini_client import get_gemini_client
 
 logger = logging.getLogger(__name__)
 
@@ -107,21 +108,12 @@ class LLMDrugChecker:
     
     def _init_gemini(self):
         """Initialize Google Gemini model."""
-        try:
-            import google.generativeai as genai
-            from app.config import get_settings
-            settings = get_settings()
-            
-            api_key = settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY
-            if api_key:
-                genai.configure(api_key=api_key)
-                self._gemini_model = genai.GenerativeModel("gemini-2.0-flash")
-                self._gemini_available = True
-                logger.info("Gemini model initialized for drug risk analysis")
-            else:
-                logger.warning("No Gemini API key found, will use Ollama fallback")
-        except Exception as e:
-            logger.warning(f"Failed to initialize Gemini: {e}")
+        self._gemini_model = get_gemini_client("gemini-2.0-flash")
+        self._gemini_available = self._gemini_model.is_available
+        if self._gemini_available:
+            logger.info(f"Gemini model initialized for drug risk analysis via {self._gemini_model.sdk}")
+        else:
+            logger.warning("No Gemini API key found, will use Ollama fallback")
         
     async def _get_client(self):
         """Lazy initialization of Ollama client."""
@@ -187,13 +179,17 @@ class LLMDrugChecker:
                     logger.info(f"Checking drug risk with Gemini: {drug_name}")
                     response = await asyncio.get_event_loop().run_in_executor(
                         None,
-                        lambda: self._gemini_model.generate_content(full_prompt)
+                        lambda: self._gemini_model.generate_text(
+                            full_prompt,
+                            temperature=0.2,
+                            max_output_tokens=1024,
+                        )
                     )
                     
                     if response and response.text:
                         text = response.text.strip()
                         result = self._parse_response(text)
-                        result.model_used = "gemini-2.0-flash"
+                        result.model_used = response.model
                         result.was_fallback = False
                         logger.info(f"Gemini analysis completed for {drug_name}: {result.risk_level}")
                         return result

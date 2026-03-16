@@ -370,10 +370,10 @@ function PrescriptionRAG() {
     event.preventDefault()
   }
 
-  const handleSendChat = async () => {
-    if (!chatInput.trim() || !prescription?.id) return
+  const sendChatMessage = useCallback(async (message) => {
+    if (!message?.trim() || !prescription?.id) return
 
-    const userMessage = chatInput.trim()
+    const userMessage = message.trim()
     setChatInput('')
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setIsChatLoading(true)
@@ -396,7 +396,14 @@ function PrescriptionRAG() {
     } finally {
       setIsChatLoading(false)
     }
-  }
+  }, [prescription?.id])
+
+  const handleSendChat = () => sendChatMessage(chatInput)
+
+  const handleQuickSend = useCallback((question) => {
+    if (isChatLoading) return
+    sendChatMessage(question)
+  }, [isChatLoading, sendChatMessage])
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -798,8 +805,9 @@ function PrescriptionRAG() {
                         ].map((q, i) => (
                           <button
                             key={i}
-                            onClick={() => setChatInput(q)}
-                            className="text-xs px-3 py-1.5 rounded-full bg-[var(--bg-elevated)]/50 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors"
+                            onClick={() => handleQuickSend(q)}
+                            disabled={isChatLoading}
+                            className="text-xs px-3 py-1.5 rounded-full bg-[var(--bg-elevated)]/50 text-[var(--text-secondary)] hover:bg-[var(--bg-elevated)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {q}
                           </button>

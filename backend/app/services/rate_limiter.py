@@ -4,7 +4,7 @@ Simple rate limiting using Redis (fixed window).
 import logging
 from typing import Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 
 from app.services.cache import get_redis_client
 
@@ -42,4 +42,18 @@ async def rate_limit(request: Request, limit: int = 60, window_seconds: int = 60
     except Exception as exc:  # pragma: no cover - network dependent
         logger.debug(f"Rate limit check failed: {exc}")
         return
+
+
+def rate_limit_dependency(limit: int, window_seconds: int = 60, key_prefix: str = "rl"):
+    """Build a FastAPI dependency for endpoint-level rate limiting."""
+
+    async def _dependency(request: Request) -> None:
+        await rate_limit(
+            request,
+            limit=limit,
+            window_seconds=window_seconds,
+            key_prefix=key_prefix,
+        )
+
+    return Depends(_dependency)
 

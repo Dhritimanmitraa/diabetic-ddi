@@ -1,14 +1,18 @@
 """
 API key auth dependency.
 """
-import os
 from fastapi import Header, HTTPException, status
 
 
-def require_api_key(x_api_key: str = Header(None, convert_underscores=False)) -> None:
+def require_api_key(x_api_key: str | None = Header(None)) -> None:
     from app.config import get_settings
     expected = get_settings().API_KEY
-    if expected and x_api_key == expected:
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Admin API key protection is enabled but API_KEY is not configured",
+        )
+    if x_api_key == expected:
         return
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

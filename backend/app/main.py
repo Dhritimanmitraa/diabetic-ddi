@@ -3,13 +3,16 @@ Drug-Drug Interaction Prediction API
 
 Main FastAPI application entry point.
 """
-from fastapi import FastAPI, Depends, Request, APIRouter
+from fastapi import FastAPI, Depends, Request, APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from contextlib import asynccontextmanager
 import logging
 import sys
+import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -29,6 +32,8 @@ from app.routers.ocr import router as ocr_router
 from app.routers.history import router as history_router
 from app.routers.ml_router import router as ml_router
 from app.routers.adherence import router as adherence_router
+from app.routers.admin import router as admin_router
+from app.services.rate_limiter import rate_limit
 
 # ── Structured JSON Logging ─────────────────────────────────────────────
 from pythonjsonlogger import jsonlogger
@@ -48,6 +53,35 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
+
+def _validate_startup_configuration() -> None:
+    """Optionally fail fast in production when required secrets are missing."""
+    is_production = settings.APP_ENV.lower() in {"prod", "production"}
+    if not is_production:
+        return
+
+    if not settings.STRICT_STARTUP_VALIDATION:
+        logger.warning("Production strict startup validation is disabled")
+        return
+
+    missing: list[str] = []
+
+    if settings.REQUIRE_API_KEY_FOR_ADMIN and not settings.API_KEY:
+        missing.append("API_KEY")
+
+    if settings.REQUIRE_GEMINI_KEY and not (settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY):
+        missing.append("GEMINI_API_KEY/GOOGLE_API_KEY")
+
+    if settings.ENABLE_CLOUD_SPEECH and not settings.CLOUD_SPEECH_API_KEY:
+        missing.append("CLOUD_SPEECH_API_KEY")
+
+    if missing:
+        logger.error(
+            "Startup validation failed",
+            extra={"missing_settings": missing, "app_env": settings.APP_ENV},
+        )
+        raise RuntimeError(f"Missing required production settings: {', '.join(missing)}")
+
 async def seed_initial_data():
     """Placeholder for seeding data if needed."""
     pass
@@ -56,6 +90,7 @@ async def seed_initial_data():
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
+    _validate_startup_configuration()
     logger.info("Initializing database...")
     await init_db()
     logger.info("Database initialized successfully!")
@@ -120,10 +155,61 @@ async def log_drug_requests(request: Request, call_next):
     response = await call_next(request)
     return response
 
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    """Attach request tracing, audit logging, and global rate limiting."""
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    request.state.request_id = request_id
+    start = time.perf_counter()
+
+    try:
+        await rate_limit(
+            request,
+            limit=settings.RATE_LIMIT_REQUESTS_PER_MIN,
+            window_seconds=60,
+            key_prefix="global",
+        )
+        response = await call_next(request)
+    except HTTPException as exc:
+        response = JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "detail": exc.detail,
+                "request_id": request_id,
+            },
+        )
+    except Exception as exc:
+        logger.exception("Unhandled request error", extra={"request_id": request_id, "path": request.url.path})
+        response = JSONResponse(
+            status_code=500,
+            content={
+                "detail": "Internal server error",
+                "request_id": request_id,
+            },
+        )
+
+    duration_ms = round((time.perf_counter() - start) * 1000, 2)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Process-Time-MS"] = str(duration_ms)
+
+    logger.info(
+        "request_completed",
+        extra={
+            "request_id": request_id,
+            "path": request.url.path,
+            "method": request.method,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+            "client_ip": request.client.host if request.client else "unknown",
+        },
+    )
+    return response
+
 # CORS configuration — lock down to known origins
 _allowed_origins = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+    for origin in settings.CORS_ORIGINS.split(",")
     if origin.strip()
 ]
 
@@ -145,6 +231,7 @@ v1.include_router(ocr_router)
 v1.include_router(history_router)
 v1.include_router(ml_router)
 v1.include_router(adherence_router)
+v1.include_router(admin_router)
 app.include_router(v1)
 
 # Backward-compatible un-prefixed routes (deprecated — will be removed in v2)
@@ -156,6 +243,7 @@ app.include_router(ocr_router)
 app.include_router(history_router)
 app.include_router(ml_router)
 app.include_router(adherence_router)
+app.include_router(admin_router)
 
 
 # ============== Health & Stats Endpoints ==============
@@ -210,6 +298,8 @@ async def readiness(db: AsyncSession = Depends(get_db)):
     return {
         "status": "ready" if has_models else "degraded",
         "models_loaded": has_models,
+        "request_tracing": True,
+        "admin_api_protected": bool(settings.API_KEY),
     }
 
 

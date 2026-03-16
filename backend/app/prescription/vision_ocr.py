@@ -16,6 +16,8 @@ from typing import Optional, List
 
 from app.config import get_settings
 from app.prescription.schemas import MedicineCreate, ExtractionResult
+from app.services.gemini_client import get_gemini_client
+from app.services.nvidia_vision_client import get_nvidia_vision_client
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -23,9 +25,11 @@ settings = get_settings()
 # Primary: Gemini API
 GEMINI_MODEL = "gemini-2.0-flash"  # Fast and capable vision model
 
-# Fallback: Ollama models
-FALLBACK_OCR_MODEL = "llama3.2-vision"  # Local VLM for OCR
-FALLBACK_LLM = "llama3.1:8b"  # Local LLM
+# Fallback: Ollama models (from settings)
+FALLBACK_OCR_MODEL = settings.OLLAMA_VISION_MODEL
+FALLBACK_LLM = settings.OLLAMA_MODEL
+OCR_MODEL = FALLBACK_OCR_MODEL
+LLM_MODEL = FALLBACK_LLM
 
 # Common drug abbreviations for normalization
 DRUG_ABBREVIATIONS = {
@@ -89,52 +93,74 @@ If no medicines found, return: []"""
 
 
 class VisionOCRService:
-    """Vision OCR using Gemini (primary) + Ollama (fallback)."""
+    """Vision OCR using NVIDIA Cosmos (primary) + Gemini + Ollama (fallback)."""
     
     def __init__(self):
         self.gemini_model = None
+        self.nvidia_client = None
+        self._init_nvidia()
         self._init_gemini()
-        logger.info("VisionOCRService initialized (Gemini primary, Ollama fallback)")
+        logger.info("VisionOCRService initialized (NVIDIA primary, Gemini secondary, Ollama fallback)")
+    
+    def _init_nvidia(self):
+        """Initialize NVIDIA Cosmos Vision model."""
+        self.nvidia_client = get_nvidia_vision_client()
+        if self.nvidia_client.is_available:
+            logger.info(f"NVIDIA Cosmos model initialized: {settings.NVIDIA_COSMOS_MODEL}")
+        else:
+            logger.warning("No NVIDIA API key found, will skip NVIDIA Cosmos")
+    
+    @property
+    def nvidia_available(self) -> bool:
+        """Check if NVIDIA Cosmos is available."""
+        return self.nvidia_client is not None and self.nvidia_client.is_available
+    
+    @property
+    def gemini_available(self) -> bool:
+        """Check if Gemini is available."""
+        return self.gemini_model is not None and self.gemini_model.is_available
     
     def _init_gemini(self):
         """Initialize Gemini Vision model."""
-        try:
-            import google.generativeai as genai
-            
-            api_key = settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY
-            if api_key:
-                genai.configure(api_key=api_key)
-                self.gemini_model = genai.GenerativeModel(GEMINI_MODEL)
-                logger.info(f"Gemini model initialized: {GEMINI_MODEL}")
-            else:
-                logger.warning("No Gemini API key found, will use Ollama fallback")
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini: {e}")
+        self.gemini_model = get_gemini_client(GEMINI_MODEL)
+        if self.gemini_model.is_available:
+            logger.info(f"Gemini model initialized: {GEMINI_MODEL} via {self.gemini_model.sdk}")
+        else:
+            logger.warning("No Gemini API key found, will use Ollama fallback")
     
     async def extract_from_image(
         self, 
         image_data: bytes, 
         filename: str = "prescription.jpg"
     ) -> ExtractionResult:
-        """Extract medicines from prescription image using Gemini (primary) or Ollama (fallback)."""
+        """Extract medicines from prescription image using NVIDIA (primary), Gemini, or Ollama (fallback)."""
         logger.info(f"Processing: {filename}, size: {len(image_data)} bytes")
         
         medicines = []
         ocr_text = ""
         model_used = ""
         
-        # Try Gemini first (combined OCR + extraction)
-        if self.gemini_model:
-            logger.info("Step 1: Trying Gemini Vision (primary)...")
+        # Try NVIDIA Cosmos first (combined OCR + extraction)
+        if self.nvidia_available:
+            logger.info("Step 1: Trying NVIDIA Cosmos Vision (primary)...")
+            result = await self._nvidia_extract(image_data)
+            if result:
+                medicines, ocr_text = result
+                model_used = settings.NVIDIA_COSMOS_MODEL
+                logger.info(f"NVIDIA Cosmos extracted {len(medicines)} medicines")
+        
+        # Try Gemini second (combined OCR + extraction)
+        if not medicines and self.gemini_model and self.gemini_model.is_available:
+            logger.info("Step 2: Trying Gemini Vision (secondary)...")
             result = await self._gemini_extract(image_data)
             if result:
                 medicines, ocr_text = result
                 model_used = GEMINI_MODEL
                 logger.info(f"Gemini extracted {len(medicines)} medicines")
         
-        # Fallback to Ollama if Gemini failed
+        # Fallback to Ollama if NVIDIA and Gemini both failed
         if not medicines:
-            logger.info("Step 2: Falling back to Ollama OCR...")
+            logger.info("Step 3: Falling back to Ollama OCR...")
             ocr_text = await self._run_ocr(image_data)
             
             if ocr_text and len(ocr_text) >= 10:
@@ -144,7 +170,7 @@ class VisionOCRService:
         
         # Final fallback: regex extraction
         if not medicines and ocr_text:
-            logger.info("Step 3: Trying regex extraction...")
+            logger.info("Step 4: Trying regex extraction...")
             medicines = self._regex_extract_medicines(ocr_text)
             model_used = model_used or "regex"
         
@@ -173,6 +199,137 @@ class VisionOCRService:
             model_used=model_used or "none",
             error="Could not extract medicines from image."
         )
+
+    async def extract_from_pdf(self, pdf_data: bytes) -> ExtractionResult:
+        """Extract medicines from a PDF via embedded text first, then page images."""
+        logger.info(f"Processing PDF, size: {len(pdf_data)} bytes")
+
+        pdf_text = self._extract_text_from_pdf(pdf_data)
+        if pdf_text:
+            medicines = await self._extract_medicines(pdf_text)
+            if not medicines:
+                medicines = self._regex_extract_medicines(pdf_text)
+
+            if medicines:
+                for med in medicines:
+                    med.name = self._normalize_drug(med.name)
+
+                raw_text = "\n".join(
+                    f"- {m.name} {m.dosage or ''} {m.frequency or ''}".strip()
+                    for m in medicines
+                )
+                return ExtractionResult(
+                    raw_text=raw_text,
+                    medicines=medicines,
+                    confidence=0.85,
+                    model_used="pypdf2 + llm",
+                    error=None,
+                )
+
+        images = self._convert_pdf_to_images(pdf_data)
+        if images:
+            page_results = []
+            collected_text = []
+            for index, image_bytes in enumerate(images[:3], start=1):
+                result = await self.extract_from_image(image_bytes, f"prescription_page_{index}.png")
+                if result.medicines:
+                    page_results.extend(result.medicines)
+                if result.raw_text:
+                    collected_text.append(result.raw_text)
+
+            deduped = self._dedupe_medicines(page_results)
+            if deduped:
+                return ExtractionResult(
+                    raw_text="\n\n".join(collected_text) or "[PDF converted to images]",
+                    medicines=deduped,
+                    confidence=0.80,
+                    model_used="pdf2image + vision",
+                    error=None,
+                )
+
+        return ExtractionResult(
+            raw_text=pdf_text or "[No text extracted from PDF]",
+            medicines=[],
+            confidence=0.0,
+            model_used="pdf",
+            error="Could not extract medicines from PDF.",
+        )
+
+    def _extract_text_from_pdf(self, pdf_data: bytes) -> str:
+        """Extract text from PDF using a text parser when available."""
+        try:
+            from PyPDF2 import PdfReader
+
+            reader = PdfReader(io.BytesIO(pdf_data))
+            pages = []
+            for page in reader.pages:
+                text = page.extract_text() or ""
+                if text.strip():
+                    pages.append(text.strip())
+            return "\n\n".join(pages).strip()
+        except Exception as exc:
+            logger.warning(f"Direct PDF text extraction failed: {exc}")
+            return ""
+
+    def _convert_pdf_to_images(self, pdf_data: bytes) -> List[bytes]:
+        """Convert PDF pages to PNG images for OCR fallback."""
+        try:
+            from pdf2image import convert_from_bytes
+
+            images = convert_from_bytes(pdf_data, fmt="png", dpi=200, first_page=1, last_page=3)
+            output = []
+            for image in images:
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG")
+                output.append(buffer.getvalue())
+            return output
+        except Exception as exc:
+            logger.warning(f"PDF to image conversion failed: {exc}")
+            return []
+
+    def _dedupe_medicines(self, medicines: List[MedicineCreate]) -> List[MedicineCreate]:
+        """Remove duplicate medicines after multi-page PDF extraction."""
+        unique: dict[tuple[str, Optional[str], Optional[str]], MedicineCreate] = {}
+        for medicine in medicines:
+            key = (
+                medicine.name.strip().lower(),
+                (medicine.dosage or "").strip().lower() or None,
+                (medicine.frequency or "").strip().lower() or None,
+            )
+            unique.setdefault(key, medicine)
+        return list(unique.values())
+    
+    async def _nvidia_extract(self, image_data: bytes) -> Optional[tuple]:
+        """Use NVIDIA Cosmos Reason2-8B for combined OCR + medicine extraction."""
+        try:
+            from PIL import Image
+            
+            # Convert bytes to PIL Image and normalize to PNG
+            image = Image.open(io.BytesIO(image_data))
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG")
+            png_bytes = buffer.getvalue()
+            
+            response = self.nvidia_client.generate_from_image(
+                GEMINI_EXTRACTION_PROMPT,  # Reuse the same extraction prompt
+                image_bytes=png_bytes,
+                mime_type="image/png",
+                temperature=0.1,
+                max_tokens=1200,
+            )
+            
+            if response and response.text:
+                response_text = response.text.strip()
+                logger.info(f"NVIDIA Cosmos response: {response_text[:200]}...")
+                
+                # Parse JSON from response
+                medicines = self._parse_medicines(response_text)
+                return (medicines, response_text) if medicines else None
+            
+        except Exception as e:
+            logger.error(f"NVIDIA Cosmos extraction error: {e}")
+        
+        return None
     
     async def _gemini_extract(self, image_data: bytes) -> Optional[tuple]:
         """Use Gemini Vision for combined OCR + medicine extraction."""
@@ -183,10 +340,15 @@ class VisionOCRService:
             image = Image.open(io.BytesIO(image_data))
             
             # Use Gemini to extract medicines directly
-            response = self.gemini_model.generate_content([
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG")
+            response = self.gemini_model.generate_with_media(
                 GEMINI_EXTRACTION_PROMPT,
-                image
-            ])
+                media_bytes=buffer.getvalue(),
+                mime_type="image/png",
+                temperature=0.1,
+                max_output_tokens=1200,
+            )
             
             if response and response.text:
                 response_text = response.text.strip()
@@ -251,46 +413,64 @@ class VisionOCRService:
     
     async def _extract_medicines(self, ocr_text: str) -> List[MedicineCreate]:
         """Extract medicines from OCR text using LLM with regex fallback."""
+        prompt = EXTRACTION_PROMPT.format(ocr_text=ocr_text)
         medicines = []
+        refusal_phrases = ["cannot provide", "cannot help", "not able to", "unable to", "i can't"]
         
-        # Try LLM first
+        # 1. Try NVIDIA Cosmos text API first
+        if self.nvidia_available:
+            try:
+                logger.info("Trying NVIDIA Cosmos for text extraction...")
+                response = self.nvidia_client.generate_text(
+                    prompt, 
+                    temperature=0.1, 
+                    max_tokens=2048
+                )
+                if response and response.text:
+                    if not any(phrase in response.text.lower() for phrase in refusal_phrases):
+                        medicines = self._parse_medicines(response.text)
+                        if medicines:
+                            return medicines
+            except Exception as e:
+                logger.warning(f"NVIDIA text extraction failed: {e}")
+
+        # 2. Try Gemini Text API second
+        if self.gemini_model and self.gemini_model.is_available:
+            try:
+                logger.info("Trying Gemini for text extraction...")
+                response = self.gemini_model.generate_text(
+                    prompt,
+                    temperature=0.1,
+                    max_output_tokens=2048
+                )
+                if response and response.text:
+                    if not any(phrase in response.text.lower() for phrase in refusal_phrases):
+                        medicines = self._parse_medicines(response.text)
+                        if medicines:
+                            return medicines
+            except Exception as e:
+                logger.warning(f"Gemini text extraction failed: {e}")
+
+        # 3. Try Ollama (Local LLM)
         try:
             import ollama
             
-            prompt = EXTRACTION_PROMPT.format(ocr_text=ocr_text)
+            ollama_model = settings.OLLAMA_MODEL
+            logger.info(f"Trying local Ollama model: {ollama_model}...")
             
-            # Try cloud model first
-            try:
-                logger.info(f"Trying {LLM_MODEL}...")
-                response = ollama.chat(
-                    model=LLM_MODEL,
-                    messages=[{'role': 'user', 'content': prompt}],
-                    options={'temperature': 0.1, 'num_predict': 2048}
-                )
-                response_text = response['message']['content']
-                
-            except Exception as e:
-                logger.warning(f"Cloud model failed: {e}, trying {FALLBACK_LLM}...")
-                response = ollama.chat(
-                    model=FALLBACK_LLM,
-                    messages=[{'role': 'user', 'content': prompt}],
-                    options={'temperature': 0.1, 'num_predict': 2048}
-                )
-                response_text = response['message']['content']
+            response = ollama.chat(
+                model=ollama_model,
+                messages=[{'role': 'user', 'content': prompt}],
+                options={'temperature': 0.1, 'num_predict': 2048}
+            )
+            response_text = response['message']['content']
             
-            logger.info(f"LLM response: {response_text[:200]}...")
-            
-            # Check if LLM refused
-            refusal_phrases = ["cannot provide", "cannot help", "not able to", "unable to", "i can't"]
-            if any(phrase in response_text.lower() for phrase in refusal_phrases):
-                logger.warning("LLM refused to parse, using regex fallback...")
-                medicines = self._regex_extract_medicines(ocr_text)
-            else:
-                # Parse JSON response
+            if not any(phrase in response_text.lower() for phrase in refusal_phrases):
                 medicines = self._parse_medicines(response_text)
-            
+                if medicines:
+                    return medicines
         except Exception as e:
-            logger.error(f"LLM extraction error: {e}")
+            logger.warning(f"Ollama extraction error: {e}")
         
         # If LLM extraction failed, try regex
         if not medicines:

@@ -61,7 +61,7 @@ async def get_redis_client() -> Optional[redis.Redis]:
         except Exception:
             logger.warning("Redis connection lost, attempting reconnect...")
             try:
-                await _redis_client.close()
+                await _redis_client.aclose()
             except Exception:
                 pass
             _redis_client = None

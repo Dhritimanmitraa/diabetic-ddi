@@ -25,9 +25,11 @@ import {
   extractFromImage,
   getStats,
   healthCheck,
+  getSystemStatus,
   getMLPrediction,
   getMLModelInfo,
   uploadPrescription,
+  setAdminApiKey,
 } from './api'
 
 describe('API Service', () => {
@@ -42,7 +44,30 @@ describe('API Service', () => {
   afterEach(() => {
     // Restore original fetch
     global.fetch = originalFetch
+    localStorage.clear()
     vi.resetAllMocks()
+  })
+
+  describe('getSystemStatus', () => {
+    it('should send admin API key for protected system status endpoint', async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: 'healthy' }),
+      })
+
+      setAdminApiKey('secret-key')
+      const result = await getSystemStatus()
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost:8001/admin/system-status',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-API-Key': 'secret-key',
+          }),
+        })
+      )
+      expect(result.status).toBe('healthy')
+    })
   })
 
   describe('searchDrugs', () => {

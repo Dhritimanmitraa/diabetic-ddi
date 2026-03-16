@@ -7,6 +7,28 @@ import { getApiBaseUrl } from '../utils/platform'
 const API_BASE_URL = getApiBaseUrl()
 
 const DEFAULT_TIMEOUT_MS = 15000
+const RAG_TIMEOUT_MS = 90000
+const ADMIN_API_KEY_STORAGE_KEY = 'drugguard_admin_api_key'
+
+export function getAdminApiKey() {
+  try {
+    return localStorage.getItem(ADMIN_API_KEY_STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+export function setAdminApiKey(value) {
+  try {
+    if (value) {
+      localStorage.setItem(ADMIN_API_KEY_STORAGE_KEY, value)
+    } else {
+      localStorage.removeItem(ADMIN_API_KEY_STORAGE_KEY)
+    }
+  } catch {
+    // Ignore storage failures in non-browser contexts.
+  }
+}
 
 /**
  * Make API request with error handling and timeout
@@ -14,11 +36,17 @@ const DEFAULT_TIMEOUT_MS = 15000
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
 
-  const { signal: externalSignal, timeout = DEFAULT_TIMEOUT_MS, ...restOptions } = options
+  const { signal: externalSignal, timeout = DEFAULT_TIMEOUT_MS, apiKey, ...restOptions } = options
+  const mergedHeaders = {
+    'Content-Type': 'application/json',
+    ...(restOptions.headers || {}),
+  }
   const defaultOptions = {
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: mergedHeaders,
+  }
+
+  if (apiKey) {
+    defaultOptions.headers['X-API-Key'] = apiKey
   }
 
   const controller = new AbortController()
@@ -33,7 +61,9 @@ async function apiRequest(endpoint, options = {}) {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'An error occurred' }))
-      throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+      const requestId = response.headers?.get?.('X-Request-ID')
+      const detail = error.detail || `HTTP error! status: ${response.status}`
+      throw new Error(requestId ? `${detail} (request ${requestId})` : detail)
     }
 
     return response.json()
@@ -161,6 +191,10 @@ export async function healthCheck() {
   return apiRequest('/health')
 }
 
+export async function getSystemStatus(apiKey = getAdminApiKey()) {
+  return apiRequest('/admin/system-status', { apiKey })
+}
+
 // ============== ML API Endpoints ==============
 
 /**
@@ -223,10 +257,14 @@ export async function uploadPrescription(file) {
   const formData = new FormData()
   formData.append('file', file)
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), RAG_TIMEOUT_MS)
+
   const response = await fetch(`${API_BASE_URL}/prescription/upload`, {
     method: 'POST',
     body: formData,
-  })
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId))
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
@@ -299,6 +337,7 @@ export async function deletePrescription(prescriptionId) {
 export async function chatWithPrescription(prescriptionId, message) {
   return apiRequest('/prescription/chat', {
     method: 'POST',
+    timeout: RAG_TIMEOUT_MS,
     body: JSON.stringify({
       prescription_id: prescriptionId,
       message: message,
@@ -331,6 +370,7 @@ export async function getPrescriptionHealth() {
 export async function checkPrescriptionInteractions(drugNames) {
   return apiRequest('/prescription/check-interactions', {
     method: 'POST',
+    timeout: RAG_TIMEOUT_MS,
     body: JSON.stringify({ drug_names: drugNames }),
   })
 }

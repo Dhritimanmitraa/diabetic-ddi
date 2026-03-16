@@ -11,12 +11,8 @@ import re
 from typing import Optional, Dict, List, Any
 from pydantic import BaseModel, Field
 
-try:
-    import google.generativeai as genai
-except ImportError:
-    genai = None
-
 from app.config import get_settings
+from app.services.gemini_client import get_gemini_client
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -258,21 +254,12 @@ class LabReportAnalyzer:
     
     def _init_gemini(self):
         """Initialize Gemini Vision model."""
-        if genai is None:
-            logger.warning("google-generativeai not installed")
-            return
-        
-        try:
-            api_key = settings.GEMINI_API_KEY or settings.GOOGLE_API_KEY
-            if api_key:
-                genai.configure(api_key=api_key)
-                self.gemini_model = genai.GenerativeModel(GEMINI_VISION_MODEL)
-                self.gemini_available = True
-                logger.info(f"Lab Report Analyzer initialized with {GEMINI_VISION_MODEL}")
-            else:
-                logger.warning("No Gemini API key found for lab report analysis")
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini for lab analysis: {e}")
+        self.gemini_model = get_gemini_client(GEMINI_VISION_MODEL)
+        self.gemini_available = self.gemini_model.is_available
+        if self.gemini_available:
+            logger.info(f"Lab Report Analyzer initialized with {GEMINI_VISION_MODEL} via {self.gemini_model.sdk}")
+        else:
+            logger.warning("No Gemini API key found for lab report analysis")
     
     async def analyze_report(
         self, 
@@ -324,9 +311,6 @@ class LabReportAnalyzer:
     async def _extract_lab_values(self, image_data: bytes, content_type: str = None, filename: str = None) -> Optional[ExtractedLabValues]:
         """Extract lab values from image using Gemini Vision."""
         try:
-            # Encode image
-            image_b64 = base64.b64encode(image_data).decode('utf-8')
-            
             # Determine MIME type
             mime_type = content_type
             if not mime_type:
@@ -347,19 +331,12 @@ class LabReportAnalyzer:
             
             logger.info(f"Processing file with MIME type: {mime_type}")
             
-            # Create image part for Gemini
-            image_part = {
-                "mime_type": mime_type,
-                "data": image_b64
-            }
-            
-            # Call Gemini
-            response = self.gemini_model.generate_content(
-                [LAB_EXTRACTION_PROMPT, image_part],
-                generation_config={
-                    "temperature": 0.1,
-                    "max_output_tokens": 2000
-                }
+            response = self.gemini_model.generate_with_media(
+                LAB_EXTRACTION_PROMPT,
+                media_bytes=image_data,
+                mime_type=mime_type,
+                temperature=0.1,
+                max_output_tokens=2000,
             )
             
             # Parse response
@@ -419,12 +396,10 @@ class LabReportAnalyzer:
                 ldl=values.lipid.ldl_cholesterol or "N/A"
             )
             
-            response = self.gemini_model.generate_content(
+            response = self.gemini_model.generate_text(
                 prompt,
-                generation_config={
-                    "temperature": 0.2,
-                    "max_output_tokens": 1000
-                }
+                temperature=0.2,
+                max_output_tokens=1000,
             )
             
             response_text = response.text.strip()
@@ -476,12 +451,10 @@ class LabReportAnalyzer:
                 drug_name=drug_name
             )
             
-            response = self.gemini_model.generate_content(
+            response = self.gemini_model.generate_text(
                 prompt,
-                generation_config={
-                    "temperature": 0.3,
-                    "max_output_tokens": 1500
-                }
+                temperature=0.3,
+                max_output_tokens=1500,
             )
             
             response_text = response.text.strip()
