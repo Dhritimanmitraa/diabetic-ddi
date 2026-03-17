@@ -34,6 +34,7 @@ class DiabeticPatient(Base):
     __tablename__ = "diabetic_patients"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     
     # Basic info
     patient_id = Column(String(100), unique=True, nullable=False, index=True)
@@ -86,6 +87,7 @@ class DiabeticPatient(Base):
     # Relationships
     medications = relationship("DiabeticMedication", back_populates="patient", cascade="all, delete-orphan")
     risk_assessments = relationship("DiabeticDrugRisk", back_populates="patient", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="diabetic_patients")
     
     def __repr__(self):
         return f"<DiabeticPatient(id={self.patient_id}, type={self.diabetes_type}, HbA1c={self.hba1c})>"
@@ -242,4 +244,3 @@ class DiabeticDrugRule(Base):
     
     def __repr__(self):
         return f"<DiabeticDrugRule({self.drug_name}, base_risk={self.base_risk_level})>"
-

@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - dev
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend Lint, Test, Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: test
+      DEBUG: "false"
+      DB_AUTO_CREATE: "true"
+      JWT_SECRET: ci-test-secret
+      API_KEY: ci-admin-key
+      GEMINI_API_KEY: ci-gemini-key
+      GOOGLE_API_KEY: ci-google-key
+      DATABASE_URL: sqlite+aiosqlite:///./ci-test.db
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff bandit pip-audit
+
+      - name: Ruff
+        run: ruff check app tests
+
+      - name: Pytest
+        run: pytest tests -q -m "not slow and not integration"
+
+      - name: Bandit
+        run: bandit -q -r app
+
+      - name: pip-audit
+        run: pip-audit -r requirements.txt
+
+  frontend:
+    name: Frontend Lint, Test, Build, Security
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Vitest
+        run: npm run test:run
+
+      - name: Build
+        run: npm run build
+
+      - name: npm audit
+        run: npm audit --omit=dev --audit-level=high

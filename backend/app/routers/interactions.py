@@ -2,7 +2,6 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
-from itertools import combinations
 
 from app.database import get_db
 from app.schemas import (
@@ -228,9 +227,8 @@ async def check_batch_interactions(
     results: List[BatchInteractionItem] = []
     interactions_found = 0
 
-    for d1, d2 in combinations(unique_names, 2):
+    for d1, d2, check in await service.check_batch_interactions(unique_names):
         try:
-            check = await service.check_interaction(d1, d2)
             item = BatchInteractionItem(
                 drug1_name=d1,
                 drug2_name=d2,

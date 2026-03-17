@@ -50,10 +50,20 @@ class DiabeticDDIService:
         self.shap_explainer = get_shap_explainer()
         self.llm_explainer = get_llm_explainer()
         self.llm_checker = get_llm_checker()
+
+    def _patient_filters(self, patient_id: str, user_id: str | None = None):
+        filters = [DiabeticPatient.patient_id == patient_id]
+        if user_id:
+            filters.append(DiabeticPatient.user_id == user_id)
+        return filters
     
     # ==================== Patient Management ====================
     
-    async def create_patient(self, data: DiabeticPatientCreate) -> DiabeticPatient:
+    async def create_patient(
+        self,
+        data: DiabeticPatientCreate,
+        user_id: str | None = None,
+    ) -> DiabeticPatient:
         """Create a new diabetic patient profile."""
         # Check if patient_id already exists
         existing = await self.db.execute(
@@ -63,6 +73,7 @@ class DiabeticDDIService:
             raise ValueError(f"Patient {data.patient_id} already exists")
         
         patient = DiabeticPatient(
+            user_id=user_id,
             patient_id=data.patient_id,
             name=data.name,
             age=data.age,
@@ -110,20 +121,27 @@ class DiabeticDDIService:
         logger.info(f"Created diabetic patient: {patient.patient_id}")
         return patient
     
-    async def get_patient(self, patient_id: str) -> Optional[DiabeticPatient]:
+    async def get_patient(
+        self,
+        patient_id: str,
+        user_id: str | None = None,
+    ) -> Optional[DiabeticPatient]:
         """Get patient by ID."""
         result = await self.db.execute(
             select(DiabeticPatient)
             .options(selectinload(DiabeticPatient.medications))
-            .where(DiabeticPatient.patient_id == patient_id)
+            .where(*self._patient_filters(patient_id, user_id))
         )
         return result.scalar_one_or_none()
     
     async def update_patient(
-        self, patient_id: str, data: DiabeticPatientUpdate
+        self,
+        patient_id: str,
+        data: DiabeticPatientUpdate,
+        user_id: str | None = None,
     ) -> Optional[DiabeticPatient]:
         """Update patient profile."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return None
         
@@ -159,9 +177,9 @@ class DiabeticDDIService:
         
         return patient
     
-    async def delete_patient(self, patient_id: str) -> bool:
+    async def delete_patient(self, patient_id: str, user_id: str | None = None) -> bool:
         """Delete a patient and all related data."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return False
         
@@ -170,16 +188,25 @@ class DiabeticDDIService:
         return True
     
     async def list_patients(
-        self, limit: int = 50, offset: int = 0
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        user_id: str | None = None,
     ) -> Tuple[List[DiabeticPatient], int]:
         """List all patients with pagination."""
         # Get total count
-        count_result = await self.db.execute(select(func.count(DiabeticPatient.id)))
+        count_query = select(func.count(DiabeticPatient.id))
+        base_query = select(DiabeticPatient)
+        if user_id:
+            count_query = count_query.where(DiabeticPatient.user_id == user_id)
+            base_query = base_query.where(DiabeticPatient.user_id == user_id)
+
+        count_result = await self.db.execute(count_query)
         total = count_result.scalar()
-        
+
         # Get patients
         result = await self.db.execute(
-            select(DiabeticPatient)
+            base_query
             .order_by(DiabeticPatient.created_at.desc())
             .offset(offset)
             .limit(limit)
@@ -191,10 +218,13 @@ class DiabeticDDIService:
     # ==================== Medication Management ====================
     
     async def add_medication(
-        self, patient_id: str, data: MedicationCreate
+        self,
+        patient_id: str,
+        data: MedicationCreate,
+        user_id: str | None = None,
     ) -> Optional[DiabeticMedication]:
         """Add medication to patient."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return None
         
@@ -217,9 +247,14 @@ class DiabeticDDIService:
         
         return medication
     
-    async def remove_medication(self, patient_id: str, medication_id: int) -> bool:
+    async def remove_medication(
+        self,
+        patient_id: str,
+        medication_id: int,
+        user_id: str | None = None,
+    ) -> bool:
         """Remove medication from patient."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return False
         
@@ -233,10 +268,13 @@ class DiabeticDDIService:
         return result.rowcount > 0
     
     async def get_patient_medications(
-        self, patient_id: str, active_only: bool = True
+        self,
+        patient_id: str,
+        active_only: bool = True,
+        user_id: str | None = None,
     ) -> List[DiabeticMedication]:
         """Get all medications for a patient."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return []
         
@@ -244,7 +282,7 @@ class DiabeticDDIService:
             DiabeticMedication.patient_id == patient.id
         )
         if active_only:
-            query = query.where(DiabeticMedication.is_active == True)
+            query = query.where(DiabeticMedication.is_active.is_(True))
         
         result = await self.db.execute(query)
         return list(result.scalars().all())
@@ -252,16 +290,19 @@ class DiabeticDDIService:
     # ==================== Risk Assessment ====================
     
     async def check_drug_risk(
-        self, patient_id: str, drug_name: str
+        self,
+        patient_id: str,
+        drug_name: str,
+        user_id: str | None = None,
     ) -> Optional[DrugRiskCheckResponse]:
         """Check the risk of a drug for a specific patient."""
         try:
-            patient = await self.get_patient(patient_id)
+            patient = await self.get_patient(patient_id, user_id)
             if not patient:
                 return None
             
             # Get current medications
-            medications = await self.get_patient_medications(patient_id)
+            medications = await self.get_patient_medications(patient_id, user_id=user_id)
             current_meds = [m.drug_name for m in medications]
             
             # Build patient context dict
@@ -381,16 +422,19 @@ class DiabeticDDIService:
             raise
     
     async def check_all_medications(
-        self, patient_id: str, medications: List[str] = None
+        self,
+        patient_id: str,
+        medications: List[str] = None,
+        user_id: str | None = None,
     ) -> Optional[MedicationListCheckResponse]:
         """Check all medications for a patient."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return None
         
         # Use provided medications or get from patient profile
         if medications is None:
-            patient_meds = await self.get_patient_medications(patient_id)
+            patient_meds = await self.get_patient_medications(patient_id, user_id=user_id)
             medications = [m.drug_name for m in patient_meds]
         
         if not medications:
@@ -450,15 +494,18 @@ class DiabeticDDIService:
         )
     
     async def find_safe_alternatives(
-        self, patient_id: str, drug_name: str
+        self,
+        patient_id: str,
+        drug_name: str,
+        user_id: str | None = None,
     ) -> Optional[SafeAlternativesResponse]:
         """Find safer alternatives for a drug."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return None
         
         # Get current medications
-        medications = await self.get_patient_medications(patient_id)
+        medications = await self.get_patient_medications(patient_id, user_id=user_id)
         current_meds = [m.drug_name for m in medications]
         
         # Build patient context
@@ -485,19 +532,24 @@ class DiabeticDDIService:
         )
     
     async def generate_patient_report(
-        self, patient_id: str, include_alternatives: bool = True
+        self,
+        patient_id: str,
+        include_alternatives: bool = True,
+        user_id: str | None = None,
     ) -> Optional[PatientDDIReportResponse]:
         """Generate a full DDI report for a patient."""
-        patient = await self.get_patient(patient_id)
+        patient = await self.get_patient(patient_id, user_id)
         if not patient:
             return None
-        
+
         # Get medications
-        medications = await self.get_patient_medications(patient_id)
-        
+        medications = await self.get_patient_medications(patient_id, user_id=user_id)
+
         # Check all medications
         check_result = await self.check_all_medications(
-            patient_id, [m.drug_name for m in medications]
+            patient_id,
+            [m.drug_name for m in medications],
+            user_id=user_id,
         )
         
         # Find alternatives for risky drugs
@@ -505,7 +557,11 @@ class DiabeticDDIService:
         if include_alternatives:
             for assessment in check_result.assessments:
                 if assessment.risk_level in ["high_risk", "contraindicated", "fatal"]:
-                    alts = await self.find_safe_alternatives(patient_id, assessment.drug_name)
+                    alts = await self.find_safe_alternatives(
+                        patient_id,
+                        assessment.drug_name,
+                        user_id=user_id,
+                    )
                     if alts:
                         alternatives[assessment.drug_name] = alts.alternatives
         
@@ -701,4 +757,3 @@ class DiabeticDDIService:
 def create_diabetic_service(db: AsyncSession) -> DiabeticDDIService:
     """Factory function to create diabetic DDI service."""
     return DiabeticDDIService(db)
-

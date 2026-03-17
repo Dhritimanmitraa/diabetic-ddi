@@ -17,7 +17,7 @@ class Prescription(Base):
     id = Column(Integer, primary_key=True, index=True)
     
     # User ownership (for multi-user support)
-    user_id = Column(String(100), nullable=True, index=True)  # Optional user identifier
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
     
     # File metadata
     filename = Column(String(255), nullable=True)
@@ -45,6 +45,7 @@ class Prescription(Base):
     # Relationships
     medicines = relationship("PrescriptionMedicine", back_populates="prescription", cascade="all, delete-orphan")
     chat_messages = relationship("PrescriptionChat", back_populates="prescription", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="prescriptions")
     
     def __repr__(self):
         return f"<Prescription(id={self.id}, status={self.status}, medicines={len(self.medicines)})>"

@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, ArrowDown, Loader2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { searchDrugs, checkInteraction, getAlternatives, getMLPrediction } from '../services/api'
+import { searchDrugs } from '../services/api'
 import { useDebouncedSearch } from '../hooks'
 import useDrugStore from '../stores/useDrugStore'
 
@@ -143,7 +143,7 @@ function DrugSearchInput({ label, placeholder, searchState, onSelect, inputId })
  * InteractionChecker — Main drug pair input form
  */
 function InteractionChecker() {
-  const { setResults, setAlternatives, setIsLoading, setMlPrediction, setMlLoading } = useDrugStore()
+  const runInteractionCheck = useDrugStore((state) => state.checkInteraction)
   const drug1Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
   const drug2Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
 
@@ -208,40 +208,12 @@ function InteractionChecker() {
       return
     }
 
-    setIsLoading(true)
-    setResults(null)
-    setAlternatives(null)
-    if (setMlPrediction) setMlPrediction(null)
-
     try {
-      const interactionResult = await checkInteraction(drug1, drug2)
-      setResults(interactionResult)
-
-      if (setMlPrediction && setMlLoading) {
-        setMlLoading(true)
-        getMLPrediction(drug1, drug2)
-          .then(mlResult => {
-            if (!mlResult.error) setMlPrediction(mlResult)
-          })
-          .catch(err => console.log('ML prediction not available:', err.message))
-          .finally(() => setMlLoading(false))
-      }
-
-      if (interactionResult.has_interaction && interactionResult.interaction?.severity !== 'minor') {
-        try {
-          const alternativesResult = await getAlternatives(drug1, drug2)
-          setAlternatives(alternativesResult)
-        } catch (altError) {
-          console.error('Could not fetch alternatives:', altError)
-        }
-      }
-
+      const interactionResult = await runInteractionCheck(drug1, drug2)
       showInteractionToast(interactionResult)
     } catch (error) {
       console.error('Error checking interaction:', error)
       toast.error('Error checking interaction. Please try again.')
-    } finally {
-      setIsLoading(false)
     }
   }
 

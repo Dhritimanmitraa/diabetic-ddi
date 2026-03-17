@@ -4,13 +4,14 @@ Drug Interaction Service.
 Core business logic for checking drug interactions and finding safe alternatives.
 """
 from typing import List, Optional, Dict, Tuple
+from itertools import combinations
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func, case
 from sqlalchemy.orm import selectinload
 from difflib import SequenceMatcher
 import logging
 
-from app.models import Drug, DrugInteraction, DrugSimilarity, Category
+from app.models import Drug, DrugInteraction, DrugSimilarity
 from app.schemas import (
     InteractionCheckResponse, AlternativeDrug, AlternativeSuggestionResponse,
     DrugResponse, InteractionResponse, SeverityLevel
@@ -119,64 +120,95 @@ class InteractionService:
         if not drug2:
             return self._create_unknown_drug_response(drug2_name, "second")
         
-        # Check for interaction
         interaction = await self._get_interaction(drug1.id, drug2.id)
-        
-        # Build response
-        drug1_response = DrugResponse.model_validate(drug1)
-        drug2_response = DrugResponse.model_validate(drug2)
-        
-        if interaction:
-            severity = interaction.severity
-            is_safe = severity == "minor"
-            
-            safety_messages = {
-                "contraindicated": "CONTRAINDICATED: These drugs should NOT be used together under any circumstances.",
-                "major": "MAJOR INTERACTION: These drugs have a significant interaction. Consult your healthcare provider immediately.",
-                "moderate": "MODERATE INTERACTION: Use caution. Monitor for side effects and consult your pharmacist.",
-                "minor": "MINOR INTERACTION: Generally safe but be aware of potential mild effects."
-            }
-            
-            recommendations = self._get_recommendations(interaction)
-            
-            interaction_response = InteractionResponse(
-                id=interaction.id,
-                severity=SeverityLevel(interaction.severity),
-                description=interaction.description,
-                effect=interaction.effect,
-                mechanism=interaction.mechanism,
-                management=interaction.management,
-                drug1=drug1_response,
-                drug2=drug2_response,
-                source=interaction.source,
-                evidence_level=interaction.evidence_level,
-                confidence_score=interaction.confidence_score,
-                created_at=interaction.created_at
+        return self._build_interaction_response(drug1, drug2, interaction)
+
+    async def resolve_drugs_by_names(self, drug_names: List[str]) -> Dict[str, Optional[Drug]]:
+        """Resolve a list of drug names while minimizing exact-match queries."""
+        normalized = {
+            name: name.strip().upper()
+            for name in dict.fromkeys(drug_names)
+            if name and name.strip()
+        }
+        exact_names = list({value for value in normalized.values() if value})
+        resolved_by_upper: Dict[str, Drug] = {}
+
+        if exact_names:
+            stmt = select(Drug).where(
+                or_(
+                    func.upper(Drug.name).in_(exact_names),
+                    func.upper(Drug.generic_name).in_(exact_names),
+                )
             )
-            
-            return InteractionCheckResponse(
-                drug1=drug1_response,
-                drug2=drug2_response,
-                has_interaction=True,
-                is_safe=is_safe,
-                interaction=interaction_response,
-                safety_message=safety_messages.get(severity, "Unknown interaction severity."),
-                recommendations=recommendations
+            result = await self.db.execute(stmt)
+            for drug in result.scalars().all():
+                if drug.name:
+                    resolved_by_upper.setdefault(drug.name.strip().upper(), drug)
+                if drug.generic_name:
+                    resolved_by_upper.setdefault(drug.generic_name.strip().upper(), drug)
+
+        resolved: Dict[str, Optional[Drug]] = {}
+        for original_name, normalized_name in normalized.items():
+            drug = resolved_by_upper.get(normalized_name)
+            if drug is None:
+                drug = await self.get_drug_by_name(original_name)
+            resolved[original_name] = drug
+        return resolved
+
+    async def check_batch_interactions(self, drug_names: List[str]) -> List[Tuple[str, str, InteractionCheckResponse]]:
+        """Check all unique drug pairs using a single interaction lookup query."""
+        unique_names = [name.strip() for name in dict.fromkeys(drug_names) if name and name.strip()]
+        resolved = await self.resolve_drugs_by_names(unique_names)
+        resolved_ids = {
+            name: drug.id
+            for name, drug in resolved.items()
+            if drug is not None
+        }
+
+        pair_conditions = []
+        for drug1_name, drug2_name in combinations(unique_names, 2):
+            drug1_id = resolved_ids.get(drug1_name)
+            drug2_id = resolved_ids.get(drug2_name)
+            if drug1_id and drug2_id:
+                pair_conditions.append(
+                    and_(DrugInteraction.drug1_id == drug1_id, DrugInteraction.drug2_id == drug2_id)
+                )
+                pair_conditions.append(
+                    and_(DrugInteraction.drug1_id == drug2_id, DrugInteraction.drug2_id == drug1_id)
+                )
+
+        interaction_map: Dict[Tuple[int, int], DrugInteraction] = {}
+        if pair_conditions:
+            result = await self.db.execute(
+                select(DrugInteraction)
+                .where(or_(*pair_conditions))
+                .options(
+                    selectinload(DrugInteraction.drug1),
+                    selectinload(DrugInteraction.drug2),
+                )
             )
-        else:
-            return InteractionCheckResponse(
-                drug1=drug1_response,
-                drug2=drug2_response,
-                has_interaction=False,
-                is_safe=True,
-                interaction=None,
-                safety_message="NO KNOWN INTERACTION: These drugs appear to be safe to use together based on available data.",
-                recommendations=[
-                    "Always inform your healthcare provider of all medications you take.",
-                    "Monitor for any unexpected side effects.",
-                    "Absence of known interactions doesn't guarantee complete safety."
-                ]
-            )
+            for interaction in result.scalars().all():
+                interaction_map[(interaction.drug1_id, interaction.drug2_id)] = interaction
+                interaction_map[(interaction.drug2_id, interaction.drug1_id)] = interaction
+
+        responses: List[Tuple[str, str, InteractionCheckResponse]] = []
+        for drug1_name, drug2_name in combinations(unique_names, 2):
+            drug1 = resolved.get(drug1_name)
+            drug2 = resolved.get(drug2_name)
+
+            if not drug1:
+                response = self._create_unknown_drug_response(drug1_name, "first")
+            elif not drug2:
+                response = self._create_unknown_drug_response(drug2_name, "second")
+            else:
+                response = self._build_interaction_response(
+                    drug1,
+                    drug2,
+                    interaction_map.get((drug1.id, drug2.id)),
+                )
+            responses.append((drug1_name, drug2_name, response))
+
+        return responses
     
     async def _get_interaction(self, drug1_id: int, drug2_id: int) -> Optional[DrugInteraction]:
         """Get interaction between two drugs (order-independent)."""
@@ -231,6 +263,66 @@ class InteractionService:
         recommendations.extend(severity_recommendations.get(interaction.severity, []))
         
         return recommendations
+
+    def _build_interaction_response(
+        self,
+        drug1: Drug,
+        drug2: Drug,
+        interaction: Optional[DrugInteraction],
+    ) -> InteractionCheckResponse:
+        """Build the response payload for a resolved drug pair."""
+        drug1_response = DrugResponse.model_validate(drug1)
+        drug2_response = DrugResponse.model_validate(drug2)
+
+        if interaction:
+            severity = interaction.severity
+            is_safe = severity == "minor"
+
+            safety_messages = {
+                "contraindicated": "CONTRAINDICATED: These drugs should NOT be used together under any circumstances.",
+                "major": "MAJOR INTERACTION: These drugs have a significant interaction. Consult your healthcare provider immediately.",
+                "moderate": "MODERATE INTERACTION: Use caution. Monitor for side effects and consult your pharmacist.",
+                "minor": "MINOR INTERACTION: Generally safe but be aware of potential mild effects.",
+            }
+
+            interaction_response = InteractionResponse(
+                id=interaction.id,
+                severity=SeverityLevel(interaction.severity),
+                description=interaction.description,
+                effect=interaction.effect,
+                mechanism=interaction.mechanism,
+                management=interaction.management,
+                drug1=drug1_response,
+                drug2=drug2_response,
+                source=interaction.source,
+                evidence_level=interaction.evidence_level,
+                confidence_score=interaction.confidence_score,
+                created_at=interaction.created_at,
+            )
+
+            return InteractionCheckResponse(
+                drug1=drug1_response,
+                drug2=drug2_response,
+                has_interaction=True,
+                is_safe=is_safe,
+                interaction=interaction_response,
+                safety_message=safety_messages.get(severity, "Unknown interaction severity."),
+                recommendations=self._get_recommendations(interaction),
+            )
+
+        return InteractionCheckResponse(
+            drug1=drug1_response,
+            drug2=drug2_response,
+            has_interaction=False,
+            is_safe=True,
+            interaction=None,
+            safety_message="NO KNOWN INTERACTION: These drugs appear to be safe to use together based on available data.",
+            recommendations=[
+                "Always inform your healthcare provider of all medications you take.",
+                "Monitor for any unexpected side effects.",
+                "Absence of known interactions doesn't guarantee complete safety.",
+            ],
+        )
     
     def _create_unknown_drug_response(self, drug_name: str, position: str) -> InteractionCheckResponse:
         """Create response for unknown drug."""
@@ -326,14 +418,42 @@ class InteractionService:
         
         # Get drugs in the same class
         similar_drugs = await self._get_similar_drugs(target_drug, limit=20)
+        candidate_ids = [
+            similar_drug.id
+            for similar_drug, _ in similar_drugs
+            if similar_drug.id not in (target_drug.id, other_drug.id)
+        ]
+        interactions_by_candidate: Dict[int, DrugInteraction] = {}
+
+        if candidate_ids:
+            result = await self.db.execute(
+                select(DrugInteraction).where(
+                    or_(
+                        and_(
+                            DrugInteraction.drug1_id == other_drug.id,
+                            DrugInteraction.drug2_id.in_(candidate_ids),
+                        ),
+                        and_(
+                            DrugInteraction.drug2_id == other_drug.id,
+                            DrugInteraction.drug1_id.in_(candidate_ids),
+                        ),
+                    )
+                )
+            )
+            for interaction in result.scalars().all():
+                candidate_id = (
+                    interaction.drug2_id
+                    if interaction.drug1_id == other_drug.id
+                    else interaction.drug1_id
+                )
+                interactions_by_candidate[candidate_id] = interaction
         
         for similar_drug, similarity_score in similar_drugs:
             # Skip the original drugs
             if similar_drug.id in (target_drug.id, other_drug.id):
                 continue
             
-            # Check if this alternative interacts with the other drug
-            interaction = await self._get_interaction(similar_drug.id, other_drug.id)
+            interaction = interactions_by_candidate.get(similar_drug.id)
             
             has_interaction = interaction is not None
             interaction_severity = interaction.severity if interaction else None
@@ -560,4 +680,3 @@ class InteractionService:
 def create_interaction_service(db: AsyncSession) -> InteractionService:
     """Factory function to create interaction service."""
     return InteractionService(db)
-

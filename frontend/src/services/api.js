@@ -1,8 +1,14 @@
-/**
- * API Service for Drug Interaction Checker
- */
-
 import { getApiBaseUrl } from '../utils/platform'
+import {
+  clearAuthSession,
+  ensureAnonymousSession,
+  getAccessToken,
+  getAuthSession,
+  loginUser,
+  refreshAuthSession,
+  registerUser,
+  setAuthSession,
+} from './session'
 
 const API_BASE_URL = getApiBaseUrl()
 
@@ -30,23 +36,54 @@ export function setAdminApiKey(value) {
   }
 }
 
-/**
- * Make API request with error handling and timeout
- */
+async function parseError(response) {
+  const requestId = response.headers?.get?.('X-Request-ID')
+  const fallback = `HTTP error! status: ${response.status}`
+  try {
+    const payload = await response.json()
+    const detail = payload.detail || fallback
+    return requestId ? `${detail} (request ${requestId})` : detail
+  } catch {
+    return requestId ? `${fallback} (request ${requestId})` : fallback
+  }
+}
+
+function isFormData(body) {
+  return typeof FormData !== 'undefined' && body instanceof FormData
+}
+
 async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`
+  const {
+    signal: externalSignal,
+    timeout = DEFAULT_TIMEOUT_MS,
+    apiKey,
+    auth = false,
+    responseType = 'json',
+    _retried = false,
+    ...restOptions
+  } = options
 
-  const { signal: externalSignal, timeout = DEFAULT_TIMEOUT_MS, apiKey, ...restOptions } = options
-  const mergedHeaders = {
-    'Content-Type': 'application/json',
-    ...(restOptions.headers || {}),
+  if (auth && !getAccessToken()) {
+    await ensureAnonymousSession(API_BASE_URL)
   }
-  const defaultOptions = {
-    headers: mergedHeaders,
+
+  const body = restOptions.body
+  const headers = {
+    ...(isFormData(body) ? {} : { 'Content-Type': 'application/json' }),
+    ...(restOptions.headers || {}),
   }
 
   if (apiKey) {
-    defaultOptions.headers['X-API-Key'] = apiKey
+    headers['X-API-Key'] = apiKey
+  }
+
+  if (auth) {
+    const token = getAccessToken()
+    if (!token) {
+      throw new Error('Authentication required')
+    }
+    headers.Authorization = `Bearer ${token}`
   }
 
   const controller = new AbortController()
@@ -57,13 +94,35 @@ async function apiRequest(endpoint, options = {}) {
   }
 
   try {
-    const response = await fetch(url, { ...defaultOptions, ...restOptions, signal: controller.signal })
+    const response = await fetch(url, {
+      ...restOptions,
+      headers,
+      signal: controller.signal,
+    })
+
+    if (response.status === 401 && auth && !_retried && getAuthSession()?.refreshToken) {
+      try {
+        await refreshAuthSession(API_BASE_URL)
+        return await apiRequest(endpoint, { ...options, _retried: true })
+      } catch {
+        clearAuthSession()
+      }
+    }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'An error occurred' }))
-      const requestId = response.headers?.get?.('X-Request-ID')
-      const detail = error.detail || `HTTP error! status: ${response.status}`
-      throw new Error(requestId ? `${detail} (request ${requestId})` : detail)
+      throw new Error(await parseError(response))
+    }
+
+    if (responseType === 'blob') {
+      return response.blob()
+    }
+
+    if (responseType === 'text') {
+      return response.text()
+    }
+
+    if (response.status === 204) {
+      return null
     }
 
     return response.json()
@@ -77,40 +136,46 @@ async function apiRequest(endpoint, options = {}) {
   }
 }
 
-/**
- * Search for drugs by name
- * @param {string} query - Search query
- * @param {number} limit - Maximum results
- * @returns {Promise<Array>} List of matching drugs
- */
+export async function ensureAuthenticatedSession() {
+  return ensureAnonymousSession(API_BASE_URL)
+}
+
+export async function registerAccount(payload) {
+  return registerUser(API_BASE_URL, payload)
+}
+
+export async function loginAccount(payload) {
+  return loginUser(API_BASE_URL, payload)
+}
+
+export async function refreshAccountToken() {
+  return refreshAuthSession(API_BASE_URL)
+}
+
+export async function getCurrentAccount() {
+  return apiRequest('/auth/me', { auth: true })
+}
+
+export function updateAuthSession(session) {
+  setAuthSession(session)
+}
+
 export async function searchDrugs(query, limit = 10, options = {}) {
   return apiRequest(`/drugs/search?query=${encodeURIComponent(query)}&limit=${limit}`, options)
 }
 
-/**
- * Get drug by ID
- * @param {number} drugId - Drug ID
- * @returns {Promise<Object>} Drug details
- */
+export async function listDrugs(limit = 50, offset = 0, options = {}) {
+  return apiRequest(`/drugs?limit=${limit}&offset=${offset}`, options)
+}
+
 export async function getDrugById(drugId) {
   return apiRequest(`/drugs/${drugId}`)
 }
 
-/**
- * Get drug by name
- * @param {string} name - Drug name
- * @returns {Promise<Object>} Drug details
- */
 export async function getDrugByName(name) {
   return apiRequest(`/drugs/name/${encodeURIComponent(name)}`)
 }
 
-/**
- * Check interaction between two drugs
- * @param {string} drug1 - First drug name
- * @param {string} drug2 - Second drug name
- * @returns {Promise<Object>} Interaction check result
- */
 export async function checkInteraction(drug1, drug2) {
   return apiRequest('/interactions/check', {
     method: 'POST',
@@ -121,12 +186,6 @@ export async function checkInteraction(drug1, drug2) {
   })
 }
 
-/**
- * Get all interactions for a specific drug
- * @param {string} drugName - Drug name
- * @param {string} severity - Optional severity filter
- * @returns {Promise<Object>} List of interactions
- */
 export async function getDrugInteractions(drugName, severity = null) {
   let url = `/interactions/drug/${encodeURIComponent(drugName)}`
   if (severity) {
@@ -135,12 +194,6 @@ export async function getDrugInteractions(drugName, severity = null) {
   return apiRequest(url)
 }
 
-/**
- * Get safe alternative drugs
- * @param {string} drug1 - First drug name
- * @param {string} drug2 - Second drug name
- * @returns {Promise<Object>} Alternative suggestions
- */
 export async function getAlternatives(drug1, drug2) {
   return apiRequest('/alternatives', {
     method: 'POST',
@@ -151,11 +204,6 @@ export async function getAlternatives(drug1, drug2) {
   })
 }
 
-/**
- * Extract drug names from image using OCR
- * @param {string} imageBase64 - Base64 encoded image
- * @returns {Promise<Object>} OCR result with detected drugs
- */
 export async function extractFromImage(imageBase64) {
   return apiRequest('/ocr/extract', {
     method: 'POST',
@@ -165,28 +213,14 @@ export async function extractFromImage(imageBase64) {
   })
 }
 
-/**
- * Get known side effects for a drug
- * @param {string} drugName - Drug name
- * @param {number} limit - Maximum results
- * @returns {Promise<Object>} Side effects data
- */
 export async function getSideEffects(drugName, limit = 30) {
   return apiRequest(`/drugs/${encodeURIComponent(drugName)}/side-effects?limit=${limit}`)
 }
 
-/**
- * Get database statistics
- * @returns {Promise<Object>} Database stats
- */
 export async function getStats() {
   return apiRequest('/stats')
 }
 
-/**
- * Health check
- * @returns {Promise<Object>} Health status
- */
 export async function healthCheck() {
   return apiRequest('/health')
 }
@@ -195,14 +229,6 @@ export async function getSystemStatus(apiKey = getAdminApiKey()) {
   return apiRequest('/admin/system-status', { apiKey })
 }
 
-// ============== ML API Endpoints ==============
-
-/**
- * Get ML prediction for drug interaction
- * @param {string} drug1 - First drug name
- * @param {string} drug2 - Second drug name
- * @returns {Promise<Object>} ML prediction result
- */
 export async function getMLPrediction(drug1, drug2) {
   return apiRequest('/ml/predict', {
     method: 'POST',
@@ -213,160 +239,82 @@ export async function getMLPrediction(drug1, drug2) {
   })
 }
 
-/**
- * Get ML model information and metrics
- * @returns {Promise<Object>} Model info
- */
 export async function getMLModelInfo() {
   return apiRequest('/ml/model-info')
 }
 
-/**
- * Get optimization method comparison results
- * @returns {Promise<Object>} Comparison results
- */
 export async function getMLComparison() {
   return apiRequest('/ml/comparison')
 }
 
-/**
- * Get comparison history
- * @param {number} limit - Maximum results
- * @returns {Promise<Object>} Comparison history
- */
 export async function getHistory(limit = 50) {
   return apiRequest(`/history?limit=${limit}`)
 }
 
-/**
- * Get comparison statistics
- * @returns {Promise<Object>} Stats
- */
 export async function getHistoryStats() {
   return apiRequest('/history/stats')
 }
 
-// ============== Prescription RAG Endpoints ==============
-
-/**
- * Upload a prescription image or PDF for extraction
- * @param {File} file - The prescription file
- * @returns {Promise<Object>} Extraction result with medicines
- */
 export async function uploadPrescription(file) {
   const formData = new FormData()
   formData.append('file', file)
 
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), RAG_TIMEOUT_MS)
-
-  const response = await fetch(`${API_BASE_URL}/prescription/upload`, {
+  return apiRequest('/prescription/upload', {
     method: 'POST',
     body: formData,
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeoutId))
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
-    throw new Error(error.detail || `HTTP error! status: ${response.status}`)
-  }
-
-  return response.json()
+    timeout: RAG_TIMEOUT_MS,
+    auth: true,
+  })
 }
 
-/**
- * Upload a prescription as base64 encoded image
- * @param {string} imageBase64 - Base64 encoded image
- * @param {string} filename - Original filename
- * @returns {Promise<Object>} Extraction result with medicines
- */
 export async function uploadPrescriptionBase64(imageBase64, filename = 'prescription.jpg') {
   const formData = new FormData()
   formData.append('image_base64', imageBase64)
   formData.append('filename', filename)
 
-  const response = await fetch(`${API_BASE_URL}/prescription/upload/base64`, {
+  return apiRequest('/prescription/upload/base64', {
     method: 'POST',
     body: formData,
+    timeout: RAG_TIMEOUT_MS,
+    auth: true,
   })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
-    throw new Error(error.detail || `HTTP error! status: ${response.status}`)
-  }
-
-  return response.json()
 }
 
-/**
- * Get prescription by ID
- * @param {number} prescriptionId - Prescription ID
- * @returns {Promise<Object>} Prescription details
- */
 export async function getPrescription(prescriptionId) {
-  return apiRequest(`/prescription/${prescriptionId}`)
+  return apiRequest(`/prescription/${prescriptionId}`, { auth: true })
 }
 
-/**
- * List all prescriptions with pagination
- * @param {number} limit - Maximum results
- * @param {number} offset - Offset for pagination
- * @returns {Promise<Object>} List of prescriptions
- */
 export async function getPrescriptionHistory(limit = 20, offset = 0) {
-  return apiRequest(`/prescription/history?limit=${limit}&offset=${offset}`)
+  return apiRequest(`/prescription/history?limit=${limit}&offset=${offset}`, { auth: true })
 }
 
-/**
- * Delete a prescription
- * @param {number} prescriptionId - Prescription ID
- * @returns {Promise<Object>} Deletion confirmation
- */
 export async function deletePrescription(prescriptionId) {
   return apiRequest(`/prescription/${prescriptionId}`, {
     method: 'DELETE',
+    auth: true,
   })
 }
 
-/**
- * Chat with a prescription using RAG
- * @param {number} prescriptionId - Prescription ID
- * @param {string} message - User's question
- * @returns {Promise<Object>} Chat response
- */
 export async function chatWithPrescription(prescriptionId, message) {
   return apiRequest('/prescription/chat', {
     method: 'POST',
     timeout: RAG_TIMEOUT_MS,
+    auth: true,
     body: JSON.stringify({
       prescription_id: prescriptionId,
-      message: message,
+      message,
     }),
   })
 }
 
-/**
- * Get chat history for a prescription
- * @param {number} prescriptionId - Prescription ID
- * @returns {Promise<Object>} Chat history
- */
 export async function getPrescriptionChatHistory(prescriptionId) {
-  return apiRequest(`/prescription/${prescriptionId}/chat-history`)
+  return apiRequest(`/prescription/${prescriptionId}/chat-history`, { auth: true })
 }
 
-/**
- * Check prescription module health
- * @returns {Promise<Object>} Health status
- */
 export async function getPrescriptionHealth() {
   return apiRequest('/prescription/health/status')
 }
 
-/**
- * Check drug interactions between prescription medicines
- * @param {Array<string>} drugNames - List of drug names to check
- * @returns {Promise<Object>} Interaction results
- */
 export async function checkPrescriptionInteractions(drugNames) {
   return apiRequest('/prescription/check-interactions', {
     method: 'POST',
@@ -375,8 +323,105 @@ export async function checkPrescriptionInteractions(drugNames) {
   })
 }
 
+export async function listDiabeticPatients() {
+  return apiRequest('/diabetic/patients', { auth: true })
+}
+
+export async function createDiabeticPatient(payload) {
+  return apiRequest('/diabetic/patients', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    auth: true,
+  })
+}
+
+export async function deleteDiabeticPatient(patientId) {
+  return apiRequest(`/diabetic/patients/${patientId}`, {
+    method: 'DELETE',
+    auth: true,
+  })
+}
+
+export async function getDiabeticPatientMedications(patientId) {
+  return apiRequest(`/diabetic/patients/${patientId}/medications`, { auth: true })
+}
+
+export async function addDiabeticMedication(patientId, payload) {
+  return apiRequest(`/diabetic/patients/${patientId}/medications`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+    auth: true,
+  })
+}
+
+export async function removeDiabeticMedication(patientId, medicationId) {
+  return apiRequest(`/diabetic/patients/${patientId}/medications/${medicationId}`, {
+    method: 'DELETE',
+    auth: true,
+  })
+}
+
+export async function getDiabeticModelInfo() {
+  return apiRequest('/diabetic/model-info', { auth: true })
+}
+
+export async function checkDiabeticRisk(patientId, drugName) {
+  return apiRequest('/diabetic/risk-check', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({
+      patient_id: patientId,
+      drug_name: drugName,
+    }),
+  })
+}
+
+export async function checkDiabeticRiskLlm(patientId, drugName) {
+  return apiRequest('/diabetic/risk-check/llm', {
+    method: 'POST',
+    timeout: RAG_TIMEOUT_MS,
+    auth: true,
+    body: JSON.stringify({
+      patient_id: patientId,
+      drug_name: drugName,
+    }),
+  })
+}
+
+export async function checkDiabeticMedicationList(patientId) {
+  return apiRequest('/diabetic/medication-list-check', {
+    method: 'POST',
+    auth: true,
+    body: JSON.stringify({ patient_id: patientId }),
+  })
+}
+
+export async function getDiabeticReport(patientId) {
+  return apiRequest(`/diabetic/report/${patientId}`, { auth: true })
+}
+
+export async function downloadDiabeticReportPdf(patientId) {
+  return apiRequest(`/diabetic/report/${patientId}/pdf`, {
+    auth: true,
+    responseType: 'blob',
+    timeout: RAG_TIMEOUT_MS,
+  })
+}
+
+export async function analyzeDiabeticReport(file, autoCreatePatient = true) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return apiRequest(`/diabetic/analyze-report?auto_create_patient=${autoCreatePatient}`, {
+    method: 'POST',
+    body: formData,
+    auth: true,
+    timeout: RAG_TIMEOUT_MS,
+  })
+}
+
 export default {
   searchDrugs,
+  listDrugs,
   getDrugById,
   getDrugByName,
   checkInteraction,
@@ -386,12 +431,12 @@ export default {
   getSideEffects,
   getStats,
   healthCheck,
+  getSystemStatus,
   getMLPrediction,
   getMLModelInfo,
   getMLComparison,
   getHistory,
   getHistoryStats,
-  // Prescription RAG
   uploadPrescription,
   uploadPrescriptionBase64,
   getPrescription,
@@ -401,5 +446,23 @@ export default {
   getPrescriptionChatHistory,
   getPrescriptionHealth,
   checkPrescriptionInteractions,
+  listDiabeticPatients,
+  createDiabeticPatient,
+  deleteDiabeticPatient,
+  getDiabeticPatientMedications,
+  addDiabeticMedication,
+  removeDiabeticMedication,
+  getDiabeticModelInfo,
+  checkDiabeticRisk,
+  checkDiabeticRiskLlm,
+  checkDiabeticMedicationList,
+  getDiabeticReport,
+  downloadDiabeticReportPdf,
+  analyzeDiabeticReport,
+  ensureAuthenticatedSession,
+  registerAccount,
+  loginAccount,
+  refreshAccountToken,
+  getCurrentAccount,
+  updateAuthSession,
 }
-

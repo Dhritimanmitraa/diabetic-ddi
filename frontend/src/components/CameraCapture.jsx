@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Webcam from 'react-webcam'
 import { Camera, Upload, X, Loader2, RefreshCw, Check } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { extractFromImage, checkInteraction, getAlternatives } from '../services/api'
+import { extractFromImage } from '../services/api'
 import { isNative } from '../utils/platform'
 import useDrugStore from '../stores/useDrugStore'
 
@@ -24,7 +24,7 @@ if (typeof window !== 'undefined') {
 }
 
 function CameraCapture() {
-  const { setResults, setAlternatives, setIsLoading } = useDrugStore()
+  const runInteractionCheck = useDrugStore((state) => state.checkInteraction)
   const [showCamera, setShowCamera] = useState(false)
   const [capturedImage, setCapturedImage] = useState(null)
   const [detectedDrugs, setDetectedDrugs] = useState([])
@@ -203,22 +203,8 @@ function CameraCapture() {
       return
     }
 
-    setIsLoading(true)
-    setResults(null)
-    setAlternatives(null)
-
     try {
-      const interactionResult = await checkInteraction(selectedDrugs[0], selectedDrugs[1])
-      setResults(interactionResult)
-
-      if (interactionResult.has_interaction && interactionResult.interaction?.severity !== 'minor') {
-        try {
-          const alternativesResult = await getAlternatives(selectedDrugs[0], selectedDrugs[1])
-          setAlternatives(alternativesResult)
-        } catch (altError) {
-          console.error('Could not fetch alternatives:', altError)
-        }
-      }
+      const interactionResult = await runInteractionCheck(selectedDrugs[0], selectedDrugs[1])
 
       if (!interactionResult.has_interaction) {
         toast.success('No known interaction found!')
@@ -235,8 +221,6 @@ function CameraCapture() {
     } catch (error) {
       console.error('Error:', error)
       toast.error('Error checking interaction')
-    } finally {
-      setIsLoading(false)
     }
   }
 

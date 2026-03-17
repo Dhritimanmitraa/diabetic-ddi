@@ -9,29 +9,23 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.database import get_db
 from app.models import Drug
-from app.config import get_settings
 from app.services.auth import require_api_key
 from app.services.rate_limiter import rate_limit_dependency
-from app.services.tasks import get_job_status, run_tracked_job, start_tracked_job
+from app.services.tasks import get_job_status, has_active_job, run_tracked_job, start_tracked_job
 
 router = APIRouter(prefix="/ml", tags=["ML"])
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Simple in-memory flag so we don't launch two concurrent training runs.
-_training_in_progress: bool = False
-
-
-# ── Request / Response Schemas ──────────────────────────────────────────
 
 class TrainRequest(BaseModel):
     n_trials: int = Field(default=50, ge=5, le=500, description="Optuna trials per model")
@@ -59,8 +53,6 @@ class PredictRequest(BaseModel):
     drug2_name: str = Field(..., min_length=1)
 
 
-# ── Endpoints ───────────────────────────────────────────────────────────
-
 @router.post("/train", response_model=TrainResponse)
 async def trigger_training(
     body: TrainRequest,
@@ -69,19 +61,12 @@ async def trigger_training(
     _: None = Depends(require_api_key),
     __: None = rate_limit_dependency(limit=settings.HEAVY_RATE_LIMIT_REQUESTS_PER_MIN, key_prefix="ml_train"),
 ):
-    """
-    Trigger asynchronous DDI model training.
-
-    Loads data from the database, runs Bayesian hyper-parameter tuning
-    (Optuna TPE), trains RF + XGBoost + LightGBM, evaluates an ensemble,
-    computes an optimal classification threshold, and saves all artefacts.
-    """
-    global _training_in_progress
-    if _training_in_progress:
+    """Trigger asynchronous DDI model training."""
+    if await has_active_job(db, "ml_training"):
         raise HTTPException(status_code=409, detail="Training already in progress")
 
-    _training_in_progress = True
-    job_id = start_tracked_job(
+    job_id = await start_tracked_job(
+        db,
         "ml_training",
         {"n_trials": body.n_trials, "run_comparison": body.run_comparison},
     )
@@ -90,9 +75,13 @@ async def trigger_training(
 
 
 @router.get("/jobs/{job_id}")
-async def training_job_status(job_id: str, _: None = Depends(require_api_key)):
+async def training_job_status(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_api_key),
+):
     """Return status for a tracked ML background job."""
-    job = get_job_status(job_id)
+    job = await get_job_status(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
@@ -101,7 +90,7 @@ async def training_job_status(job_id: str, _: None = Depends(require_api_key)):
 @router.get("/status", response_model=ModelStatusResponse)
 async def model_status():
     """Return information about the currently-loaded ML models and scheduler."""
-    from app.ml.scheduler import _scheduler, RETRAIN_CHECK_HOURS, RETRAIN_MIN_NEW_ROWS
+    from app.ml.scheduler import RETRAIN_CHECK_HOURS, RETRAIN_MIN_NEW_ROWS, _scheduler
 
     resp = ModelStatusResponse(
         scheduler_running=_scheduler is not None and _scheduler.running,
@@ -110,6 +99,7 @@ async def model_status():
     )
     try:
         from app.ml.predictor import get_predictor
+
         predictor = get_predictor("./models")
         if predictor.is_loaded:
             info = predictor.get_model_info()
@@ -119,7 +109,7 @@ async def model_status():
             resp.ml_available = True
             resp.model_metrics = info.get("model_metrics", {})
     except Exception as e:
-        logger.warning(f"Could not load predictor for status check: {e}")
+        logger.warning("Could not load predictor for status check: %s", e)
 
     return resp
 
@@ -133,7 +123,6 @@ async def predict_interaction(body: PredictRequest, db: AsyncSession = Depends(g
     if not predictor.is_loaded:
         raise HTTPException(status_code=503, detail="ML models not loaded. Train models first.")
 
-    # Look up both drugs from DB for richer features
     drug1_dict = await _drug_to_dict(db, body.drug1_name)
     drug2_dict = await _drug_to_dict(db, body.drug2_name)
 
@@ -189,13 +178,15 @@ async def optimization_comparison():
         if is_best:
             bayesian_wins += 1
 
-        detailed.append({
-            "model": summary.get("model_type", "unknown"),
-            "comparison": comp,
-            "bayesian_is_best": is_best,
-            "trial_reduction_percent": efficiency.get("trial_reduction_percent", 0),
-            "time_reduction_percent": efficiency.get("time_reduction_percent", 0),
-        })
+        detailed.append(
+            {
+                "model": summary.get("model_type", "unknown"),
+                "comparison": comp,
+                "bayesian_is_best": is_best,
+                "trial_reduction_percent": efficiency.get("trial_reduction_percent", 0),
+                "time_reduction_percent": efficiency.get("time_reduction_percent", 0),
+            }
+        )
 
     total = len(detailed)
     avg_reduction = sum(d["trial_reduction_percent"] for d in detailed) / total if total else 0
@@ -211,9 +202,7 @@ async def optimization_comparison():
 
 async def _drug_to_dict(db: AsyncSession, name: str) -> dict:
     """Look up a drug by name and return a feature dict."""
-    result = await db.execute(
-        select(Drug).where(Drug.name.ilike(name)).limit(1)
-    )
+    result = await db.execute(select(Drug).where(Drug.name.ilike(name)).limit(1))
     drug = result.scalars().first()
     if drug:
         return {
@@ -229,28 +218,26 @@ async def _drug_to_dict(db: AsyncSession, name: str) -> dict:
     return {"name": name, "matched": False}
 
 
-# ── Background task ─────────────────────────────────────────────────────
-
 async def _run_training(job_id: str, n_trials: int, run_comparison: bool) -> None:
-    global _training_in_progress
-    async def _work():
-        from app.ml.trainer import train_from_database
-        from app.database import async_session
+    """Run training and persist state transitions in the tracked job table."""
+    from app.database import async_session
 
+    async def _work():
         async with async_session() as session:
+            from app.ml.trainer import train_from_database
+
             summary = await train_from_database(
                 session,
                 model_dir="./models",
                 n_trials=n_trials,
                 run_comparison=run_comparison,
             )
-            logger.info(f"Training finished: {summary}")
+            logger.info("Training finished: %s", summary)
 
         import app.ml.predictor as pred_mod
+
         pred_mod._predictor = None
         return summary
 
-    try:
-        await run_tracked_job(job_id, _work)
-    finally:
-        _training_in_progress = False
+    async with async_session() as session:
+        await run_tracked_job(session, job_id, _work)

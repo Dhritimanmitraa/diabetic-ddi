@@ -14,6 +14,46 @@ drug_categories = Table(
 )
 
 
+class User(Base):
+    """Authenticated application user."""
+    __tablename__ = "users"
+
+    id = Column(String(36), primary_key=True, index=True)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+    medication_schedules = relationship("MedicationSchedule", back_populates="user")
+    prescriptions = relationship("Prescription", back_populates="user")
+    diabetic_patients = relationship("DiabeticPatient", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username={self.username})>"
+
+
+class RefreshToken(Base):
+    """Persisted refresh token family entries for rotation and revocation."""
+    __tablename__ = "refresh_tokens"
+
+    id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+
+    user = relationship("User")
+
+    def __repr__(self):
+        return f"<RefreshToken(id={self.id}, user_id={self.user_id})>"
+
+
 class Drug(Base):
     """Drug model storing drug information."""
     __tablename__ = "drugs"
@@ -247,6 +287,28 @@ class OptimizationResult(Base):
         return f"<OptimizationResult({self.model_type}, {self.optimization_method}, score={self.best_score:.4f})>"
 
 
+class TrackedJob(Base):
+    """Durable background job record."""
+    __tablename__ = "tracked_jobs"
+
+    id = Column(String(64), primary_key=True, index=True)
+    name = Column(String(100), nullable=False, index=True)
+    status = Column(String(32), nullable=False, index=True)
+    metadata_json = Column(Text, nullable=True)
+    result_json = Column(Text, nullable=True)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        index=True,
+    )
+
+    def __repr__(self):
+        return f"<TrackedJob(id={self.id}, name={self.name}, status={self.status})>"
+
+
 class TwosidesInteraction(Base):
     """TWOSIDES/OffSIDES mined interaction/effect record."""
     __tablename__ = "twosides_interactions"
@@ -289,7 +351,7 @@ class MedicationSchedule(Base):
     __tablename__ = "medication_schedules"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String(255), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
     drug_name = Column(String(255), nullable=False)
     dosage = Column(String(100), nullable=True)  # e.g. "500mg"
     frequency = Column(String(100), nullable=True)  # e.g. "twice daily"
@@ -303,6 +365,7 @@ class MedicationSchedule(Base):
                         onupdate=lambda: datetime.now(timezone.utc))
 
     # Relationship
+    user = relationship("User", back_populates="medication_schedules")
     logs = relationship("AdherenceLog", back_populates="schedule", cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -323,4 +386,3 @@ class AdherenceLog(Base):
 
     def __repr__(self):
         return f"<AdherenceLog(schedule={self.schedule_id}, status={self.status})>"
-

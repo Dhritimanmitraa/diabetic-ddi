@@ -8,6 +8,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
+from sqlalchemy.orm import selectinload
 
 from app.prescription.models import Prescription, PrescriptionMedicine, PrescriptionChat
 from app.prescription.schemas import (
@@ -39,11 +40,11 @@ class PrescriptionService:
         self.langgraph_service = get_langgraph_service()  # LangGraph agent
     
     async def upload_and_process(
-        self, 
-        file_data: bytes, 
+        self,
+        file_data: bytes,
         filename: str,
         file_type: str,
-        user_id: Optional[str] = None
+        user_id: str,
     ) -> PrescriptionUploadResponse:
         """
         Upload and process a prescription file.
@@ -52,7 +53,7 @@ class PrescriptionService:
             file_data: Raw file bytes
             filename: Original filename
             file_type: MIME type (image/jpeg, application/pdf, etc.)
-            user_id: Optional user identifier for multi-user support
+            user_id: Authenticated user identifier
             
         Returns:
             PrescriptionUploadResponse with extracted medicines
@@ -170,23 +171,27 @@ class PrescriptionService:
                 medicines=[]
             )
     
-    async def get_prescription(self, prescription_id: int) -> Optional[PrescriptionResponse]:
-        """Get a prescription by ID."""
+    async def _get_owned_prescription(self, prescription_id: int, user_id: str) -> Optional[Prescription]:
+        """Fetch a prescription only when it belongs to the supplied user."""
         result = await self.db.execute(
-            select(Prescription).where(Prescription.id == prescription_id)
+            select(Prescription)
+            .options(
+                selectinload(Prescription.medicines),
+                selectinload(Prescription.chat_messages),
+            )
+            .where(
+                Prescription.id == prescription_id,
+                Prescription.user_id == user_id,
+            )
         )
-        prescription = result.scalar_one_or_none()
+        return result.scalar_one_or_none()
+
+    async def get_prescription(self, prescription_id: int, user_id: str) -> Optional[PrescriptionResponse]:
+        """Get a prescription by ID."""
+        prescription = await self._get_owned_prescription(prescription_id, user_id)
         
         if not prescription:
             return None
-        
-        # Load medicines
-        medicines_result = await self.db.execute(
-            select(PrescriptionMedicine).where(
-                PrescriptionMedicine.prescription_id == prescription_id
-            )
-        )
-        medicines = medicines_result.scalars().all()
         
         return PrescriptionResponse(
             id=prescription.id,
@@ -197,15 +202,15 @@ class PrescriptionService:
             vision_model_used=prescription.vision_model_used,
             created_at=prescription.created_at,
             processed_at=prescription.processed_at,
-            medicines=[MedicineResponse.model_validate(m) for m in medicines],
+            medicines=[MedicineResponse.model_validate(m) for m in prescription.medicines],
             error_message=prescription.error_message
         )
     
     async def list_prescriptions(
-        self, 
-        limit: int = 20, 
+        self,
+        user_id: str,
+        limit: int = 20,
         offset: int = 0,
-        user_id: Optional[str] = None
     ) -> tuple[List[PrescriptionResponse], int]:
         """List prescriptions with pagination, optionally filtered by user."""
         # Build base filter
@@ -220,7 +225,7 @@ class PrescriptionService:
         count_result = await self.db.execute(count_q)
         total = count_result.scalar() or 0
         
-        base_query = select(Prescription)
+        base_query = select(Prescription).options(selectinload(Prescription.medicines))
         if filters:
             base_query = base_query.where(*filters)
         
@@ -233,18 +238,8 @@ class PrescriptionService:
         )
         prescriptions = result.scalars().all()
         
-        # Build responses
-        responses = []
-        for p in prescriptions:
-            # Load medicines for each prescription
-            medicines_result = await self.db.execute(
-                select(PrescriptionMedicine).where(
-                    PrescriptionMedicine.prescription_id == p.id
-                )
-            )
-            medicines = medicines_result.scalars().all()
-            
-            responses.append(PrescriptionResponse(
+        responses = [
+            PrescriptionResponse(
                 id=p.id,
                 filename=p.filename,
                 file_type=p.file_type,
@@ -253,18 +248,17 @@ class PrescriptionService:
                 vision_model_used=p.vision_model_used,
                 created_at=p.created_at,
                 processed_at=p.processed_at,
-                medicines=[MedicineResponse.model_validate(m) for m in medicines],
-                error_message=p.error_message
-            ))
-        
+                medicines=[MedicineResponse.model_validate(m) for m in p.medicines],
+                error_message=p.error_message,
+            )
+            for p in prescriptions
+        ]
+
         return responses, total
     
-    async def delete_prescription(self, prescription_id: int) -> bool:
+    async def delete_prescription(self, prescription_id: int, user_id: str) -> bool:
         """Delete a prescription and its related data."""
-        result = await self.db.execute(
-            select(Prescription).where(Prescription.id == prescription_id)
-        )
-        prescription = result.scalar_one_or_none()
+        prescription = await self._get_owned_prescription(prescription_id, user_id)
         
         if not prescription:
             return False
@@ -280,8 +274,9 @@ class PrescriptionService:
     
     async def chat(
         self, 
-        prescription_id: int, 
-        message: str
+        prescription_id: int,
+        message: str,
+        user_id: str,
     ) -> Optional[ChatResponse]:
         """
         Chat about a prescription.
@@ -294,26 +289,19 @@ class PrescriptionService:
             ChatResponse with assistant's answer
         """
         # Verify prescription exists
-        result = await self.db.execute(
-            select(Prescription).where(Prescription.id == prescription_id)
-        )
-        prescription = result.scalar_one_or_none()
+        prescription = await self._get_owned_prescription(prescription_id, user_id)
         
         if not prescription:
             return None
         
-        # Get chat history
-        history_result = await self.db.execute(
-            select(PrescriptionChat)
-            .where(PrescriptionChat.prescription_id == prescription_id)
-            .order_by(PrescriptionChat.created_at)
-        )
-        chat_history = history_result.scalars().all()
-        
         # Build history for context
+        ordered_messages = sorted(
+            prescription.chat_messages,
+            key=lambda msg: msg.created_at or datetime.min.replace(tzinfo=timezone.utc),
+        )
         history_list = [
             {"role": msg.role, "content": msg.content}
-            for msg in chat_history[-10:]  # Last 10 messages
+            for msg in ordered_messages[-10:]
         ]
         
         # Use LangGraph agent for sophisticated routing and tool calling
@@ -357,30 +345,22 @@ class PrescriptionService:
     
     async def get_chat_history(
         self, 
-        prescription_id: int
+        prescription_id: int,
+        user_id: str,
     ) -> Optional[ChatHistoryResponse]:
         """Get chat history for a prescription."""
-        # Verify prescription exists
-        result = await self.db.execute(
-            select(Prescription).where(Prescription.id == prescription_id)
-        )
-        prescription = result.scalar_one_or_none()
+        prescription = await self._get_owned_prescription(prescription_id, user_id)
         
         if not prescription:
             return None
-        
-        # Get chat messages
-        history_result = await self.db.execute(
-            select(PrescriptionChat)
-            .where(PrescriptionChat.prescription_id == prescription_id)
-            .order_by(PrescriptionChat.created_at)
-        )
-        messages = history_result.scalars().all()
         
         return ChatHistoryResponse(
             prescription_id=prescription_id,
             messages=[
                 ChatMessageBase(role=msg.role, content=msg.content)
-                for msg in messages
+                for msg in sorted(
+                    prescription.chat_messages,
+                    key=lambda item: item.created_at or datetime.min.replace(tzinfo=timezone.utc),
+                )
             ]
         )

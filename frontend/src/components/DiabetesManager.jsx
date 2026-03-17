@@ -6,24 +6,40 @@ import toast from 'react-hot-toast'
 import usePageTitle from '../hooks/usePageTitle'
 import MedicationSchedule from './MedicationSchedule'
 import DosageCalculator from './DosageCalculator'
-
-import { getApiBaseUrl } from '../utils/platform'
 import PatientCard from './diabetes/PatientCard'
 import DrugRiskCard, { RiskBadge } from './diabetes/DrugRiskCard'
-
-const API_URL = getApiBaseUrl()
+import { searchDrugs as searchDrugCatalog } from '../services/api'
+import useDiabetesStore from '../stores/useDiabetesStore'
 
 export default function DiabetesManager() {
   usePageTitle('Diabetes DDI')
   const navigate = useNavigate()
-  const [patients, setPatients] = useState([])
-  const [selectedPatient, setSelectedPatient] = useState(null)
-  const [medications, setMedications] = useState([])
-  const [checkResult, setCheckResult] = useState(null)
-  const [report, setReport] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const patients = useDiabetesStore((state) => state.patients)
+  const selectedPatient = useDiabetesStore((state) => state.selectedPatient)
+  const medications = useDiabetesStore((state) => state.medications)
+  const checkResult = useDiabetesStore((state) => state.checkResult)
+  const report = useDiabetesStore((state) => state.report)
+  const loading = useDiabetesStore((state) => state.loading)
+  const modelInfo = useDiabetesStore((state) => state.modelInfo)
+  const allDrugs = useDiabetesStore((state) => state.allDrugs)
+  const drugsLoading = useDiabetesStore((state) => state.drugsLoading)
+  const storeReportAnalysis = useDiabetesStore((state) => state.reportAnalysis)
+  const setSelectedPatient = useDiabetesStore((state) => state.setSelectedPatient)
+  const setCheckResult = useDiabetesStore((state) => state.setCheckResult)
+  const loadPatients = useDiabetesStore((state) => state.loadPatients)
+  const loadMedications = useDiabetesStore((state) => state.loadMedications)
+  const loadModelInfo = useDiabetesStore((state) => state.loadModelInfo)
+  const loadAllDrugs = useDiabetesStore((state) => state.loadAllDrugs)
+  const createPatientRecord = useDiabetesStore((state) => state.createPatientRecord)
+  const deletePatientRecord = useDiabetesStore((state) => state.deletePatientRecord)
+  const runRiskCheck = useDiabetesStore((state) => state.runRiskCheck)
+  const loadLlmRiskAnalysis = useDiabetesStore((state) => state.loadLlmRiskAnalysis)
+  const checkMedicationList = useDiabetesStore((state) => state.checkMedicationList)
+  const loadReport = useDiabetesStore((state) => state.loadReport)
+  const downloadReportPdf = useDiabetesStore((state) => state.downloadReportPdf)
+  const addMedicationToPatient = useDiabetesStore((state) => state.addMedicationToPatient)
+  const analyzeReportUpload = useDiabetesStore((state) => state.analyzeReportUpload)
   const [activeSection, setActiveSection] = useState('patients') // patients, check, report
-  const [modelInfo, setModelInfo] = useState(null)
 
   // New patient form
   const [showNewPatient, setShowNewPatient] = useState(false)
@@ -50,8 +66,6 @@ export default function DiabetesManager() {
   // Browse all drugs
   const [showDrugBrowser, setShowDrugBrowser] = useState(false)
   const [showDosageCalculator, setShowDosageCalculator] = useState(false)
-  const [allDrugs, setAllDrugs] = useState([])
-  const [drugsLoading, setDrugsLoading] = useState(false)
   const [drugBrowserPage, setDrugBrowserPage] = useState(0)
   const [drugBrowserSearch, setDrugBrowserSearch] = useState('')
 
@@ -68,8 +82,8 @@ export default function DiabetesManager() {
   // Report upload states
   const [showReportUpload, setShowReportUpload] = useState(false)
   const [uploadingReport, setUploadingReport] = useState(false)
-  const [reportAnalysis, setReportAnalysis] = useState(null)
   const [dragOver, setDragOver] = useState(false)
+  const reportAnalysis = storeReportAnalysis
 
   // Upload and analyze lab report with Gemini Vision
   const uploadLabReport = async (file) => {
@@ -91,30 +105,14 @@ export default function DiabetesManager() {
     toast.loading('Analyzing report with AI...', { id: 'report-upload' })
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const res = await fetch(`${API_URL}/diabetic/analyze-report?auto_create_patient=true`, {
-        method: 'POST',
-        body: formData
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        setReportAnalysis(data)
-
-        if (data.patient_created) {
-          toast.success(`Patient "${data.extracted_values.patient.name}" created from report!`, { id: 'report-upload' })
-          fetchPatients() // Refresh patient list
-        } else {
-          toast.success('Report analyzed successfully!', { id: 'report-upload' })
-        }
+      const data = await analyzeReportUpload(file, true)
+      if (data?.patient_created) {
+        toast.success(`Patient "${data.extracted_values.patient.name}" created from report!`, { id: 'report-upload' })
       } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Failed to analyze report', { id: 'report-upload' })
+        toast.success('Report analyzed successfully!', { id: 'report-upload' })
       }
     } catch (err) {
-      toast.error('Error analyzing report', { id: 'report-upload' })
+      toast.error(err?.message || 'Error analyzing report', { id: 'report-upload' })
       console.error(err)
     } finally {
       setUploadingReport(false)
@@ -246,22 +244,16 @@ export default function DiabetesManager() {
       let successCount = 0
       for (const patient of samplePatients) {
         try {
-          // Try to delete first (in case exists)
-          await fetch(`${API_URL}/diabetic/patients/${patient.patient_id}`, { method: 'DELETE' })
-          // Create patient
-          const res = await fetch(`${API_URL}/diabetic/patients`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(patient)
-          })
-          if (res.ok || res.status === 201) successCount++
+          await deletePatientRecord(patient.patient_id).catch(() => {})
+          await createPatientRecord(patient)
+          successCount++
         } catch (e) {
           console.error(`Failed to create ${patient.patient_id}:`, e)
         }
       }
 
       toast.success(`Loaded ${successCount}/${samplePatients.length} sample patients!`, { id: 'loading-samples' })
-      fetchPatients() // Refresh the list
+      await loadPatients()
     } catch (err) {
       toast.error('Failed to load sample patients', { id: 'loading-samples' })
       console.error(err)
@@ -292,11 +284,7 @@ export default function DiabetesManager() {
 
   const fetchPatients = async () => {
     try {
-      const res = await fetch(`${API_URL}/diabetic/patients`)
-      if (res.ok) {
-        const data = await res.json()
-        setPatients(data)
-      }
+      await loadPatients()
     } catch (err) {
       console.error('Error fetching patients:', err)
     }
@@ -304,11 +292,7 @@ export default function DiabetesManager() {
 
   const fetchMedications = async (patientId) => {
     try {
-      const res = await fetch(`${API_URL}/diabetic/patients/${patientId}/medications`)
-      if (res.ok) {
-        const data = await res.json()
-        setMedications(data)
-      }
+      await loadMedications(patientId)
     } catch (err) {
       console.error('Error fetching medications:', err)
     }
@@ -316,11 +300,7 @@ export default function DiabetesManager() {
 
   const fetchModelInfo = async () => {
     try {
-      const res = await fetch(`${API_URL}/diabetic/model-info`)
-      if (res.ok) {
-        const data = await res.json()
-        setModelInfo(data)
-      }
+      await loadModelInfo()
     } catch (err) {
       console.error('Error fetching model info:', err)
     }
@@ -336,14 +316,8 @@ export default function DiabetesManager() {
     }
     setSearchLoading(true)
     try {
-      const res = await fetch(`${API_URL}/drugs/search?query=${encodeURIComponent(query.trim())}&limit=12`)
-      if (res.ok) {
-        const data = await res.json()
-        setSearchResults(data || [])
-      } else {
-        setSearchError('Search failed')
-        setSearchResults([])
-      }
+      const data = await searchDrugCatalog(query.trim(), 12)
+      setSearchResults(data || [])
     } catch (err) {
       setSearchError('Search failed')
       setSearchResults([])
@@ -362,23 +336,10 @@ export default function DiabetesManager() {
 
   // Fetch all drugs from database for browsing
   const fetchAllDrugs = async (search = '', page = 0) => {
-    setDrugsLoading(true)
     try {
-      const limit = 50
-      const offset = page * limit
-      let url = `${API_URL}/drugs?limit=${limit}&offset=${offset}`
-      if (search.trim()) {
-        url = `${API_URL}/drugs/search?query=${encodeURIComponent(search.trim())}&limit=${limit}`
-      }
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        setAllDrugs(Array.isArray(data) ? data : (data.drugs || []))
-      }
+      await loadAllDrugs(search, page)
     } catch (err) {
       console.error('Error fetching drugs:', err)
-    } finally {
-      setDrugsLoading(false)
     }
   }
 
@@ -395,32 +356,18 @@ export default function DiabetesManager() {
     setShowDrugBrowser(false)
     // Auto-check the drug
     if (selectedPatient) {
-      setLoading(true)
       try {
-        const res = await fetch(`${API_URL}/diabetic/risk-check`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            patient_id: selectedPatient.patient_id,
-            drug_name: drugName
-          })
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setCheckResult(data)
-          setActiveSection('check')
-        }
+        const data = await runRiskCheck(selectedPatient.patient_id, drugName)
+        setCheckResult(data)
+        setActiveSection('check')
       } catch (err) {
         toast.error('Error checking drug risk')
-      } finally {
-        setLoading(false)
       }
     }
   }
 
   const createPatient = async (e) => {
     e.preventDefault()
-    setLoading(true)
     try {
       const payload = {
         patient_id: newPatient.patient_id,
@@ -438,24 +385,12 @@ export default function DiabetesManager() {
           has_neuropathy: newPatient.has_neuropathy,
         }
       }
-      const res = await fetch(`${API_URL}/diabetic/patients`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      if (res.ok) {
-        toast.success('Patient created successfully!')
-        setShowNewPatient(false)
-        setNewPatient({ patient_id: '', name: '', age: '', diabetes_type: 'type_2', hba1c: '', egfr: '', potassium: '', has_nephropathy: false, has_cardiovascular: false, has_neuropathy: false })
-        fetchPatients()
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Failed to create patient')
-      }
+      await createPatientRecord(payload)
+      toast.success('Patient created successfully!')
+      setShowNewPatient(false)
+      setNewPatient({ patient_id: '', name: '', age: '', diabetes_type: 'type_2', hba1c: '', egfr: '', potassium: '', has_nephropathy: false, has_cardiovascular: false, has_neuropathy: false })
     } catch (err) {
-      toast.error('Error creating patient')
-    } finally {
-      setLoading(false)
+      toast.error(err?.message || 'Error creating patient')
     }
   }
 
@@ -464,57 +399,21 @@ export default function DiabetesManager() {
       toast.error('Select a patient and enter a drug name')
       return
     }
-    setLoading(true)
     try {
-      // Step 1: Get immediate results (Rules + ML) - fast!
-      const res = await fetch(`${API_URL}/diabetic/risk-check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          patient_id: selectedPatient.patient_id,
-          drug_name: drugToCheck.trim()
-        })
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setCheckResult(data)
-        setActiveSection('check')
-        setLoading(false) // Show results immediately
-        addToRecentDrugs(drugToCheck.trim()) // Save to recent history
+      const data = await runRiskCheck(selectedPatient.patient_id, drugToCheck.trim())
+      setCheckResult(data)
+      setActiveSection('check')
+      addToRecentDrugs(drugToCheck.trim())
 
-        // Step 2: Fetch LLM analysis in background (slow - 10-20 seconds)
-        // This updates the UI when LLM is ready
-        fetch(`${API_URL}/diabetic/risk-check/llm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            patient_id: selectedPatient.patient_id,
-            drug_name: drugToCheck.trim()
-          })
+      loadLlmRiskAnalysis(selectedPatient.patient_id, drugToCheck.trim())
+        .then(() => {
+          toast.success('LLM analysis complete', { duration: 2000 })
         })
-          .then(async (llmRes) => {
-            if (llmRes.ok) {
-              const llmData = await llmRes.json()
-              // Update the existing result with LLM analysis
-              setCheckResult(prev => ({
-                ...prev,
-                llm_analysis: llmData.llm_analysis
-              }))
-              toast.success('LLM analysis complete', { duration: 2000 })
-            }
-          })
-          .catch((err) => {
-            console.error('LLM analysis failed:', err)
-            // Don't show error toast - LLM is optional
-          })
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Failed to check drug')
-        setLoading(false)
-      }
+        .catch((err) => {
+          console.error('LLM analysis failed:', err)
+        })
     } catch (err) {
-      toast.error('Error checking drug risk')
-      setLoading(false)
+      toast.error(err?.message || 'Error checking drug risk')
     }
   }
 
@@ -523,25 +422,12 @@ export default function DiabetesManager() {
       toast.error('Select a patient first')
       return
     }
-    setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/diabetic/medication-list-check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patient_id: selectedPatient.patient_id })
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setCheckResult(data)
-        setActiveSection('check')
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Failed to check medications')
-      }
+      const data = await checkMedicationList(selectedPatient.patient_id)
+      setCheckResult(data)
+      setActiveSection('check')
     } catch (err) {
-      toast.error('Error checking medications')
-    } finally {
-      setLoading(false)
+      toast.error(err?.message || 'Error checking medications')
     }
   }
 
@@ -550,21 +436,11 @@ export default function DiabetesManager() {
       toast.error('Select a patient first')
       return
     }
-    setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/diabetic/report/${selectedPatient.patient_id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setReport(data)
-        setActiveSection('report')
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Failed to generate report')
-      }
+      await loadReport(selectedPatient.patient_id)
+      setActiveSection('report')
     } catch (err) {
-      toast.error('Error generating report')
-    } finally {
-      setLoading(false)
+      toast.error(err?.message || 'Error generating report')
     }
   }
 
@@ -573,46 +449,30 @@ export default function DiabetesManager() {
       toast.error('Select a patient first')
       return
     }
-    setLoading(true)
     toast.loading('Generating PDF report...', { id: 'pdf-loading' })
     try {
-      const res = await fetch(`${API_URL}/diabetic/report/${selectedPatient.patient_id}/pdf`)
-      if (res.ok) {
-        const blob = await res.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `DrugGuard_Report_${selectedPatient.patient_id}_${new Date().toISOString().split('T')[0]}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        toast.success('PDF downloaded successfully!', { id: 'pdf-loading' })
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Failed to generate PDF', { id: 'pdf-loading' })
-      }
+      const blob = await downloadReportPdf(selectedPatient.patient_id)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `DrugGuard_Report_${selectedPatient.patient_id}_${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success('PDF downloaded successfully!', { id: 'pdf-loading' })
     } catch (err) {
-      toast.error('Error downloading PDF', { id: 'pdf-loading' })
-    } finally {
-      setLoading(false)
+      toast.error(err?.message || 'Error downloading PDF', { id: 'pdf-loading' })
     }
   }
 
   const addMedication = async (drugName) => {
     if (!selectedPatient || !drugName.trim()) return
     try {
-      const res = await fetch(`${API_URL}/diabetic/patients/${selectedPatient.patient_id}/medications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ drug_name: drugName.trim() })
-      })
-      if (res.ok) {
-        toast.success('Medication added')
-        fetchMedications(selectedPatient.patient_id)
-      }
+      await addMedicationToPatient(selectedPatient.patient_id, { drug_name: drugName.trim() })
+      toast.success('Medication added')
     } catch (err) {
-      toast.error('Error adding medication')
+      toast.error(err?.message || 'Error adding medication')
     }
   }
 

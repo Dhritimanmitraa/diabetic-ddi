@@ -4,16 +4,17 @@ FastAPI Router for Prescription RAG Module.
 Endpoints for uploading prescriptions, extracting medicines, and chatting.
 Includes a WebSocket endpoint for real-time prescription Q&A.
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
-from pydantic import BaseModel
-import logging
 import json
+import logging
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, async_session
 from app.config import get_settings
+from app.models import User
 from app.prescription.service import PrescriptionService
 from app.prescription.schemas import (
     PrescriptionResponse,
@@ -23,6 +24,7 @@ from app.prescription.schemas import (
     ChatResponse,
     ChatHistoryResponse,
 )
+from app.services.jwt_auth import decode_token, require_current_user
 from app.services.rate_limiter import rate_limit_dependency
 
 
@@ -67,8 +69,8 @@ def get_service(db: AsyncSession = Depends(get_db)) -> PrescriptionService:
 @router.post("/upload", response_model=PrescriptionUploadResponse)
 async def upload_prescription(
     file: UploadFile = File(..., description="Prescription image (JPEG, PNG) or PDF"),
-    user_id: Optional[str] = None,
     service: PrescriptionService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
     _: None = rate_limit_dependency(limit=settings.HEAVY_RATE_LIMIT_REQUESTS_PER_MIN, key_prefix="prescription_upload"),
 ):
     """
@@ -109,7 +111,7 @@ async def upload_prescription(
         file_data=file_data,
         filename=file.filename or "prescription",
         file_type=content_type,
-        user_id=user_id
+        user_id=current_user.id,
     )
     
     return result
@@ -120,6 +122,7 @@ async def upload_prescription_base64(
     image_base64: str = Form(..., description="Base64 encoded image"),
     filename: str = Form("prescription.jpg", description="Filename"),
     service: PrescriptionService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
     _: None = rate_limit_dependency(limit=settings.HEAVY_RATE_LIMIT_REQUESTS_PER_MIN, key_prefix="prescription_upload_b64"),
 ):
     """
@@ -137,6 +140,9 @@ async def upload_prescription_base64(
         file_data = base64.b64decode(image_base64)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid base64 data: {e}")
+
+    if len(file_data) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB.")
     
     # Determine content type from filename
     ext = filename.lower().split('.')[-1] if '.' in filename else 'jpg'
@@ -152,7 +158,8 @@ async def upload_prescription_base64(
     result = await service.upload_and_process(
         file_data=file_data,
         filename=filename,
-        file_type=content_type
+        file_type=content_type,
+        user_id=current_user.id,
     )
     
     return result
@@ -164,15 +171,15 @@ async def upload_prescription_base64(
 async def list_prescriptions(
     limit: int = 20,
     offset: int = 0,
-    user_id: Optional[str] = None,
-    service: PrescriptionService = Depends(get_service)
+    service: PrescriptionService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     List uploaded prescriptions with pagination.
     
     Optionally filter by user_id for multi-user support.
     """
-    prescriptions, total = await service.list_prescriptions(limit, offset, user_id)
+    prescriptions, total = await service.list_prescriptions(current_user.id, limit, offset)
     
     return PrescriptionHistoryResponse(
         total=total,
@@ -183,12 +190,13 @@ async def list_prescriptions(
 @router.get("/{prescription_id}", response_model=PrescriptionResponse)
 async def get_prescription(
     prescription_id: int,
-    service: PrescriptionService = Depends(get_service)
+    service: PrescriptionService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Get a specific prescription by ID.
     """
-    prescription = await service.get_prescription(prescription_id)
+    prescription = await service.get_prescription(prescription_id, current_user.id)
     
     if not prescription:
         raise HTTPException(status_code=404, detail="Prescription not found")
@@ -199,12 +207,13 @@ async def get_prescription(
 @router.delete("/{prescription_id}")
 async def delete_prescription(
     prescription_id: int,
-    service: PrescriptionService = Depends(get_service)
+    service: PrescriptionService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Delete a prescription and all related data.
     """
-    success = await service.delete_prescription(prescription_id)
+    success = await service.delete_prescription(prescription_id, current_user.id)
     
     if not success:
         raise HTTPException(status_code=404, detail="Prescription not found")
@@ -217,7 +226,8 @@ async def delete_prescription(
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_prescription(
     request: ChatRequest,
-    service: PrescriptionService = Depends(get_service)
+    service: PrescriptionService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Ask a question about a prescription.
@@ -231,7 +241,8 @@ async def chat_with_prescription(
     """
     result = await service.chat(
         prescription_id=request.prescription_id,
-        message=request.message
+        message=request.message,
+        user_id=current_user.id,
     )
     
     if not result:
@@ -243,12 +254,13 @@ async def chat_with_prescription(
 @router.get("/{prescription_id}/chat-history", response_model=ChatHistoryResponse)
 async def get_chat_history(
     prescription_id: int,
-    service: PrescriptionService = Depends(get_service)
+    service: PrescriptionService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Get chat history for a prescription.
     """
-    history = await service.get_chat_history(prescription_id)
+    history = await service.get_chat_history(prescription_id, current_user.id)
     
     if not history:
         raise HTTPException(status_code=404, detail="Prescription not found")
@@ -280,31 +292,18 @@ async def check_drug_interactions(
     
     service = InteractionService(db)
     interactions = []
-    
-    # Check all pairs
-    checked_pairs = set()
-    for i, drug1 in enumerate(drug_names):
-        for drug2 in drug_names[i + 1:]:
-            # Normalize pair to avoid duplicates
-            pair = tuple(sorted([drug1.lower(), drug2.lower()]))
-            if pair in checked_pairs:
-                continue
-            checked_pairs.add(pair)
-            
-            try:
-                result = await service.check_interaction(drug1, drug2)
-                
-                if result.has_interaction and result.interaction:
-                    interactions.append(DrugInteractionItem(
-                        drug1=drug1,
-                        drug2=drug2,
-                        severity=result.interaction.severity.value if hasattr(result.interaction.severity, 'value') else str(result.interaction.severity),
-                        description=result.interaction.description
-                    ))
-            except Exception as e:
-                logger.warning(f"Error checking interaction {drug1} + {drug2}: {e}")
-                continue
-    
+
+    for drug1, drug2, result in await service.check_batch_interactions(drug_names):
+        if result.has_interaction and result.interaction:
+            interactions.append(
+                DrugInteractionItem(
+                    drug1=drug1,
+                    drug2=drug2,
+                    severity=result.interaction.severity.value if hasattr(result.interaction.severity, "value") else str(result.interaction.severity),
+                    description=result.interaction.description,
+                )
+            )
+
     # Sort by severity (contraindicated > major > moderate > minor)
     severity_order = {'contraindicated': 0, 'major': 1, 'moderate': 2, 'minor': 3}
     interactions.sort(key=lambda x: severity_order.get(x.severity.lower(), 4))
@@ -335,7 +334,7 @@ async def prescription_health():
         "services": {
             "nvidia_cosmos": vision.nvidia_available,
             "gemini_vision": vision.gemini_available,
-            "ollama_fallback": True,  # Always available if Ollama is running
+            "ollama_fallback": bool(settings.OLLAMA_HOST and settings.OLLAMA_MODEL),
             "chromadb": rag.chroma_client is not None,
             "gemini_chat": llm.gemini_available,
         }
@@ -354,8 +353,23 @@ async def websocket_chat(websocket: WebSocket, prescription_id: int):
       Server → Client: {"type": "answer", "message": "...", "sources": [...]}
       Server → Client: {"type": "error", "message": "..."}
     """
+    token = (websocket.query_params.get("token") or "").strip()
+    if not token:
+        await websocket.close(code=1008, reason="Missing access token")
+        return
+
+    try:
+        payload = decode_token(token, expected_type="access")
+        current_user_id = payload["sub"]
+    except HTTPException:
+        await websocket.close(code=1008, reason="Invalid access token")
+        return
+
     await websocket.accept()
-    logger.info("WebSocket connected", extra={"prescription_id": prescription_id})
+    logger.info(
+        "WebSocket connected",
+        extra={"prescription_id": prescription_id, "user_id": current_user_id},
+    )
 
     try:
         while True:
@@ -377,6 +391,7 @@ async def websocket_chat(websocket: WebSocket, prescription_id: int):
                 result = await service.chat(
                     prescription_id=prescription_id,
                     message=user_msg,
+                    user_id=current_user_id,
                 )
 
             if result is None:
@@ -393,10 +408,18 @@ async def websocket_chat(websocket: WebSocket, prescription_id: int):
             })
 
     except WebSocketDisconnect:
-        logger.info("WebSocket disconnected", extra={"prescription_id": prescription_id})
+        logger.info(
+            "WebSocket disconnected",
+            extra={"prescription_id": prescription_id, "user_id": current_user_id},
+        )
     except Exception as e:
         logger.exception("WebSocket error")
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "Unable to process the request right now. Please try again.",
+                }
+            )
         except Exception:
             pass

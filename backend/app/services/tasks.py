@@ -1,113 +1,141 @@
 """
-Background task helpers using RQ.
+Durable background task helpers.
 
-Note: Scripts folder has been archived. These functions are placeholders
-for when background training/data refresh is needed.
+Job state is persisted in the primary database so status survives process restarts
+and can be shared across multiple API workers.
 """
-import os
+from __future__ import annotations
+
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional
 
-logger = logging.getLogger(__name__)
-
-try:
-    import redis
-    from rq import Queue
-    from rq.job import Job
-    RQ_AVAILABLE = True
-except Exception as exc:
-    RQ_AVAILABLE = False
-    Queue = None
-    Job = None
-    logger.warning("RQ unavailable, background queue features disabled: %s", exc)
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session
+from app.models import TrackedJob
 from app.ml.trainer import train_from_database
 
-from app.config import get_settings as _get_settings
-REDIS_URL = _get_settings().REDIS_URL
-
-_jobs: dict[str, dict[str, Any]] = {}
+logger = logging.getLogger(__name__)
 
 
-def get_all_jobs() -> list[dict[str, Any]]:
-    """Return tracked in-process jobs ordered by recency."""
-    return sorted(_jobs.values(), key=lambda item: item["created_at"], reverse=True)
-
-
-def get_job_status(job_id: str) -> Optional[dict[str, Any]]:
-    """Return a tracked job record."""
-    return _jobs.get(job_id)
-
-
-def start_tracked_job(name: str, metadata: Optional[dict[str, Any]] = None) -> str:
-    """Create a tracked job record and return its id."""
-    job_id = f"job-{int(datetime.now(timezone.utc).timestamp() * 1000)}"
-    _jobs[job_id] = {
-        "id": job_id,
-        "name": name,
-        "status": "queued",
-        "metadata": metadata or {},
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "result": None,
-        "error": None,
+def _job_to_dict(job: TrackedJob) -> dict[str, Any]:
+    """Serialize a tracked job row into API-friendly data."""
+    metadata = json.loads(job.metadata_json) if job.metadata_json else {}
+    result = json.loads(job.result_json) if job.result_json else None
+    return {
+        "id": job.id,
+        "name": job.name,
+        "status": job.status,
+        "metadata": metadata,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+        "result": result,
+        "error": job.error,
     }
+
+
+async def get_all_jobs(db: AsyncSession) -> list[dict[str, Any]]:
+    """Return tracked jobs ordered by recency."""
+    result = await db.execute(select(TrackedJob).order_by(desc(TrackedJob.created_at)))
+    return [_job_to_dict(job) for job in result.scalars().all()]
+
+
+async def get_job_status(db: AsyncSession, job_id: str) -> Optional[dict[str, Any]]:
+    """Return a tracked job record."""
+    job = await db.get(TrackedJob, job_id)
+    if not job:
+        return None
+    return _job_to_dict(job)
+
+
+async def has_active_job(db: AsyncSession, name: str) -> bool:
+    """Return whether a named job is currently queued or running."""
+    result = await db.execute(
+        select(TrackedJob.id).where(
+            TrackedJob.name == name,
+            TrackedJob.status.in_(("queued", "running")),
+        ).limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def start_tracked_job(
+    db: AsyncSession,
+    name: str,
+    metadata: Optional[dict[str, Any]] = None,
+) -> str:
+    """Create a tracked job record and return its id."""
+    now = datetime.now(timezone.utc)
+    job_id = f"job-{int(now.timestamp() * 1000)}"
+    job = TrackedJob(
+        id=job_id,
+        name=name,
+        status="queued",
+        metadata_json=json.dumps(metadata or {}),
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(job)
+    await db.commit()
     return job_id
 
 
-async def run_tracked_job(job_id: str, work: Callable[[], Awaitable[Any]]) -> None:
-    """Run async work while updating job status for observability."""
-    job = _jobs[job_id]
-    job["status"] = "running"
-    job["updated_at"] = datetime.now(timezone.utc).isoformat()
+async def run_tracked_job(
+    db: AsyncSession,
+    job_id: str,
+    work: Callable[[], Awaitable[Any]],
+) -> None:
+    """Run async work while updating durable job status."""
+    job = await db.get(TrackedJob, job_id)
+    if not job:
+        raise KeyError(job_id)
+
+    job.status = "running"
+    job.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+
     try:
         result = await work()
-        job["status"] = "completed"
-        job["result"] = result
+        job.status = "completed"
+        job.result_json = json.dumps(result, default=str)
+        job.error = None
     except Exception as exc:
-        job["status"] = "failed"
-        job["error"] = str(exc)
+        job.status = "failed"
+        job.error = str(exc)
         logger.exception("Tracked background job failed")
     finally:
-        job["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-
-def get_queue():
-    if not RQ_AVAILABLE:
-        raise RuntimeError("RQ/Redis not available. Install redis and rq packages.")
-    import redis as r
-    from rq import Queue as Q
-    conn = r.from_url(REDIS_URL)
-    return Q("default", connection=conn)
+        job.updated_at = datetime.now(timezone.utc)
+        await db.commit()
 
 
 def enqueue_training(n_trials: int = 50, run_comparison: bool = True):
-    """Enqueue model training job (requires Redis)."""
-    if not RQ_AVAILABLE:
-        raise RuntimeError("RQ not available")
-    queue = get_queue()
-    return queue.enqueue(train_models_job, n_trials, run_comparison, job_timeout="1h")
+    """Archived queue entrypoint kept for compatibility."""
+    raise RuntimeError("External queue integration has been replaced by durable DB-backed tracked jobs.")
 
 
 def enqueue_data_refresh(drugs: int = 5000, interactions: int = 100000):
-    """Enqueue data refresh job (requires Redis and scripts folder)."""
+    """Data refresh is not implemented."""
     raise NotImplementedError("Data refresh scripts have been archived. Use Archives/Scripts/ if needed.")
 
 
 def get_job(job_id: str):
-    """Get job status by ID."""
-    if not RQ_AVAILABLE:
-        return None
-    queue = get_queue()
-    return queue.fetch_job(job_id)
+    """Legacy queue lookup is no longer supported."""
+    return None
 
 
 def train_models_job(n_trials: int, run_comparison: bool):
-    """Run model training inside RQ (sync wrapper)."""
+    """Run model training in a sync wrapper for compatibility."""
     async def _run():
         async with async_session() as db:
-            await train_from_database(db_session=db, model_dir="./models", n_trials=n_trials, run_comparison=run_comparison)
+            await train_from_database(
+                db_session=db,
+                model_dir="./models",
+                n_trials=n_trials,
+                run_comparison=run_comparison,
+            )
+
     asyncio.run(_run())

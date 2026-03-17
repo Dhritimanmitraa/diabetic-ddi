@@ -1,8 +1,9 @@
 """Application configuration settings."""
-from pydantic_settings import BaseSettings
-from pydantic import ConfigDict
-from functools import lru_cache
 import os
+from functools import lru_cache
+
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -18,9 +19,14 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     APP_ENV: str = "development"
     STRICT_STARTUP_VALIDATION: bool = False
-    
+    LOG_LEVEL: str = "INFO"
+
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./drug_interactions.db"
+    DB_AUTO_CREATE: bool = True
+    DATABASE_POOL_SIZE: int = 10
+    DATABASE_MAX_OVERFLOW: int = 20
+    DATABASE_POOL_RECYCLE_SECONDS: int = 1800
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # API Keys (optional - for enhanced data sources)
@@ -30,6 +36,11 @@ class Settings(BaseSettings):
     REQUIRE_API_KEY_FOR_ADMIN: bool = True
     REQUIRE_GEMINI_KEY: bool = False
     ENABLE_CLOUD_SPEECH: bool = False
+    JWT_SECRET: str = "change-me-in-production"
+    JWT_ISSUER: str = "drugguard"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    JWT_REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+    METRICS_ENABLED: bool = True
     
     # Rate limiting
     RATE_LIMIT_REQUESTS_PER_MIN: int = 60
@@ -72,4 +83,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()
-

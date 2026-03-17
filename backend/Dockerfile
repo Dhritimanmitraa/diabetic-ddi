@@ -29,9 +29,11 @@ COPY --from=builder /install /usr/local
 
 # Copy application code
 COPY . .
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Create directories for data and models
-RUN mkdir -p /app/models /app/data /app/logs /app/chroma_db
+RUN mkdir -p /app/models /app/data /app/logs /app/chroma_db && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Non-root user for security
 RUN useradd -m -r appuser && chown -R appuser:appuser /app
@@ -47,4 +49,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health/live || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

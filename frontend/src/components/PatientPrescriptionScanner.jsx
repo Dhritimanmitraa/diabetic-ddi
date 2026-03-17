@@ -6,8 +6,8 @@ import {
     AlertTriangle, Shield, Camera, User, Loader2, XCircle, SwitchCamera
 } from 'lucide-react'
 
-import { getApiBaseUrl } from '../utils/platform'
-const API_URL = getApiBaseUrl()
+import useDiabetesStore from '../stores/useDiabetesStore'
+import usePrescriptionStore from '../stores/usePrescriptionStore'
 
 /**
  * PatientPrescriptionScanner Component
@@ -15,14 +15,20 @@ const API_URL = getApiBaseUrl()
  * Allows linking prescriptions to patients for personalized risk analysis
  */
 function PatientPrescriptionScanner({ initialPatientId = null }) {
-    // Patient state
-    const [patients, setPatients] = useState([])
-    const [selectedPatient, setSelectedPatient] = useState(null)
+    const patients = useDiabetesStore((state) => state.patients)
+    const selectedPatient = useDiabetesStore((state) => state.selectedPatient)
+    const setSelectedPatient = useDiabetesStore((state) => state.setSelectedPatient)
+    const loadPatients = useDiabetesStore((state) => state.loadPatients)
+    const assessMedicationRisks = useDiabetesStore((state) => state.assessMedicationRisks)
+    const addMedicationToPatient = useDiabetesStore((state) => state.addMedicationToPatient)
+
     const [patientsLoading, setPatientsLoading] = useState(false)
 
-    // Prescription state
-    const [prescription, setPrescription] = useState(null)
-    const [isUploading, setIsUploading] = useState(false)
+    const prescription = usePrescriptionStore((state) => state.prescription)
+    const isUploading = usePrescriptionStore((state) => state.isUploading)
+    const uploadFile = usePrescriptionStore((state) => state.uploadFile)
+    const resetCurrentPrescription = usePrescriptionStore((state) => state.resetCurrentPrescription)
+
     const [riskAssessments, setRiskAssessments] = useState([])
     const [isCheckingRisks, setIsCheckingRisks] = useState(false)
 
@@ -57,11 +63,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
     const fetchPatients = async () => {
         setPatientsLoading(true)
         try {
-            const res = await fetch(`${API_URL}/diabetic/patients`)
-            if (res.ok) {
-                const data = await res.json()
-                setPatients(data || [])
-            }
+            await loadPatients()
         } catch (err) {
             console.error('Failed to fetch patients:', err)
         } finally {
@@ -72,7 +74,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
     const handlePatientSelect = (patient) => {
         setSelectedPatient(patient)
         setActiveView('upload')
-        setPrescription(null)
+        resetCurrentPrescription()
         setRiskAssessments([])
     }
 
@@ -168,41 +170,24 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
     }, [stopCamera])
 
     const processFile = async (file) => {
-        setIsUploading(true)
-        setPrescription(null)
+        resetCurrentPrescription()
         setRiskAssessments([])
 
         try {
-            const formData = new FormData()
-            formData.append('file', file)
+            const result = await uploadFile(file)
+            if (result?.status === 'completed') {
+                setActiveView('results')
+                toast.success(`Extracted ${result.medicines?.length || 0} medicine(s)!`)
 
-            const res = await fetch(`${API_URL}/prescription/upload`, {
-                method: 'POST',
-                body: formData
-            })
-
-            if (res.ok) {
-                const result = await res.json()
-                if (result.status === 'completed') {
-                    setPrescription(result)
-                    setActiveView('results')
-                    toast.success(`Extracted ${result.medicines?.length || 0} medicine(s)!`)
-
-                    if (selectedPatient && result.medicines?.length > 0) {
-                        checkPatientRisks(result.medicines)
-                    }
-                } else {
-                    toast.error(result.message || 'Extraction failed')
+                if (selectedPatient && result.medicines?.length > 0) {
+                    await checkPatientRisks(result.medicines)
                 }
             } else {
-                const err = await res.json()
-                toast.error(err.detail || 'Upload failed')
+                toast.error(result?.message || 'Extraction failed')
             }
         } catch (err) {
             console.error('Upload error:', err)
             toast.error('Failed to process prescription')
-        } finally {
-            setIsUploading(false)
         }
     }
 
@@ -229,32 +214,9 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
         if (!selectedPatient) return
 
         setIsCheckingRisks(true)
-        const assessments = []
 
         try {
-            for (const med of medicines) {
-                try {
-                    const res = await fetch(`${API_URL}/diabetic/risk-check`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            patient_id: selectedPatient.patient_id,
-                            drug_name: med.name
-                        })
-                    })
-
-                    if (res.ok) {
-                        const data = await res.json()
-                        assessments.push({
-                            medicine: med.name,
-                            ...data
-                        })
-                    }
-                } catch (err) {
-                    console.error(`Failed to check ${med.name}:`, err)
-                }
-            }
-
+            const assessments = await assessMedicationRisks(selectedPatient.patient_id, medicines)
             setRiskAssessments(assessments)
 
             // Show summary toast
@@ -278,16 +240,12 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
         let added = 0
         for (const med of prescription.medicines) {
             try {
-                const res = await fetch(`${API_URL}/diabetic/patients/${selectedPatient.patient_id}/medications`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        drug_name: med.name,
-                        dosage: med.dosage || null,
-                        frequency: med.frequency || null
-                    })
+                await addMedicationToPatient(selectedPatient.patient_id, {
+                    drug_name: med.name,
+                    dosage: med.dosage || null,
+                    frequency: med.frequency || null,
                 })
-                if (res.ok) added++
+                added++
             } catch (err) {
                 console.error(`Failed to add ${med.name}:`, err)
             }
@@ -697,7 +655,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                         <div className="flex gap-3">
                             <button
                                 onClick={() => {
-                                    setPrescription(null)
+                                    resetCurrentPrescription()
                                     setRiskAssessments([])
                                     setActiveView('upload')
                                 }}

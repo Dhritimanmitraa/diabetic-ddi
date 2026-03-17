@@ -27,7 +27,8 @@ from app.diabetic.schemas import (
     RulesPreviewRequest, RulesPreviewResponse,
 )
 from app.schemas import DrugResponse
-from app.models import Drug, TwosidesInteraction, OffsidesEffect
+from app.models import Drug, OffsidesEffect, TwosidesInteraction, User
+from app.services.jwt_auth import require_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,8 @@ async def get_service(db: AsyncSession = Depends(get_db)) -> DiabeticDDIService:
 @router.post("/patients", response_model=DiabeticPatientResponse, status_code=status.HTTP_201_CREATED)
 async def create_patient(
     data: DiabeticPatientCreate,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Create a new diabetic patient profile.
@@ -53,7 +55,7 @@ async def create_patient(
     for accurate drug risk assessment.
     """
     try:
-        patient = await service.create_patient(data)
+        patient = await service.create_patient(data, user_id=current_user.id)
         return service._patient_to_response(patient)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -63,20 +65,22 @@ async def create_patient(
 async def list_patients(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """List all diabetic patients with pagination."""
-    patients, total = await service.list_patients(limit, offset)
+    patients, total = await service.list_patients(limit, offset, user_id=current_user.id)
     return [service._patient_to_response(p) for p in patients]
 
 
 @router.get("/patients/{patient_id}", response_model=DiabeticPatientResponse)
 async def get_patient(
     patient_id: str,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """Get a specific patient profile by ID."""
-    patient = await service.get_patient(patient_id)
+    patient = await service.get_patient(patient_id, user_id=current_user.id)
     if not patient:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     return service._patient_to_response(patient)
@@ -86,7 +90,8 @@ async def get_patient(
 async def update_patient(
     patient_id: str,
     data: DiabeticPatientUpdate,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Update patient profile.
@@ -94,7 +99,7 @@ async def update_patient(
     Update labs, complications, or other patient data.
     This will affect future drug risk assessments.
     """
-    patient = await service.update_patient(patient_id, data)
+    patient = await service.update_patient(patient_id, data, user_id=current_user.id)
     if not patient:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     return service._patient_to_response(patient)
@@ -103,10 +108,11 @@ async def update_patient(
 @router.delete("/patients/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_patient(
     patient_id: str,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """Delete a patient and all associated data."""
-    deleted = await service.delete_patient(patient_id)
+    deleted = await service.delete_patient(patient_id, user_id=current_user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
 
@@ -117,10 +123,11 @@ async def delete_patient(
 async def add_medication(
     patient_id: str,
     data: MedicationCreate,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """Add a medication to a patient's profile."""
-    medication = await service.add_medication(patient_id, data)
+    medication = await service.add_medication(patient_id, data, user_id=current_user.id)
     if not medication:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     return MedicationResponse.model_validate(medication)
@@ -130,10 +137,15 @@ async def add_medication(
 async def get_medications(
     patient_id: str,
     active_only: bool = Query(True),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """Get all medications for a patient."""
-    medications = await service.get_patient_medications(patient_id, active_only)
+    medications = await service.get_patient_medications(
+        patient_id,
+        active_only,
+        user_id=current_user.id,
+    )
     return [MedicationResponse.model_validate(m) for m in medications]
 
 
@@ -141,10 +153,11 @@ async def get_medications(
 async def remove_medication(
     patient_id: str,
     medication_id: int,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """Remove a medication from a patient's profile."""
-    deleted = await service.remove_medication(patient_id, medication_id)
+    deleted = await service.remove_medication(patient_id, medication_id, user_id=current_user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Medication not found")
 
@@ -154,7 +167,8 @@ async def remove_medication(
 @router.post("/risk-check", response_model=DrugRiskCheckResponse)
 async def check_drug_risk(
     data: DrugRiskCheckRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Check the risk of a drug for a specific diabetic patient.
@@ -171,7 +185,11 @@ async def check_drug_risk(
     Returns risk level (safe/caution/high_risk/contraindicated/fatal),
     risk factors, recommendations, and safer alternatives.
     """
-    result = await service.check_drug_risk(data.patient_id, data.drug_name)
+    result = await service.check_drug_risk(
+        data.patient_id,
+        data.drug_name,
+        user_id=current_user.id,
+    )
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
     return result
@@ -180,7 +198,8 @@ async def check_drug_risk(
 @router.post("/risk-check/llm", response_model=Dict)
 async def get_llm_analysis(
     data: DrugRiskCheckRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Get LLM analysis for a drug risk check (called separately after initial response).
@@ -188,12 +207,12 @@ async def get_llm_analysis(
     This endpoint is called in the background after the main risk-check endpoint
     returns, allowing the UI to show results immediately and update when LLM is ready.
     """
-    patient = await service.get_patient(data.patient_id)
+    patient = await service.get_patient(data.patient_id, user_id=current_user.id)
     if not patient:
         raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
     
     # Get current medications
-    medications = await service.get_patient_medications(data.patient_id)
+    medications = await service.get_patient_medications(data.patient_id, user_id=current_user.id)
     current_meds = [m.drug_name for m in medications]
     
     # Build patient context
@@ -227,7 +246,8 @@ async def get_llm_analysis(
 @router.post("/medication-list-check", response_model=MedicationListCheckResponse)
 async def check_medication_list(
     data: MedicationListCheckRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Check all medications in a patient's regimen.
@@ -235,7 +255,11 @@ async def check_medication_list(
     If medications list is not provided, uses the patient's current medications.
     Returns risk assessment for each drug plus overall recommendations.
     """
-    result = await service.check_all_medications(data.patient_id, data.medications)
+    result = await service.check_all_medications(
+        data.patient_id,
+        data.medications,
+        user_id=current_user.id,
+    )
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
     return result
@@ -244,7 +268,8 @@ async def check_medication_list(
 @router.post("/alternatives", response_model=SafeAlternativesResponse)
 async def find_alternatives(
     data: SafeAlternativesRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Find safer alternatives for a drug.
@@ -252,7 +277,11 @@ async def find_alternatives(
     Suggests drugs from the same class that are safer for this specific
     diabetic patient based on their labs and complications.
     """
-    result = await service.find_safe_alternatives(data.patient_id, data.drug_name)
+    result = await service.find_safe_alternatives(
+        data.patient_id,
+        data.drug_name,
+        user_id=current_user.id,
+    )
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
     return result
@@ -263,7 +292,8 @@ async def find_alternatives(
 @router.post("/report", response_model=PatientDDIReportResponse)
 async def generate_report(
     data: PatientDDIReportRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Generate a comprehensive DDI report for a diabetic patient.
@@ -277,7 +307,9 @@ async def generate_report(
     - Overall safety score
     """
     result = await service.generate_patient_report(
-        data.patient_id, data.include_alternatives
+        data.patient_id,
+        data.include_alternatives,
+        user_id=current_user.id,
     )
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {data.patient_id} not found")
@@ -288,10 +320,15 @@ async def generate_report(
 async def get_report(
     patient_id: str,
     include_alternatives: bool = Query(True),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """Get a DDI report for a patient (GET variant)."""
-    result = await service.generate_patient_report(patient_id, include_alternatives)
+    result = await service.generate_patient_report(
+        patient_id,
+        include_alternatives,
+        user_id=current_user.id,
+    )
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     return result
@@ -301,7 +338,8 @@ async def get_report(
 async def get_report_pdf(
     patient_id: str,
     include_alternatives: bool = Query(True),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Generate and download a PDF report for a diabetic patient.
@@ -316,21 +354,25 @@ async def get_report_pdf(
     from app.services.pdf_generator import generate_patient_report_pdf
     
     # Get the patient
-    patient = await service.get_patient(patient_id)
+    patient = await service.get_patient(patient_id, user_id=current_user.id)
     if not patient:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     
     # Generate report data
-    report = await service.generate_patient_report(patient_id, include_alternatives)
+    report = await service.generate_patient_report(
+        patient_id,
+        include_alternatives,
+        user_id=current_user.id,
+    )
     if not report:
         raise HTTPException(status_code=404, detail=f"Could not generate report for patient {patient_id}")
     
     # Get medications
-    medications = await service.get_patient_medications(patient_id)
+    medications = await service.get_patient_medications(patient_id, user_id=current_user.id)
     meds_data = [
         {
             "drug_name": m.drug_name,
-            "dosage": m.dosage or "N/A",
+            "dosage": m.dose or "N/A",
             "frequency": m.frequency or "N/A"
         }
         for m in medications
@@ -402,7 +444,8 @@ async def get_report_pdf(
 async def analyze_lab_report(
     file: UploadFile = File(..., description="Lab report image (JPEG, PNG) or PDF"),
     auto_create_patient: bool = Query(True, description="Automatically create patient from extracted data"),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Analyze a lab report image using Google Gemini Vision AI.
@@ -497,10 +540,10 @@ async def analyze_lab_report(
             )
             
             # Try to delete existing patient with same ID
-            await service.delete_patient(patient_id)
+            await service.delete_patient(patient_id, user_id=current_user.id)
             
             # Create new patient
-            patient = await service.create_patient(patient_data)
+            patient = await service.create_patient(patient_data, user_id=current_user.id)
             response_data["patient_created"] = True
             response_data["patient_id"] = patient.patient_id
             
@@ -515,7 +558,8 @@ async def analyze_lab_report(
 async def get_personalized_ddi_from_report(
     patient_id: str = Query(..., description="Patient ID to analyze"),
     drug_name: str = Query(..., description="Drug to check"),
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Get PERSONALIZED drug risk analysis based on patient's actual lab values.
@@ -526,7 +570,7 @@ async def get_personalized_ddi_from_report(
     from app.diabetic.lab_report_analyzer import get_lab_report_analyzer
     
     # Get patient
-    patient = await service.get_patient(patient_id)
+    patient = await service.get_patient(patient_id, user_id=current_user.id)
     if not patient:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     
@@ -581,14 +625,15 @@ async def get_analyzer_status():
 async def quick_drug_check(
     patient_id: str,
     drug_name: str,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Quick drug risk check (GET endpoint).
     
     Convenient endpoint for checking a single drug without POST body.
     """
-    result = await service.check_drug_risk(patient_id, drug_name)
+    result = await service.check_drug_risk(patient_id, drug_name, user_id=current_user.id)
     if not result:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     return result
@@ -841,7 +886,8 @@ async def get_drugs_by_food_category(category_id: str):
 @router.get("/patients/{patient_id}/food-interactions")
 async def get_patient_food_interactions(
     patient_id: str,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Get all food interactions for a patient's current medications.
@@ -851,12 +897,12 @@ async def get_patient_food_interactions(
     from app.services.food_interactions import get_food_interaction_service
     
     # Get patient
-    patient = await service.get_patient(patient_id)
+    patient = await service.get_patient(patient_id, user_id=current_user.id)
     if not patient:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
     
     # Get patient's current medications
-    medications = await service.get_patient_medications(patient_id)
+    medications = await service.get_patient_medications(patient_id, user_id=current_user.id)
     med_names = [m.drug_name for m in medications]
     
     if not med_names:
@@ -880,5 +926,3 @@ async def get_patient_food_interactions(
         "patient_name": patient.name,
         **result
     }
-
-

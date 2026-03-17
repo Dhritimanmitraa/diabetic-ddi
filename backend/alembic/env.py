@@ -2,6 +2,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy.engine import make_url
 
 from alembic import context
 import sys
@@ -22,13 +23,25 @@ if config.config_file_name is not None:
 from app.database import Base  # noqa: E402
 from app import models  # noqa: E402, F401
 from app.diabetic import models as diabetic_models  # noqa: E402, F401
+from app.prescription import models as prescription_models  # noqa: E402, F401
 
 target_metadata = Base.metadata
 
 # Override sqlalchemy.url from our app config (sync URL for migrations)
 from app.config import get_settings  # noqa: E402
 _settings = get_settings()
-_sync_url = _settings.DATABASE_URL.replace("+aiosqlite", "")
+
+
+def _to_sync_url(database_url: str) -> str:
+    url = make_url(database_url)
+    if url.drivername == "sqlite+aiosqlite":
+        return url.set(drivername="sqlite").render_as_string(hide_password=False)
+    if url.drivername == "postgresql+asyncpg":
+        return url.set(drivername="postgresql+psycopg").render_as_string(hide_password=False)
+    return url.render_as_string(hide_password=False)
+
+
+_sync_url = _to_sync_url(_settings.DATABASE_URL)
 config.set_main_option("sqlalchemy.url", _sync_url)
 
 # other values from the config, defined by the needs of env.py,
@@ -55,6 +68,9 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
+        compare_server_default=True,
+        render_as_batch=url.startswith("sqlite"),
     )
 
     with context.begin_transaction():
@@ -76,7 +92,11 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            compare_server_default=True,
+            render_as_batch=_sync_url.startswith("sqlite"),
         )
 
         with context.begin_transaction():

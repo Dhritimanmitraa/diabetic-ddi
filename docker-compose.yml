@@ -1,42 +1,22 @@
 services:
-  # ── Backend API ──────────────────────────────────────────────────────
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+  postgres:
+    image: postgres:16-alpine
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./drug_interactions.db
-      - REDIS_URL=redis://redis:6379/0
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
-      - PYTHONHASHSEED=0
+      POSTGRES_DB: ${POSTGRES_DB:-drugguard}
+      POSTGRES_USER: ${POSTGRES_USER:-drugguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-drugguard} -d ${POSTGRES_DB:-drugguard}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
-      - backend-data:/app/data
-      - backend-models:/app/models
-      - backend-chroma:/app/chroma_db
-      - backend-db:/app
-    depends_on:
-      redis:
-        condition: service_healthy
+      - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  # ── Frontend ─────────────────────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "5173:80"
-    depends_on:
-      - backend
-    restart: unless-stopped
-
-  # ── Redis (caching & rate limiting) ──────────────────────────────────
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -46,9 +26,66 @@ services:
       - redis-data:/data
     restart: unless-stopped
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DEBUG: ${DEBUG:-false}
+      STRICT_STARTUP_VALIDATION: ${STRICT_STARTUP_VALIDATION:-true}
+      DB_AUTO_CREATE: ${DB_AUTO_CREATE:-false}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://drugguard:change-me@postgres:5432/drugguard}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      API_KEY: ${API_KEY:-}
+      UVICORN_WORKERS: ${UVICORN_WORKERS:-2}
+      RUN_MIGRATIONS_ON_STARTUP: ${RUN_MIGRATIONS_ON_STARTUP:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+    volumes:
+      - backend-data:/app/data
+      - backend-models:/app/models
+      - backend-chroma:/app/chroma_db
+      - backend-logs:/app/logs
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_API_URL_MOBILE: ${VITE_API_URL_MOBILE:-}
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+
 volumes:
+  postgres-data:
+  redis-data:
   backend-data:
   backend-models:
   backend-chroma:
-  backend-db:
-  redis-data:
+  backend-logs:

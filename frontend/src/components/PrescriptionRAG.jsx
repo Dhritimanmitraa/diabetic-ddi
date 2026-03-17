@@ -8,35 +8,32 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import usePageTitle from '../hooks/usePageTitle'
-import {
-  uploadPrescription,
-  chatWithPrescription,
-  getPrescriptionHistory,
-  deletePrescription,
-  getPrescriptionChatHistory,
-  checkPrescriptionInteractions
-} from '../services/api'
+import usePrescriptionStore from '../stores/usePrescriptionStore'
 
 function PrescriptionRAG() {
   usePageTitle('Prescription Scanner')
-  // State
-  const [activeSection, setActiveSection] = useState('upload') // upload, result, history
-  const [isUploading, setIsUploading] = useState(false)
-  const [prescription, setPrescription] = useState(null)
-  const [history, setHistory] = useState([])
-  const [chatMessages, setChatMessages] = useState([])
+  const activeSection = usePrescriptionStore((state) => state.activeSection)
+  const setActiveSection = usePrescriptionStore((state) => state.setActiveSection)
+  const isUploading = usePrescriptionStore((state) => state.isUploading)
+  const prescription = usePrescriptionStore((state) => state.prescription)
+  const history = usePrescriptionStore((state) => state.history)
+  const chatMessages = usePrescriptionStore((state) => state.chatMessages)
+  const isChatLoading = usePrescriptionStore((state) => state.isChatLoading)
+  const drugWarnings = usePrescriptionStore((state) => state.drugWarnings)
+  const isCheckingWarnings = usePrescriptionStore((state) => state.isCheckingWarnings)
+  const loadHistory = usePrescriptionStore((state) => state.loadHistory)
+  const uploadFile = usePrescriptionStore((state) => state.uploadFile)
+  const sendChat = usePrescriptionStore((state) => state.sendChatMessage)
+  const removePrescription = usePrescriptionStore((state) => state.removePrescription)
+  const selectPrescriptionFromHistory = usePrescriptionStore((state) => state.selectPrescriptionFromHistory)
+
   const [chatInput, setChatInput] = useState('')
-  const [isChatLoading, setIsChatLoading] = useState(false)
   const [expandedMedicine, setExpandedMedicine] = useState(null)
 
   // Voice input state
   const [isListening, setIsListening] = useState(false)
   const [voiceSupported, setVoiceSupported] = useState(false)
   const recognitionRef = useRef(null)
-
-  // Drug warnings state
-  const [drugWarnings, setDrugWarnings] = useState(null)
-  const [isCheckingWarnings, setIsCheckingWarnings] = useState(false)
 
   // Uploaded image preview state
   const [uploadedImageUrl, setUploadedImageUrl] = useState(null)
@@ -91,24 +88,17 @@ function PrescriptionRAG() {
 
   // Load history on mount
   useEffect(() => {
-    loadHistory()
-  }, [])
+    loadHistory().catch((err) => {
+      console.error('Failed to load history:', err)
+      toast.error('Failed to load prescription history')
+    })
+  }, [loadHistory])
 
   // Scroll chat to bottom only when USER sends a message (not on every update)
   // Disabled auto-scroll to prevent page jumping
   // useEffect(() => {
   //   chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   // }, [chatMessages])
-
-  const loadHistory = async () => {
-    try {
-      const data = await getPrescriptionHistory(10, 0)
-      setHistory(data.prescriptions || [])
-    } catch (err) {
-      console.error('Failed to load history:', err)
-      toast.error('Failed to load prescription history')
-    }
-  }
 
   // Voice input toggle
   const toggleVoiceInput = useCallback(() => {
@@ -128,37 +118,6 @@ function PrescriptionRAG() {
       }
     }
   }, [isListening])
-
-  // Check drug interactions
-  const checkDrugWarnings = useCallback(async (medicines) => {
-    if (!medicines || medicines.length < 2) {
-      setDrugWarnings(null)
-      return
-    }
-
-    setIsCheckingWarnings(true)
-    try {
-      const drugNames = medicines.map(m => m.name)
-      const result = await checkPrescriptionInteractions(drugNames)
-      setDrugWarnings(result)
-
-      if (result.interactions?.length > 0) {
-        const severeCount = result.interactions.filter(
-          i => i.severity === 'major' || i.severity === 'contraindicated'
-        ).length
-
-        if (severeCount > 0) {
-          toast.error(`Found ${severeCount} serious drug interaction(s)!`, { duration: 5000 })
-        } else {
-          toast('Found drug interactions', { duration: 3000 })
-        }
-      }
-    } catch (err) {
-      console.error('Failed to check drug warnings:', err)
-    } finally {
-      setIsCheckingWarnings(false)
-    }
-  }, [])
 
   // Camera functions
   const startCamera = useCallback(async () => {
@@ -255,38 +214,24 @@ function PrescriptionRAG() {
       stopCamera()
 
       // Process the file like a normal upload
-      setIsUploading(true)
-      setPrescription(null)
-      setChatMessages([])
-      setDrugWarnings(null)
-
       // Create preview URL for the captured image
       const previewUrl = URL.createObjectURL(blob)
       setUploadedImageUrl(previewUrl)
 
       try {
-        const result = await uploadPrescription(file)
+        const result = await uploadFile(file)
 
         if (result.status === 'completed') {
-          setPrescription(result)
-          setActiveSection('result')
           toast.success(`Extracted ${result.medicines?.length || 0} medicine(s)!`)
-          loadHistory()
-
-          if (result.medicines?.length >= 2) {
-            checkDrugWarnings(result.medicines)
-          }
         } else {
           toast.error(result.message || 'Extraction failed')
         }
       } catch (err) {
         console.error('Upload error:', err)
         toast.error(err.message || 'Failed to process prescription')
-      } finally {
-        setIsUploading(false)
       }
     }, 'image/jpeg', 0.9)
-  }, [stopCamera, checkDrugWarnings])
+  }, [stopCamera, uploadFile])
 
   const handleFileSelect = async (event) => {
     const file = event.target.files?.[0]
@@ -305,11 +250,6 @@ function PrescriptionRAG() {
       return
     }
 
-    setIsUploading(true)
-    setPrescription(null)
-    setChatMessages([])
-    setDrugWarnings(null)
-
     // Create preview URL for the uploaded image
     if (file.type.startsWith('image/')) {
       const previewUrl = URL.createObjectURL(file)
@@ -319,38 +259,16 @@ function PrescriptionRAG() {
     }
 
     try {
-      const result = await uploadPrescription(file)
+      const result = await uploadFile(file)
 
       if (result.status === 'completed') {
-        setPrescription(result)
-        setActiveSection('result')
         toast.success(`Extracted ${result.medicines?.length || 0} medicine(s)!`)
-        loadHistory()
-
-        // Check for drug interactions
-        if (result.medicines?.length >= 2) {
-          checkDrugWarnings(result.medicines)
-        }
-
-        // Load any existing chat history
-        if (result.id) {
-          try {
-            const chatHistory = await getPrescriptionChatHistory(result.id)
-            if (chatHistory.messages?.length > 0) {
-              setChatMessages(chatHistory.messages)
-            }
-          } catch (e) {
-            // No chat history yet, that's fine
-          }
-        }
       } else {
         toast.error(result.message || 'Extraction failed')
       }
     } catch (err) {
       console.error('Upload error:', err)
       toast.error(err.message || 'Failed to upload prescription')
-    } finally {
-      setIsUploading(false)
     }
   }
 
@@ -373,30 +291,15 @@ function PrescriptionRAG() {
   const sendChatMessage = useCallback(async (message) => {
     if (!message?.trim() || !prescription?.id) return
 
-    const userMessage = message.trim()
     setChatInput('')
-    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }])
-    setIsChatLoading(true)
 
     try {
-      const response = await chatWithPrescription(prescription.id, userMessage)
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: response.assistant_message,
-        model_used: response.model_used
-      }])
+      await sendChat(message)
     } catch (err) {
       console.error('Chat error:', err)
       toast.error('Failed to get response')
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        error: true
-      }])
-    } finally {
-      setIsChatLoading(false)
     }
-  }, [prescription?.id])
+  }, [prescription?.id, sendChat])
 
   const handleSendChat = () => sendChatMessage(chatInput)
 
@@ -420,14 +323,8 @@ function PrescriptionRAG() {
           onClick={async () => {
             toast.dismiss(t.id)
             try {
-              await deletePrescription(id)
+              await removePrescription(id)
               toast.success('Prescription deleted')
-              loadHistory()
-              if (prescription?.id === id) {
-                setPrescription(null)
-                setChatMessages([])
-                setActiveSection('upload')
-              }
             } catch (err) {
               toast.error('Failed to delete')
             }
@@ -447,18 +344,11 @@ function PrescriptionRAG() {
   }
 
   const handleSelectFromHistory = async (item) => {
-    setPrescription(item)
-    setActiveSection('result')
-    setChatMessages([])
-
-    // Load chat history
     try {
-      const chatHistory = await getPrescriptionChatHistory(item.id)
-      if (chatHistory.messages?.length > 0) {
-        setChatMessages(chatHistory.messages)
-      }
+      await selectPrescriptionFromHistory(item)
     } catch (e) {
-      // No chat history
+      console.error('Failed to load prescription details:', e)
+      toast.error('Failed to load prescription details')
     }
   }
 

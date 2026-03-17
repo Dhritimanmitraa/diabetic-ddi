@@ -3,6 +3,11 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ARG VITE_API_URL=/api
+ARG VITE_API_URL_MOBILE=
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_API_URL_MOBILE=${VITE_API_URL_MOBILE}
+
 COPY package.json ./
 RUN npm install --frozen-lockfile 2>/dev/null || npm install
 
@@ -20,9 +25,6 @@ RUN printf 'server {\n\
   root /usr/share/nginx/html;\n\
   location / {\n\
     try_files $uri $uri/ /index.html;\n\
-  }\n\
-  location /v1/ {\n\
-    proxy_pass http://backend:8000;\n\
   }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 

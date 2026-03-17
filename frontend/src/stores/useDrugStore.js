@@ -61,8 +61,10 @@ const useDrugStore = create((set, get) => ({
           .then((alt) => set({ alternatives: alt }))
           .catch(() => {})
       }
+      return result
     } catch (err) {
       console.error('Interaction check failed', err)
+      throw err
     } finally {
       set({ isLoading: false })
     }

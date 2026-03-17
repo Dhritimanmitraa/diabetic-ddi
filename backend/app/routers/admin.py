@@ -31,6 +31,7 @@ async def system_status(db: AsyncSession = Depends(get_db)):
     total_interactions = await db.scalar(select(func.count(DrugInteraction.id))) or 0
     total_comparisons = await db.scalar(select(func.count(ComparisonLog.id))) or 0
     total_predictions = await db.scalar(select(func.count(MLPrediction.id))) or 0
+    jobs = await get_all_jobs(db)
 
     return {
         "status": "healthy",
@@ -59,11 +60,11 @@ async def system_status(db: AsyncSession = Depends(get_db)):
             "total_comparisons": total_comparisons,
             "total_ml_predictions": total_predictions,
         },
-        "jobs": get_all_jobs(),
+        "jobs": jobs,
     }
 
 
 @router.get("/jobs")
-async def list_jobs():
+async def list_jobs(db: AsyncSession = Depends(get_db)):
     """Return tracked background jobs."""
-    return {"jobs": get_all_jobs()}
+    return {"jobs": await get_all_jobs(db)}

@@ -49,3 +49,10 @@ async def get_comparison_history(
             for c in comparisons
         ]
     }
+
+
+@router.get("/history/stats")
+async def get_comparison_history_stats(db: AsyncSession = Depends(get_db)):
+    """Get aggregate comparison history statistics."""
+    comparison_logger = create_comparison_logger(db)
+    return await comparison_logger.get_comparison_stats()

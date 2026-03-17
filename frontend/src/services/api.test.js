@@ -30,6 +30,7 @@ import {
   getMLModelInfo,
   uploadPrescription,
   setAdminApiKey,
+  updateAuthSession,
 } from './api'
 
 describe('API Service', () => {
@@ -484,6 +485,11 @@ describe('API Service - File Upload', () => {
         raw_text: 'Prescription text...',
       }
 
+      updateAuthSession({
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        user: { id: 'user-1' },
+      })
       global.fetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResult),
@@ -496,16 +502,25 @@ describe('API Service - File Upload', () => {
         'http://localhost:8001/prescription/upload',
         expect.objectContaining({
           method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-access-token',
+          }),
         })
       )
       expect(result.prescription_id).toBe(1)
     })
 
     it('should handle upload failure', async () => {
+      updateAuthSession({
+        accessToken: 'test-access-token',
+        refreshToken: 'test-refresh-token',
+        user: { id: 'user-1' },
+      })
       global.fetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
         json: () => Promise.resolve({ detail: 'Invalid file format' }),
+        headers: { get: () => null },
       })
 
       const mockFile = new File(['test'], 'test.txt', { type: 'text/plain' })
