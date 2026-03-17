@@ -46,8 +46,15 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
 
     // Fetch patients on mount
     useEffect(() => {
-        fetchPatients()
-    }, [])
+        setPatientsLoading(true)
+        void loadPatients()
+            .catch((err) => {
+                console.error('Failed to fetch patients:', err)
+            })
+            .finally(() => {
+                setPatientsLoading(false)
+            })
+    }, [loadPatients])
 
     // Select initial patient if provided
     useEffect(() => {
@@ -58,18 +65,7 @@ function PatientPrescriptionScanner({ initialPatientId = null }) {
                 setActiveView('upload')
             }
         }
-    }, [initialPatientId, patients])
-
-    const fetchPatients = async () => {
-        setPatientsLoading(true)
-        try {
-            await loadPatients()
-        } catch (err) {
-            console.error('Failed to fetch patients:', err)
-        } finally {
-            setPatientsLoading(false)
-        }
-    }
+    }, [initialPatientId, patients, setSelectedPatient])
 
     const handlePatientSelect = (patient) => {
         setSelectedPatient(patient)

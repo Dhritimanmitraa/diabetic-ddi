@@ -271,40 +271,22 @@ export default function DiabetesManager() {
 
   // Fetch patients on mount
   useEffect(() => {
-    fetchPatients()
-    fetchModelInfo()
-  }, [])
+    void loadPatients().catch((err) => {
+      console.error('Error fetching patients:', err)
+    })
+    void loadModelInfo().catch((err) => {
+      console.error('Error fetching model info:', err)
+    })
+  }, [loadModelInfo, loadPatients])
 
   // Fetch medications when patient selected
   useEffect(() => {
     if (selectedPatient) {
-      fetchMedications(selectedPatient.patient_id)
+      void loadMedications(selectedPatient.patient_id).catch((err) => {
+        console.error('Error fetching medications:', err)
+      })
     }
-  }, [selectedPatient])
-
-  const fetchPatients = async () => {
-    try {
-      await loadPatients()
-    } catch (err) {
-      console.error('Error fetching patients:', err)
-    }
-  }
-
-  const fetchMedications = async (patientId) => {
-    try {
-      await loadMedications(patientId)
-    } catch (err) {
-      console.error('Error fetching medications:', err)
-    }
-  }
-
-  const fetchModelInfo = async () => {
-    try {
-      await loadModelInfo()
-    } catch (err) {
-      console.error('Error fetching model info:', err)
-    }
-  }
+  }, [loadMedications, selectedPatient])
 
   // Search drugs from the real DB
   const searchDrugs = async (query) => {

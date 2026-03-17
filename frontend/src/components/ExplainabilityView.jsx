@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Lightbulb,
@@ -23,7 +23,7 @@ const API_BASE = getApiBaseUrl();
  * Displays SHAP/LIME explanations for ML drug interaction predictions.
  * Shows feature importance, waterfall visualization, and natural language explanation.
  */
-export default function ExplainabilityView({ drug1, drug2, onClose }) {
+export default function ExplainabilityView({ drug1, drug2 }) {
     const [explanation, setExplanation] = useState(null);
     const [prediction, setPrediction] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
     const [expanded, setExpanded] = useState(false);
     const [method, setMethod] = useState('auto');
 
-    const fetchExplanation = async () => {
+    const fetchExplanation = useCallback(async () => {
         if (!drug1 || !drug2) {
             setError('Please select two drugs to explain');
             return;
@@ -55,14 +55,14 @@ export default function ExplainabilityView({ drug1, drug2, onClose }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [drug1, drug2, method]);
 
     // Fetch explanation when drugs change
     useEffect(() => {
         if (drug1 && drug2) {
             fetchExplanation();
         }
-    }, [drug1, drug2, method]);
+    }, [drug1, drug2, fetchExplanation]);
 
     const getSeverityColor = (severity) => {
         const colors = {

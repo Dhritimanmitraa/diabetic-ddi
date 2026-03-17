@@ -12,7 +12,7 @@ import {
   searchDrugs,
 } from '../services/api'
 
-const useDrugStore = create((set, get) => ({
+const useDrugStore = create((set) => ({
   // ── State ──────────────────────────────────────────────────
   results: null,
   alternatives: null,

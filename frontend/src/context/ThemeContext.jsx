@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import ThemeContext from './theme-context';
 
 /**
  * Theme Context for Dark/Light mode support
@@ -6,8 +7,6 @@ import { createContext, useContext, useEffect, useState } from 'react';
  * Provides theme state management with localStorage persistence
  * and system preference detection.
  */
-
-const ThemeContext = createContext(undefined);
 
 export function ThemeProvider({ children }) {
     const [theme, setTheme] = useState(() => {
@@ -79,13 +78,3 @@ export function ThemeProvider({ children }) {
         </ThemeContext.Provider>
     );
 }
-
-export function useTheme() {
-    const context = useContext(ThemeContext);
-    if (context === undefined) {
-        throw new Error('useTheme must be used within a ThemeProvider');
-    }
-    return context;
-}
-
-export default ThemeContext;

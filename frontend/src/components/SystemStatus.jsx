@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Activity, KeyRound, RefreshCw, ShieldAlert, Server } from 'lucide-react'
 
 import { getAdminApiKey, getSystemStatus, setAdminApiKey } from '../services/api'
@@ -31,7 +31,7 @@ export default function SystemStatus() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const load = async (overrideKey = apiKey) => {
+  const load = useCallback(async (overrideKey = apiKey) => {
     setLoading(true)
     setError('')
     try {
@@ -43,13 +43,13 @@ export default function SystemStatus() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiKey])
 
   useEffect(() => {
     if (apiKey) {
-      load(apiKey)
+      void load(apiKey)
     }
-  }, [apiKey])
+  }, [apiKey, load])
 
   const handleSave = async (e) => {
     e.preventDefault()

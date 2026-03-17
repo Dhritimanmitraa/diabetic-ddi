@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, X, ArrowDown, Loader2, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -147,21 +147,21 @@ function InteractionChecker() {
   const drug1Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
   const drug2Search = useDebouncedSearch(searchDrugs, { delay: 300, minLength: 2 })
 
-  const handleSelectDrug1 = useCallback((drug) => {
+  const handleSelectDrug1 = (drug) => {
     drug1Search.selectItem(drug)
-  }, [drug1Search.selectItem])
+  }
 
-  const handleSelectDrug2 = useCallback((drug) => {
+  const handleSelectDrug2 = (drug) => {
     drug2Search.selectItem(drug)
-  }, [drug2Search.selectItem])
+  }
 
-  const handleSwap = useCallback(() => {
+  const handleSwap = () => {
     const temp1Query = drug1Search.query
     const temp2Query = drug2Search.query
     // Use selectItem to mark as selected, preventing re-search
     drug1Search.selectItem({ name: temp2Query })
     drug2Search.selectItem({ name: temp1Query })
-  }, [drug1Search.query, drug2Search.query, drug1Search.selectItem, drug2Search.selectItem])
+  }
 
   // Ctrl+Enter shortcut
   useEffect(() => {
@@ -223,10 +223,10 @@ function InteractionChecker() {
     { drug1: 'Metformin', drug2: 'Lisinopril', severity: 'safe' },
   ]
 
-  const handleExampleClick = useCallback((example) => {
+  const handleExampleClick = (example) => {
     drug1Search.setQuery(example.drug1)
     drug2Search.setQuery(example.drug2)
-  }, [drug1Search.setQuery, drug2Search.setQuery])
+  }
 
   const severityColors = {
     major: 'text-orange-400 bg-orange-500/8 border-orange-500/20',

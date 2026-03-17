@@ -44,7 +44,7 @@ const AlternativesDisplay = memo(function AlternativesDisplay({ alternatives }) 
             </div>
             <div className="grid gap-2.5">
               {alternatives_for_drug1.map((alt, index) => (
-                <AlternativeCard key={index} alternative={alt} delay={index * 0.08} />
+                <AlternativeCard key={index} alternative={alt} />
               ))}
             </div>
           </div>
@@ -61,7 +61,7 @@ const AlternativesDisplay = memo(function AlternativesDisplay({ alternatives }) 
             </div>
             <div className="grid gap-2.5">
               {alternatives_for_drug2.map((alt, index) => (
-                <AlternativeCard key={index} alternative={alt} delay={0.2 + index * 0.08} />
+                <AlternativeCard key={index} alternative={alt} />
               ))}
             </div>
           </div>
@@ -125,7 +125,7 @@ const AlternativesDisplay = memo(function AlternativesDisplay({ alternatives }) 
   )
 })
 
-function AlternativeCard({ alternative, delay }) {
+function AlternativeCard({ alternative }) {
   const { drug, similarity_score, reason, has_interaction_with_other } = alternative
 
   return (
