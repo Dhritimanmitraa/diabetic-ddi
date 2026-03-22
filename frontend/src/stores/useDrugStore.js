@@ -52,14 +52,18 @@ const useDrugStore = create((set) => ({
       set({ mlLoading: true })
       getMLPrediction(drug1, drug2)
         .then((ml) => set({ mlPrediction: ml }))
-        .catch(() => {})
+        .catch((err) => {
+          console.warn('ML prediction unavailable', err)
+        })
         .finally(() => set({ mlLoading: false }))
 
       // Step 3 — alternatives if interaction detected
       if (result?.has_interaction) {
         getAlternatives(drug1, drug2)
           .then((alt) => set({ alternatives: alt }))
-          .catch(() => {})
+          .catch((err) => {
+            console.warn('Alternative lookup failed', err)
+          })
       }
       return result
     } catch (err) {

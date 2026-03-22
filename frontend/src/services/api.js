@@ -239,6 +239,16 @@ export async function getMLPrediction(drug1, drug2) {
   })
 }
 
+export async function getMLExplanation(drug1, drug2, method = 'auto') {
+  return apiRequest(`/ml/explain?method=${encodeURIComponent(method)}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      drug1_name: drug1,
+      drug2_name: drug2,
+    }),
+  })
+}
+
 export async function getMLModelInfo() {
   return apiRequest('/ml/model-info')
 }
@@ -433,6 +443,7 @@ export default {
   healthCheck,
   getSystemStatus,
   getMLPrediction,
+  getMLExplanation,
   getMLModelInfo,
   getMLComparison,
   getHistory,

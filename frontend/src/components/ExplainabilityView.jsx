@@ -12,10 +12,7 @@ import {
     BarChart3,
     Brain
 } from 'lucide-react';
-import axios from 'axios';
-
-import { getApiBaseUrl } from '../utils/platform';
-const API_BASE = getApiBaseUrl();
+import { getMLExplanation } from '../services/api';
 
 /**
  * ExplainabilityView Component
@@ -41,17 +38,11 @@ export default function ExplainabilityView({ drug1, drug2 }) {
         setError(null);
 
         try {
-            const response = await axios.post(`${API_BASE}/ml/explain`, {
-                drug1_name: drug1,
-                drug2_name: drug2
-            }, {
-                params: { method }
-            });
-
-            setPrediction(response.data.prediction);
-            setExplanation(response.data.explanation);
+            const response = await getMLExplanation(drug1, drug2, method);
+            setPrediction(response.prediction);
+            setExplanation(response.explanation);
         } catch (err) {
-            setError(err.response?.data?.detail || 'Failed to get explanation');
+            setError(err?.message || 'Failed to get explanation');
         } finally {
             setLoading(false);
         }

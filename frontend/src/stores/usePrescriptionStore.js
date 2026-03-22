@@ -72,7 +72,8 @@ const usePrescriptionStore = create((set, get) => ({
         try {
           const chatHistory = await getPrescriptionChatHistory(result.id)
           set({ chatMessages: chatHistory.messages || [] })
-        } catch {
+        } catch (error) {
+          console.warn('Failed to load prescription chat history', error)
           set({ chatMessages: [] })
         }
       }
@@ -137,7 +138,8 @@ const usePrescriptionStore = create((set, get) => ({
     try {
       const chatHistory = await getPrescriptionChatHistory(item.id)
       set({ chatMessages: chatHistory.messages || [] })
-    } catch {
+    } catch (error) {
+      console.warn('Failed to load chat history from selected prescription', error)
       set({ chatMessages: [] })
     }
 
