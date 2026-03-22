@@ -53,29 +53,41 @@ DrugGuard is a clinical decision support system that helps diabetic patients and
 git clone https://github.com/Dhritimanmitraa/diabetic-ddi.git
 cd diabetic-ddi
 
+# Linux / macOS - One-click start
+chmod +x start_app.sh && ./start_app.sh
+
 # Windows - One-click start
-start_app.bat
+run_app.bat
 ```
+
+The startup script automatically:
+- Creates a Python virtual environment
+- Installs all dependencies
+- Creates `.env` files from the provided examples
+- Starts the backend (port 8000) and frontend (port 5173)
 
 **Manual Setup:**
 
 ```bash
 # Backend
 cd backend
-python -m venv venv && venv\Scripts\activate
+python3 -m venv venv && source venv/bin/activate   # Linux/macOS
+# OR: python -m venv venv && venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 
-# Create .env file with:
-# GEMINI_API_KEY=your_key_here
+# Copy and edit the environment file
+cp .env.example .env
+# Add your GOOGLE_API_KEY in backend/.env for AI features
 
-uvicorn app.main:app --port 8001 --reload
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 # Frontend (new terminal)
 cd frontend
+cp .env.example .env
 npm install && npm run dev
 ```
 
-Open `http://localhost:3000`
+Open `http://localhost:5173`
 
 ---
 

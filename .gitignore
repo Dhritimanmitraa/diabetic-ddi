@@ -130,6 +130,7 @@ dmypy.json
 !build_all.bat
 !ralph_loop.bat
 !ralph_loop.sh
+!start_app.sh
 
 # Android build artifacts
 frontend/android/.gradle/
