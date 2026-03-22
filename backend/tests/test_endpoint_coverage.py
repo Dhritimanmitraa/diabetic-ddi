@@ -810,6 +810,7 @@ class TestDiabeticEndpoints:
         preview_resp = await client.post(
             "/diabetic/rules/preview",
             json={"patient": {"diabetes_type": "type_2", "age": 55}, "drugs": ["Metformin"]},
+            headers=headers,
         )
         assert preview_resp.status_code == 200
 

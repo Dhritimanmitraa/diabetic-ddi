@@ -238,9 +238,12 @@ async def get_llm_analysis(
             }
         else:
             return {"llm_analysis": None, "error": "LLM analysis unavailable"}
-    except Exception as e:
-        logger.error(f"LLM analysis failed: {e}")
-        return {"llm_analysis": None, "error": str(e)}
+    except Exception:
+        logger.exception(
+            "LLM analysis failed",
+            extra={"patient_id": data.patient_id, "drug_name": data.drug_name},
+        )
+        return {"llm_analysis": None, "error": "LLM analysis temporarily unavailable"}
 
 
 @router.post("/medication-list-check", response_model=MedicationListCheckResponse)
@@ -408,7 +411,7 @@ async def get_report_pdf(
                 "drug_name": assessment.drug_name,
                 "risk_level": assessment.risk_level,
                 "risk_factors": assessment.risk_factors or [],
-                "recommendations": assessment.recommendations or []
+                "recommendations": [assessment.recommendation] if assessment.recommendation else []
             })
     
     try:
@@ -433,9 +436,9 @@ async def get_report_pdf(
             status_code=500,
             detail="PDF generation requires reportlab. Install with: pip install reportlab"
         )
-    except Exception as e:
-        logger.error(f"PDF generation failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+    except Exception:
+        logger.exception("PDF generation failed", extra={"patient_id": patient_id})
+        raise HTTPException(status_code=500, detail="Failed to generate PDF report")
 
 
 # ==================== Lab Report Analysis (Gemini Vision) ====================
@@ -772,7 +775,8 @@ async def search_diabetic_drugs(
 @router.post("/rules/preview", response_model=RulesPreviewResponse)
 async def preview_rules(
     data: RulesPreviewRequest,
-    service: DiabeticDDIService = Depends(get_service)
+    service: DiabeticDDIService = Depends(get_service),
+    current_user: User = Depends(require_current_user),
 ):
     """
     Simulate rule hits for an ad-hoc patient context and a list of drugs.

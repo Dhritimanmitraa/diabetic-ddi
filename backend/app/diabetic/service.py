@@ -373,10 +373,9 @@ class DiabeticDDIService:
                 
                 # Log if ML disagrees with rules (for monitoring/retraining) - non-blocking
                 if ml_result.risk_level != assessment.risk_level:
-                    asyncio.create_task(asyncio.to_thread(
-                        logger.warning,
-                        {
-                            "event": "ml_rule_disagreement",
+                    logger.warning(
+                        "ml_rule_disagreement",
+                        extra={
                             "drug": drug_name,
                             "rule_risk": assessment.risk_level,
                             "ml_risk": ml_result.risk_level,
@@ -385,9 +384,9 @@ class DiabeticDDIService:
                                 "egfr": patient_context.get("egfr"),
                                 "potassium": patient_context.get("potassium"),
                                 "age": patient_context.get("age"),
-                            }
-                        }
-                    ))
+                            },
+                        },
+                    )
             
             # NOTE: LLM is NOT awaited here - it will be fetched separately via /risk-check/llm endpoint
             # This allows the frontend to show results immediately and update when LLM is ready
@@ -397,10 +396,9 @@ class DiabeticDDIService:
             asyncio.create_task(self._save_risk_assessment(patient, drug_name, assessment))
             
             # Log in background (non-blocking)
-            asyncio.create_task(asyncio.to_thread(
-                logger.info,
-                {
-                    "event": "diabetic_rule_hit",
+            logger.info(
+                "diabetic_rule_hit",
+                extra={
                     "drug": drug_name,
                     "risk_level": assessment.risk_level,
                     "severity": assessment.severity,
@@ -409,8 +407,8 @@ class DiabeticDDIService:
                     "evidence_sources": assessment.evidence_sources,
                     "patient_factors": assessment.patient_factors,
                     "patient_id": patient.patient_id,
-                }
-            ))
+                },
+            )
             
             # SHAP and LLM explainer are slow - skip them for immediate response
             # They can be added later if needed via separate endpoints

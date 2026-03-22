@@ -13,18 +13,29 @@ logger = logging.getLogger(__name__)
 
 
 def validate_startup_configuration() -> None:
-    """Optionally fail fast in production when required secrets are missing."""
+    """Validate startup configuration with production safety guards."""
     settings = get_settings()
     is_production = settings.APP_ENV.lower() in {"prod", "production"}
     if not is_production:
         return
+
+    insecure: list[str] = []
+
+    if not settings.JWT_SECRET or settings.JWT_SECRET == "change-me-in-production":
+        insecure.append("JWT_SECRET")
+
+    if insecure:
+        logger.error(
+            "Startup validation failed due to insecure settings",
+            extra={"insecure_settings": insecure, "app_env": settings.APP_ENV},
+        )
+        raise RuntimeError(f"Insecure production settings: {', '.join(insecure)}")
 
     if not settings.STRICT_STARTUP_VALIDATION:
         logger.warning("Production strict startup validation is disabled")
         return
 
     missing: list[str] = []
-    insecure: list[str] = []
 
     if settings.REQUIRE_API_KEY_FOR_ADMIN and not settings.API_KEY:
         missing.append("API_KEY")
@@ -37,9 +48,6 @@ def validate_startup_configuration() -> None:
     if settings.ENABLE_CLOUD_SPEECH and not settings.CLOUD_SPEECH_API_KEY:
         missing.append("CLOUD_SPEECH_API_KEY")
 
-    if not settings.JWT_SECRET or settings.JWT_SECRET == "change-me-in-production":
-        insecure.append("JWT_SECRET")
-
     if settings.DB_AUTO_CREATE:
         logger.warning(
             "DB_AUTO_CREATE is enabled in production. Prefer Alembic migrations during deployment."
@@ -51,13 +59,6 @@ def validate_startup_configuration() -> None:
             extra={"missing_settings": missing, "app_env": settings.APP_ENV},
         )
         raise RuntimeError(f"Missing required production settings: {', '.join(missing)}")
-
-    if insecure:
-        logger.error(
-            "Startup validation failed due to insecure settings",
-            extra={"insecure_settings": insecure, "app_env": settings.APP_ENV},
-        )
-        raise RuntimeError(f"Insecure production settings: {', '.join(insecure)}")
 
 
 async def seed_initial_data() -> None:
