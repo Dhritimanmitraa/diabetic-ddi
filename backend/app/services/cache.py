@@ -366,3 +366,69 @@ async def get_cached_db_stats() -> Optional[dict]:
         Cached stats or None
     """
     return await cache_get_json("db_stats:current")
+
+
+# =============================================================================
+# In-process TTL cache (for hot-path lookups when Redis is optional)
+# =============================================================================
+
+import threading
+import time as _time
+
+
+class TTLCache:
+    """Thread-safe bounded-size cache with per-key TTL expiry."""
+
+    __slots__ = ("_store", "_lock", "_default_ttl", "_max_size")
+
+    def __init__(self, default_ttl_seconds: float = 300.0, max_size: int = 2048):
+        self._store: dict[str, tuple[float, Any]] = {}
+        self._lock = threading.Lock()
+        self._default_ttl = default_ttl_seconds
+        self._max_size = max_size
+
+    def get(self, key: str) -> Optional[Any]:
+        with self._lock:
+            entry = self._store.get(key)
+            if entry is None:
+                return None
+            expires_at, value = entry
+            if _time.monotonic() > expires_at:
+                del self._store[key]
+                return None
+            return value
+
+    def set(self, key: str, value: Any, ttl: float | None = None) -> None:
+        ttl = ttl if ttl is not None else self._default_ttl
+        expires_at = _time.monotonic() + ttl
+        with self._lock:
+            if len(self._store) >= self._max_size and key not in self._store:
+                self._evict_expired()
+                if len(self._store) >= self._max_size:
+                    oldest_key = next(iter(self._store))
+                    del self._store[oldest_key]
+            self._store[key] = (expires_at, value)
+
+    def invalidate(self, key: str) -> None:
+        with self._lock:
+            self._store.pop(key, None)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._store.clear()
+
+    @property
+    def size(self) -> int:
+        return len(self._store)
+
+    def _evict_expired(self) -> None:
+        now = _time.monotonic()
+        expired = [k for k, (exp, _) in self._store.items() if now > exp]
+        for k in expired:
+            del self._store[k]
+
+
+# Singleton caches for hot-path lookups
+interaction_cache = TTLCache(default_ttl_seconds=600.0, max_size=4096)
+explainability_cache = TTLCache(default_ttl_seconds=900.0, max_size=1024)
+drug_lookup_cache = TTLCache(default_ttl_seconds=1800.0, max_size=2048)

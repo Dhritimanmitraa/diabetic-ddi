@@ -81,7 +81,7 @@ class DiabeticPatient(Base):
     comorbidities = Column(Text, nullable=True)  # JSON list
     
     # Metadata
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Relationships
@@ -127,7 +127,7 @@ class DiabeticMedication(Base):
     __tablename__ = "diabetic_medications"
     
     id = Column(Integer, primary_key=True, index=True)
-    patient_id = Column(Integer, ForeignKey("diabetic_patients.id"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("diabetic_patients.id"), nullable=False, index=True)
     
     # Drug info
     drug_name = Column(String(255), nullable=False)
@@ -145,7 +145,7 @@ class DiabeticMedication(Base):
     is_diabetes_medication = Column(Boolean, default=False)
     
     # Status
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True, index=True)
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)
     
@@ -164,7 +164,7 @@ class DiabeticDrugRisk(Base):
     __tablename__ = "diabetic_drug_risks"
     
     id = Column(Integer, primary_key=True, index=True)
-    patient_id = Column(Integer, ForeignKey("diabetic_patients.id"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("diabetic_patients.id"), nullable=False, index=True)
     
     # Drug info
     drug_name = Column(String(255), nullable=False)

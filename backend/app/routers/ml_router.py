@@ -133,6 +133,53 @@ async def predict_interaction(body: PredictRequest, db: AsyncSession = Depends(g
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class ExplainRequest(BaseModel):
+    drug1_name: str = Field(..., min_length=1)
+    drug2_name: str = Field(..., min_length=1)
+
+
+@router.post("/explain")
+async def explain_prediction(
+    body: ExplainRequest,
+    method: str = "auto",
+    db: AsyncSession = Depends(get_db),
+):
+    """Return SHAP/LIME feature-attribution explanation for a drug pair prediction."""
+    from app.ml.predictor import get_predictor
+    from app.ml.explainability_service import get_explainability_service
+    from app.services.cache import explainability_cache
+
+    cache_key = f"explain:{body.drug1_name.upper()}:{body.drug2_name.upper()}:{method}"
+    cached = explainability_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    predictor = get_predictor("./models")
+    if not predictor.is_loaded:
+        raise HTTPException(status_code=503, detail="ML models not loaded.")
+
+    drug1_dict = await _drug_to_dict(db, body.drug1_name)
+    drug2_dict = await _drug_to_dict(db, body.drug2_name)
+
+    try:
+        pred_result = predictor.predict(drug1_dict, drug2_dict)
+        features = predictor._extract_features(drug1_dict, drug2_dict)
+        svc = get_explainability_service(predictor.models)
+        explanation = svc.explain(
+            features,
+            body.drug1_name,
+            body.drug2_name,
+            pred_result.interaction_probability,
+            pred_result.severity_prediction or "unknown",
+            method=method,
+        )
+        payload = explanation.to_dict()
+        explainability_cache.set(cache_key, payload)
+        return payload
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/model-info")
 async def model_info():
     """Return detailed model info, metrics, and feature importance for the dashboard."""

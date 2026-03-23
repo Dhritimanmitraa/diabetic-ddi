@@ -7,7 +7,7 @@ and PDF report generation.
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from typing import List, Optional, Dict
 from datetime import datetime
 import logging
@@ -356,11 +356,6 @@ async def get_report_pdf(
     """
     from app.services.pdf_generator import generate_patient_report_pdf
     
-    # Get the patient
-    patient = await service.get_patient(patient_id, user_id=current_user.id)
-    if not patient:
-        raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
-    
     # Generate report data
     report = await service.generate_patient_report(
         patient_id,
@@ -370,37 +365,37 @@ async def get_report_pdf(
     if not report:
         raise HTTPException(status_code=404, detail=f"Could not generate report for patient {patient_id}")
     
-    # Get medications
-    medications = await service.get_patient_medications(patient_id, user_id=current_user.id)
+    patient = report.patient
+    medications = report.current_medications
     meds_data = [
         {
-            "drug_name": m.drug_name,
-            "dosage": m.dose or "N/A",
-            "frequency": m.frequency or "N/A"
+            "drug_name": m["drug_name"] if isinstance(m, dict) else m.drug_name,
+            "dosage": (m.get("dose") if isinstance(m, dict) else m.dose) or "N/A",
+            "frequency": (m.get("frequency") if isinstance(m, dict) else m.frequency) or "N/A",
         }
         for m in medications
     ]
     
     # Build patient data dict
     patient_data = {
-        "patient_id": patient.patient_id,
-        "diabetes_type": patient.diabetes_type,
-        "age": patient.age,
+        "patient_id": patient["patient_id"] if isinstance(patient, dict) else patient.patient_id,
+        "diabetes_type": patient["diabetes_type"] if isinstance(patient, dict) else patient.diabetes_type,
+        "age": patient.get("age") if isinstance(patient, dict) else patient.age,
         "labs": {
-            "egfr": patient.egfr,
-            "hba1c": patient.hba1c,
-            "potassium": patient.potassium,
-            "creatinine": patient.creatinine,
+            "egfr": patient.get("egfr") if isinstance(patient, dict) else patient.egfr,
+            "hba1c": patient.get("hba1c") if isinstance(patient, dict) else patient.hba1c,
+            "potassium": patient.get("potassium") if isinstance(patient, dict) else patient.potassium,
+            "creatinine": patient.get("creatinine") if isinstance(patient, dict) else patient.creatinine,
         },
         "complications": []
     }
-    if patient.has_nephropathy:
+    if (patient.get("has_nephropathy") if isinstance(patient, dict) else patient.has_nephropathy):
         patient_data["complications"].append("nephropathy")
-    if patient.has_retinopathy:
+    if (patient.get("has_retinopathy") if isinstance(patient, dict) else patient.has_retinopathy):
         patient_data["complications"].append("retinopathy")
-    if patient.has_neuropathy:
+    if (patient.get("has_neuropathy") if isinstance(patient, dict) else patient.has_neuropathy):
         patient_data["complications"].append("neuropathy")
-    if patient.has_cardiovascular:
+    if (patient.get("has_cardiovascular") if isinstance(patient, dict) else patient.has_cardiovascular):
         patient_data["complications"].append("cardiovascular")
     
     # Build risk assessments
@@ -723,7 +718,20 @@ async def search_diabetic_drugs(
     Search drugs for diabetic workflow, backed by the local DB (real data fetched from APIs).
     """
     query_l = query.lower().strip()
-    q = select(Drug).limit(200)  # small pool for fuzzy post-filter
+    if not query_l:
+        return []
+
+    # Narrow down in SQL first to reduce CPU-bound fuzzy matching.
+    q = (
+        select(Drug)
+        .where(
+            or_(
+                Drug.name.ilike(f"%{query_l}%"),
+                Drug.generic_name.ilike(f"%{query_l}%"),
+            )
+        )
+        .limit(120)
+    )
     result = await db.execute(q)
     pool = result.scalars().all()
 
@@ -747,7 +755,7 @@ async def search_diabetic_drugs(
             candidates.append(d)
             continue
 
-        # Fuzzy match fallback
+        # Fuzzy match fallback for near-miss spellings
         best = difflib.get_close_matches(query_l, names_l, n=1, cutoff=0.82)
         if best:
             candidates.append(d)

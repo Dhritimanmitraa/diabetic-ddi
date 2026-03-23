@@ -64,7 +64,7 @@ class Drug(Base):
     generic_name = Column(String(255), index=True, nullable=True)
     brand_names = Column(Text, nullable=True)  # JSON array of brand names
     description = Column(Text, nullable=True)
-    drug_class = Column(String(255), nullable=True)
+    drug_class = Column(String(255), nullable=True, index=True)
     mechanism = Column(Text, nullable=True)
     indication = Column(Text, nullable=True)
     pharmacology = Column(Text, nullable=True)
@@ -112,7 +112,7 @@ class DrugInteraction(Base):
     drug2_id = Column(Integer, ForeignKey('drugs.id'), nullable=False, index=True)
     
     # Interaction details
-    severity = Column(String(50), nullable=False, default="moderate")  # minor, moderate, major, contraindicated
+    severity = Column(String(50), nullable=False, default="moderate", index=True)  # minor, moderate, major, contraindicated
     description = Column(Text, nullable=True)
     effect = Column(Text, nullable=True)
     mechanism = Column(Text, nullable=True)
@@ -167,8 +167,8 @@ class ComparisonLog(Base):
     
     # Result
     has_interaction = Column(Boolean, default=False)
-    is_safe = Column(Boolean, default=True)
-    severity = Column(String(50), nullable=True)  # minor, moderate, major, contraindicated
+    is_safe = Column(Boolean, default=True, index=True)
+    severity = Column(String(50), nullable=True, index=True)  # minor, moderate, major, contraindicated
     
     # Additional info
     effect = Column(Text, nullable=True)
@@ -359,8 +359,8 @@ class MedicationSchedule(Base):
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)
     notes = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
                         onupdate=lambda: datetime.now(timezone.utc))
 

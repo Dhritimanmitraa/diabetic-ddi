@@ -9,13 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func, case
 from sqlalchemy.orm import selectinload
 from difflib import SequenceMatcher
+import json
+import asyncio
 import logging
 
 from app.models import Drug, DrugInteraction, DrugSimilarity
+from app.services.gemini_client import get_gemini_client
 from app.schemas import (
     InteractionCheckResponse, AlternativeDrug, AlternativeSuggestionResponse,
     DrugResponse, InteractionResponse, SeverityLevel
 )
+from app.services.cache import interaction_cache, drug_lookup_cache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -70,33 +74,36 @@ class InteractionService:
             Drug object or None
         """
         name = name.strip().upper()
-        
+
+        cached = drug_lookup_cache.get(f"drug:{name}")
+        if cached is not None:
+            return cached
+
         # Try exact match first
         stmt = select(Drug).where(func.upper(Drug.name) == name)
         result = await self.db.execute(stmt)
         drug = result.scalar_one_or_none()
         
-        if drug:
-            return drug
+        if not drug:
+            # Try generic name
+            stmt = select(Drug).where(func.upper(Drug.generic_name) == name)
+            result = await self.db.execute(stmt)
+            drug = result.scalar_one_or_none()
         
-        # Try generic name
-        stmt = select(Drug).where(func.upper(Drug.generic_name) == name)
-        result = await self.db.execute(stmt)
-        drug = result.scalar_one_or_none()
-        
-        if drug:
-            return drug
-        
-        # Try partial match
-        stmt = select(Drug).where(
-            or_(
-                func.upper(Drug.name).contains(name),
-                func.upper(Drug.generic_name).contains(name)
-            )
-        ).limit(1)
-        
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        if not drug:
+            # Try partial match
+            stmt = select(Drug).where(
+                or_(
+                    func.upper(Drug.name).contains(name),
+                    func.upper(Drug.generic_name).contains(name)
+                )
+            ).limit(1)
+            result = await self.db.execute(stmt)
+            drug = result.scalar_one_or_none()
+
+        if drug is not None:
+            drug_lookup_cache.set(f"drug:{name}", drug)
+        return drug
     
     async def check_interaction(self, drug1_name: str, drug2_name: str) -> InteractionCheckResponse:
         """
@@ -109,19 +116,27 @@ class InteractionService:
         Returns:
             InteractionCheckResponse with interaction details
         """
-        # Find both drugs
+        pair_key = f"ix:{min(drug1_name.upper(), drug2_name.upper())}:{max(drug1_name.upper(), drug2_name.upper())}"
+        cached = interaction_cache.get(pair_key)
+        if cached is not None:
+            return cached
+
         drug1 = await self.get_drug_by_name(drug1_name)
         drug2 = await self.get_drug_by_name(drug2_name)
         
         if not drug1:
-            # Create a temporary response for unknown drug
             return self._create_unknown_drug_response(drug1_name, "first")
         
         if not drug2:
             return self._create_unknown_drug_response(drug2_name, "second")
         
         interaction = await self._get_interaction(drug1.id, drug2.id)
-        return self._build_interaction_response(drug1, drug2, interaction)
+        if not interaction:
+            interaction = await self._check_interaction_via_llm(drug1, drug2)
+            
+        response = self._build_interaction_response(drug1, drug2, interaction)
+        interaction_cache.set(pair_key, response)
+        return response
 
     async def resolve_drugs_by_names(self, drug_names: List[str]) -> Dict[str, Optional[Drug]]:
         """Resolve a list of drug names while minimizing exact-match queries."""
@@ -191,6 +206,17 @@ class InteractionService:
                 interaction_map[(interaction.drug1_id, interaction.drug2_id)] = interaction
                 interaction_map[(interaction.drug2_id, interaction.drug1_id)] = interaction
 
+        # Augment missing interactions dynamically via Gemini
+        for drug1_name, drug2_name in combinations(unique_names, 2):
+            drug1 = resolved.get(drug1_name)
+            drug2 = resolved.get(drug2_name)
+            if drug1 and drug2:
+                if (drug1.id, drug2.id) not in interaction_map:
+                    llm_interaction = await self._check_interaction_via_llm(drug1, drug2)
+                    if llm_interaction:
+                        interaction_map[(drug1.id, drug2.id)] = llm_interaction
+                        interaction_map[(drug2.id, drug1.id)] = llm_interaction
+
         responses: List[Tuple[str, str, InteractionCheckResponse]] = []
         for drug1_name, drug2_name in combinations(unique_names, 2):
             drug1 = resolved.get(drug1_name)
@@ -230,6 +256,57 @@ class InteractionService:
         
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+    
+    async def _check_interaction_via_llm(self, drug1: Drug, drug2: Drug) -> Optional[DrugInteraction]:
+        """Dynamically check for drug interactions using Gemini API when local DB misses."""
+        client = get_gemini_client()
+        if not client.is_available:
+            return None
+
+        prompt = f"""
+        Analyze the potential drug-drug interaction between {drug1.name} and {drug2.name}.
+        Return ONLY a JSON object with the following structure, and NO markdown code blocks or other text.
+        If there is no clinically significant interaction, set severity to "none".
+
+        {{
+            "severity": "minor" | "moderate" | "major" | "contraindicated" | "none",
+            "description": "Short description of the interaction",
+            "effect": "Clinical effect of the interaction",
+            "mechanism": "Pharmacological mechanism",
+            "management": "How to manage this combination"
+        }}
+        """
+        try:
+            # Run the synchronous Gemini client in a thread pool to avoid blocking the event loop
+            response = await asyncio.to_thread(client.generate_text, prompt, temperature=0.1)
+            text = response.text.replace("```json", "").replace("```", "").strip()
+            data = json.loads(text)
+            
+            if data.get("severity", "none").lower() == "none":
+                return None
+                
+            severity = data.get("severity", "moderate").lower()
+            if severity not in ["minor", "moderate", "major", "contraindicated"]:
+                severity = "moderate"
+                
+            return DrugInteraction(
+                id=99990000 + drug1.id + drug2.id,
+                drug1_id=drug1.id,
+                drug2_id=drug2.id,
+                severity=severity,
+                description=data.get("description", f"Potential interaction identified by AI between {drug1.name} and {drug2.name}."),
+                effect=data.get("effect", ""),
+                mechanism=data.get("mechanism", ""),
+                management=data.get("management", ""),
+                source="Gemini API",
+                evidence_level="AI Generated",
+                confidence_score=0.85,
+                drug1=drug1,
+                drug2=drug2
+            )
+        except Exception as e:
+            logger.error(f"Error checking interaction via LLM: {e}")
+            return None
     
     def _get_recommendations(self, interaction: DrugInteraction) -> List[str]:
         """Generate recommendations based on interaction."""

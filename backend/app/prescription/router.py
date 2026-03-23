@@ -6,6 +6,7 @@ Includes a WebSocket endpoint for real-time prescription Q&A.
 """
 import json
 import logging
+import time
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
@@ -49,6 +50,8 @@ class DrugInteractionCheckResponse(BaseModel):
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+_health_cache: dict[str, object] = {"expires_at": 0.0, "payload": None}
+_HEALTH_CACHE_TTL_SECONDS = 30.0
 
 router = APIRouter(
     prefix="/prescription",
@@ -325,11 +328,17 @@ async def prescription_health():
     from app.prescription.vision_ocr import get_vision_service
     from app.prescription.rag_service import get_rag_service, get_llm_service
     
+    now = time.monotonic()
+    cached_payload = _health_cache.get("payload")
+    expires_at = float(_health_cache.get("expires_at", 0.0))
+    if cached_payload is not None and now < expires_at:
+        return cached_payload
+
     vision = get_vision_service()
     rag = get_rag_service()
     llm = get_llm_service()
-    
-    return {
+
+    payload = {
         "status": "healthy",
         "services": {
             "nvidia_cosmos": vision.nvidia_available,
@@ -337,8 +346,11 @@ async def prescription_health():
             "ollama_fallback": bool(settings.OLLAMA_HOST and settings.OLLAMA_MODEL),
             "chromadb": rag.chroma_client is not None,
             "gemini_chat": llm.gemini_available,
-        }
+        },
     }
+    _health_cache["payload"] = payload
+    _health_cache["expires_at"] = now + _HEALTH_CACHE_TTL_SECONDS
+    return payload
 
 
 # ============== WebSocket Chat ==============

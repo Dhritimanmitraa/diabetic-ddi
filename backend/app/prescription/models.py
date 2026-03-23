@@ -36,7 +36,7 @@ class Prescription(Base):
     vision_model_used = Column(String(100), nullable=True)  # gemini-1.5-flash, llava, etc.
     
     # Timestamps
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     processed_at = Column(DateTime, nullable=True)
     
     # ChromaDB reference
@@ -56,7 +56,7 @@ class PrescriptionMedicine(Base):
     __tablename__ = "prescription_medicines"
     
     id = Column(Integer, primary_key=True, index=True)
-    prescription_id = Column(Integer, ForeignKey("prescriptions.id"), nullable=False)
+    prescription_id = Column(Integer, ForeignKey("prescriptions.id"), nullable=False, index=True)
     
     # Medicine details
     name = Column(String(255), nullable=False)
@@ -91,7 +91,7 @@ class PrescriptionChat(Base):
     __tablename__ = "prescription_chats"
     
     id = Column(Integer, primary_key=True, index=True)
-    prescription_id = Column(Integer, ForeignKey("prescriptions.id"), nullable=False)
+    prescription_id = Column(Integer, ForeignKey("prescriptions.id"), nullable=False, index=True)
     
     # Message content
     role = Column(String(20), nullable=False)  # user, assistant

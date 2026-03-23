@@ -274,16 +274,16 @@ class DiabeticDDIService:
         user_id: str | None = None,
     ) -> List[DiabeticMedication]:
         """Get all medications for a patient."""
-        patient = await self.get_patient(patient_id, user_id)
-        if not patient:
-            return []
-        
-        query = select(DiabeticMedication).where(
-            DiabeticMedication.patient_id == patient.id
+        query = (
+            select(DiabeticMedication)
+            .join(DiabeticPatient, DiabeticPatient.id == DiabeticMedication.patient_id)
+            .where(DiabeticPatient.patient_id == patient_id)
         )
+        if user_id:
+            query = query.where(DiabeticPatient.user_id == user_id)
         if active_only:
             query = query.where(DiabeticMedication.is_active.is_(True))
-        
+
         result = await self.db.execute(query)
         return list(result.scalars().all())
     
@@ -553,15 +553,24 @@ class DiabeticDDIService:
         # Find alternatives for risky drugs
         alternatives = {}
         if include_alternatives:
+            current_med_names = [m.drug_name for m in medications]
+            patient_context = self._build_patient_context(patient)
             for assessment in check_result.assessments:
                 if assessment.risk_level in ["high_risk", "contraindicated", "fatal"]:
-                    alts = await self.find_safe_alternatives(
-                        patient_id,
+                    alt_rows = self.rules.find_safe_alternatives(
                         assessment.drug_name,
-                        user_id=user_id,
+                        patient_context,
+                        current_med_names,
                     )
-                    if alts:
-                        alternatives[assessment.drug_name] = alts.alternatives
+                    alternatives[assessment.drug_name] = [
+                        SafeAlternativeResponse(
+                            drug=a["drug"],
+                            risk_level=a["risk_level"],
+                            risk_score=a["risk_score"],
+                            considerations=a["considerations"],
+                        )
+                        for a in alt_rows
+                    ]
         
         # Build monitoring plan
         monitoring = set()

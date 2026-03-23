@@ -633,6 +633,8 @@ class TestAuthAndMetricsEndpoints:
             json={"username": "architect", "password": "Passw0rd!"},
         )
         assert login_resp.status_code == 200
+        assert "X-Process-Time-MS" in login_resp.headers
+        assert "X-Latency-Target-MS" in login_resp.headers
 
         refresh_resp = await client.post(
             "/auth/refresh",
@@ -645,6 +647,7 @@ class TestAuthAndMetricsEndpoints:
         assert metrics_resp.status_code == 200
         assert "http_requests_total" in metrics_resp.text
         assert "http_request_duration_seconds" in metrics_resp.text
+        assert "http_slow_requests_total" in metrics_resp.text
 
 
 class TestDiabeticEndpoints:

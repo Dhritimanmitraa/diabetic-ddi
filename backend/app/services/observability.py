@@ -10,6 +10,7 @@ _request_totals: dict[tuple[str, str, int], int] = defaultdict(int)
 _request_duration_sum: dict[tuple[str, str], float] = defaultdict(float)
 _request_duration_count: dict[tuple[str, str], int] = defaultdict(int)
 _request_duration_buckets: dict[tuple[str, str, float], int] = defaultdict(int)
+_slow_request_totals: dict[tuple[str, str], int] = defaultdict(int)
 _in_progress = 0
 _process_start_time = time()
 _BUCKETS = (0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
@@ -39,6 +40,12 @@ def record_request(method: str, path: str, status_code: int, duration_seconds: f
                 _request_duration_buckets[(method, path, bucket)] += 1
 
 
+def record_slow_request(method: str, path: str) -> None:
+    """Record a request that exceeded its latency target."""
+    with _lock:
+        _slow_request_totals[(method, path)] += 1
+
+
 def render_prometheus_metrics() -> str:
     """Render metrics in Prometheus exposition format."""
     lines = [
@@ -52,6 +59,17 @@ def render_prometheus_metrics() -> str:
         for (method, path, status_code), count in sorted(_request_totals.items()):
             lines.append(
                 f'http_requests_total{{method="{method}",path="{path}",status="{status_code}"}} {count}'
+            )
+
+        lines.extend(
+            [
+                "# HELP http_slow_requests_total Requests that exceeded route latency targets",
+                "# TYPE http_slow_requests_total counter",
+            ]
+        )
+        for (method, path), count in sorted(_slow_request_totals.items()):
+            lines.append(
+                f'http_slow_requests_total{{method="{method}",path="{path}"}} {count}'
             )
 
         lines.extend(

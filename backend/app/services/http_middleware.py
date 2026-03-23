@@ -11,7 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
 from app.config import get_settings
-from app.services.observability import dec_in_progress, inc_in_progress, record_request
+from app.services.latency_targets import get_latency_target_ms
+from app.services.observability import dec_in_progress, inc_in_progress, record_request, record_slow_request
 from app.services.request_context import clear_request_context, set_request_context
 from app.services.rate_limiter import rate_limit
 
@@ -81,12 +82,32 @@ def setup_http_middleware(app: FastAPI) -> None:
         route = request.scope.get("route")
         metrics_path = getattr(route, "path", request.url.path)
         record_request(request.method, metrics_path, response.status_code, duration_seconds)
+        latency_target_ms = get_latency_target_ms(metrics_path)
 
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Trace-ID"] = trace_id
         response.headers["X-Process-Time-MS"] = str(duration_ms)
+        response.headers["X-Latency-Target-MS"] = str(latency_target_ms)
 
         try:
+            if duration_ms > latency_target_ms:
+                over_ms = round(duration_ms - latency_target_ms, 2)
+                record_slow_request(request.method, metrics_path)
+                logger.warning(
+                    "request_latency_slo_exceeded",
+                    extra={
+                        "request_id": request_id,
+                        "trace_id": trace_id,
+                        "path": request.url.path,
+                        "route_path": metrics_path,
+                        "method": request.method,
+                        "status_code": response.status_code,
+                        "duration_ms": duration_ms,
+                        "latency_target_ms": latency_target_ms,
+                        "over_target_ms": over_ms,
+                    },
+                )
+
             logger.info(
                 "request_completed",
                 extra={
@@ -97,6 +118,7 @@ def setup_http_middleware(app: FastAPI) -> None:
                     "method": request.method,
                     "status_code": response.status_code,
                     "duration_ms": duration_ms,
+                    "latency_target_ms": latency_target_ms,
                     "client_ip": request.client.host if request.client else "unknown",
                 },
             )
